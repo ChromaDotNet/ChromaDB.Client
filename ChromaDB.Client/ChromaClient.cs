@@ -1,4 +1,5 @@
-﻿using ChromaDB.Client.Common;
+﻿using System.Globalization;
+using ChromaDB.Client.Common;
 using ChromaDB.Client.Models;
 using ChromaDB.Client.Models.Requests;
 
@@ -29,6 +30,21 @@ public class ChromaClient
 			.Insert("{tenant}", tenant)
 			.Insert("{database}", database);
 		return await _httpClient.Get<List<ChromaCollection>>(_httpClient.Routes.Collections, requestParams, cancellationToken);
+	}
+
+	// One page of the collections, in the order of the server.
+	public async Task<List<ChromaCollection>> ListCollections(int limit, int offset = 0, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	{
+		tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
+		database = database is not null and not [] ? database : _currentDatabase.Name;
+		var requestParams = new RequestQueryParams()
+			.Insert("{tenant}", tenant)
+			.Insert("{database}", database)
+			.Insert("{limit}", limit.ToString(CultureInfo.InvariantCulture))
+			.Insert("{offset}", offset.ToString(CultureInfo.InvariantCulture));
+		var route = _httpClient.Routes.Collections;
+		route += (route.Contains("?") ? "&" : "?") + "limit={limit}&offset={offset}";
+		return await _httpClient.Get<List<ChromaCollection>>(route, requestParams, cancellationToken);
 	}
 
 	public async Task<ChromaCollection> GetCollection(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)

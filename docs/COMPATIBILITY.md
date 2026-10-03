@@ -29,8 +29,8 @@ On these older servers collections and records work; some features are missing o
 | Versions | Missing on the server |
 |---|---|
 | 0.4.23, 0.4.24, 0.5.0 | nothing among the features above; the built-in authentication was not tested |
-| 0.4.15 | `CountCollections`; the `$not_contains` document filter; the tenant and database of the collections it returns; records in the collections of a tenant or database other than the default: the server answers that the collection does not exist |
-| 0.4.10, 0.4.12 – 0.4.14 | tenants and databases; `CountCollections`; the `$not_contains` document filter |
+| 0.4.15 | `CountCollections`; the `$not_contains` document filter; the tenant and database of the collections it returns; records in the collections of a tenant or database other than the default: the server answers that the collection does not exist; the `limit` and `offset` of `ListCollections`: the server returns all the collections |
+| 0.4.10, 0.4.12 – 0.4.14 | tenants and databases; `CountCollections`; the `$not_contains` document filter; the `limit` and `offset` of `ListCollections`: the server returns all the collections |
 
 A missing endpoint gives a message that names the request, like `Not Found: POST /api/v1/tenants`.
 

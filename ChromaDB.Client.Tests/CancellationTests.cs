@@ -13,6 +13,7 @@ public class CancellationTests
 	static IEnumerable<TestCaseData> ClientCalls()
 	{
 		yield return Case<ChromaClient>("ListCollections", (c, t) => c.ListCollections(cancellationToken: t));
+		yield return Case<ChromaClient>("ListCollectionsPage", (c, t) => c.ListCollections(limit: 2, cancellationToken: t));
 		yield return Case<ChromaClient>("GetCollection", (c, t) => c.GetCollection("collection", cancellationToken: t));
 		yield return Case<ChromaClient>("Heartbeat", (c, t) => c.Heartbeat(t));
 		yield return Case<ChromaClient>("CreateCollection", (c, t) => c.CreateCollection("collection", cancellationToken: t));

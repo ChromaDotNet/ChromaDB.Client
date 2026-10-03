@@ -91,6 +91,26 @@ public class ClientTests : ChromaTestsBase
 	}
 
 	[Test]
+	public async Task ListCollectionsPages()
+	{
+		Assume.That(ListCollectionsPagingSupported, Is.True, "Chroma 0.4.15 and earlier ignore the limit and the offset of the list of the collections.");
+		var database = $"database{Random.Shared.Next()}";
+
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		await client.CreateDatabase(database);
+		var names = new[] { $"collection{Random.Shared.Next()}", $"collection{Random.Shared.Next()}", $"collection{Random.Shared.Next()}" };
+		foreach (var name in names)
+		{
+			await client.CreateCollection(name, database: database);
+		}
+		var first = await client.ListCollections(limit: 2, database: database);
+		var second = await client.ListCollections(limit: 2, offset: 2, database: database);
+		Assert.That(first, Has.Count.EqualTo(2));
+		Assert.That(second, Has.Count.EqualTo(1));
+		Assert.That(first.Concat(second).Select(x => x.Name), Is.EquivalentTo(names));
+	}
+
+	[Test]
 	public async Task CreateCollectionWithoutMetadata()
 	{
 		var name = $"collection{Random.Shared.Next()}";

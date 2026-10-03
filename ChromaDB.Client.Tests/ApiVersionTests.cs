@@ -13,6 +13,7 @@ public class ApiVersionTests
 	static IEnumerable<TestCaseData> Requests()
 	{
 		yield return Case("ListCollections", c => c.ListCollections(), "GET", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
+		yield return Case("ListCollectionsPage", c => c.ListCollections(limit: 2, offset: 1), "GET", "tenants/t/databases/d/collections?limit=2&offset=1", "collections?tenant=t&database=d&limit=2&offset=1");
 		yield return Case("GetCollection", c => c.GetCollection("c"), "GET", "tenants/t/databases/d/collections/c", "collections/c?tenant=t&database=d");
 		yield return Case("Heartbeat", c => c.Heartbeat(), "GET", "heartbeat", "heartbeat");
 		yield return Case("CreateCollection", c => c.CreateCollection("c"), "POST", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
