@@ -18,7 +18,11 @@ The package targets .NET 8 and .NET Standard 2.0; the tests run against both bui
 
 ## Installation
 
-The first release on NuGet is in preparation, as `ChromaDotNet.Client` and `ChromaDotNet.Client.DependencyInjection`.
+```
+dotnet add package ChromaDotNet.Client --prerelease
+```
+
+`ChromaDotNet.Client.DependencyInjection` adds the registration for `Microsoft.Extensions.DependencyInjection`. Every change merged into `main` is also published as a preview version.
 
 ## Example
 
@@ -53,10 +57,11 @@ foreach (var item in queryData)
 
 - Use the `/api/v2/` URI. Chroma 1.x answers the v1 routes with `410 Gone`.
 - Namespaces do not change: the code keeps `using ChromaDB.Client;`.
-- When the package is published, replace the `ChromaDB.Client` package reference with `ChromaDotNet.Client`.
+- Replace the `ChromaDB.Client` package reference with `ChromaDotNet.Client`.
 
 ## Status
 
+[![NuGet](https://img.shields.io/nuget/vpre/ChromaDotNet.Client)](https://www.nuget.org/packages/ChromaDotNet.Client/)
 [![CI](https://img.shields.io/github/actions/workflow/status/ChromaDotNet/ChromaDB.Client/ci.yml?branch=main)](https://github.com/ChromaDotNet/ChromaDB.Client/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/ChromaDotNet/ChromaDB.Client)](LICENSE)
 
