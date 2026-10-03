@@ -5,7 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<IsPackable>true</IsPackable>
-		<VersionPrefix>2.2.1</VersionPrefix>
+		<VersionPrefix>2.3.0</VersionPrefix>
 		<PackageId>ChromaDB.Client.DependencyInjection</PackageId>
 		<!-- -p:PackageIdPrefix=Name publishes the package as Name.Client.DependencyInjection. -->
 		<PackageId Condition="'$(PackageIdPrefix)' != ''">$(PackageIdPrefix).Client.DependencyInjection</PackageId>
