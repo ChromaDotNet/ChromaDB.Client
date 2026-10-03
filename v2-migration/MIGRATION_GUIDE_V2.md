@@ -4,6 +4,8 @@
 
 ChromaDB.Client v2.0 has been updated to support the ChromaDB v2 API. This is a **breaking change** that requires updating your base URI configuration.
 
+This fork publishes the package as `ChromaDotNet.Client`; the namespaces stay `ChromaDB.Client`.
+
 ## What Changed?
 
 ChromaDB has migrated from API v1 to v2, with the primary change being the URL structure:
@@ -27,7 +29,7 @@ The v2 API uses a hierarchical URL structure where tenant and database are part 
 
 ### Step 1: Update Your ChromaDB Server
 
-Ensure your ChromaDB server supports the v2 API. The v2 API is available in recent versions of ChromaDB.
+Ensure your ChromaDB server supports the v2 API. The v2 API is available from Chroma 0.5.16: 0.5.16 to 0.6.x serve both v1 and v2, 1.0 and later only v2.
 
 ### Step 2: Update Your Configuration
 
@@ -48,19 +50,19 @@ var configOptions = new ChromaConfigurationOptions(uri: "http://localhost:8000/a
 Update your NuGet package reference to v2.0.0 or later:
 
 ```xml
-<PackageReference Include="ChromaDB.Client" Version="2.0.0" />
+<PackageReference Include="ChromaDotNet.Client" Version="2.0.0" />
 ```
 
 Or via the .NET CLI:
 ```bash
-dotnet add package ChromaDB.Client --version 2.0.0
+dotnet add package ChromaDotNet.Client --version 2.0.0
 ```
 
 ## What Stays the Same?
 
-✅ **All API methods remain unchanged** - No code changes needed beyond the configuration  
-✅ **Request/response models** - All data structures remain the same  
-✅ **Method signatures** - All methods work exactly as before  
+✅ **API methods keep their names and existing parameters** - 2.0 adds an optional `CancellationToken` after them, which changes the signatures: see the [Breaking Changes Summary](#breaking-changes-summary)  
+✅ **Request/response models** - The data structures remain the same, except `ChromaCollectionQueryEntry.Distance`, now `float?`  
+✅ **Namespaces** - The code keeps `using ChromaDB.Client;`  
 ✅ **Functionality** - All features work identically  
 
 ## Example: Complete Migration
@@ -109,9 +111,11 @@ If you get 404 errors after upgrading, you're likely still pointing to the v1 AP
 - ✅ Check your URI contains `/api/v2/` (not `/api/v1/`)
 - ✅ Verify your ChromaDB server supports v2 API
 
+Chroma 1.0 and later answer the v1 routes with `410 Gone` and the message "The v1 API is deprecated. Please use /v2 apis".
+
 ### Server Version Compatibility
 
-The v2 API is supported in ChromaDB server versions 0.4.0 and later. Check your server version:
+The v2 API is supported in ChromaDB server versions 0.5.16 and later. Check your server version:
 
 ```csharp
 var version = await client.GetVersion();
@@ -123,8 +127,10 @@ Console.WriteLine($"ChromaDB Server Version: {version}");
 | Change | Impact | Action Required |
 |--------|--------|-----------------|
 | API endpoint | High | Update URI from `/api/v1/` to `/api/v2/` |
+| Package id | High | Reference `ChromaDotNet.Client` instead of `ChromaDB.Client` |
 | URL structure | None | Handled internally by the client |
-| Request/response | None | No changes needed |
+| Request/response | Low | `ChromaCollectionQueryEntry.Distance` is `float?`, `null` when the query does not include `ChromaQueryInclude.Distances` |
+| Cancellation | Low | Every async method takes an optional `CancellationToken`: rebuild, and turn a method group like `client.Heartbeat` passed as a `Func<Task>` into `() => client.Heartbeat()` |
 
 ## Need Help?
 
@@ -139,5 +145,5 @@ If you encounter issues during migration:
 
 If you need to rollback to v1 API:
 
-1. Downgrade to ChromaDB.Client v1.x: `dotnet add package ChromaDB.Client --version 1.0.1`
+1. Go back to the original package, ChromaDB.Client 1.x: remove `ChromaDotNet.Client` and run `dotnet add package ChromaDB.Client --version 1.0.0`
 2. Revert your configuration URI to `/api/v1/`

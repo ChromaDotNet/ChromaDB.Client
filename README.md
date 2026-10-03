@@ -19,10 +19,10 @@ The package targets .NET 8 and .NET Standard 2.0; the tests run against both bui
 ## Installation
 
 ```
-dotnet add package ChromaDotNet.Client --prerelease
+dotnet add package ChromaDotNet.Client
 ```
 
-`ChromaDotNet.Client.DependencyInjection` adds the registration for `Microsoft.Extensions.DependencyInjection`. Every change merged into `main` is also published as a preview version.
+`ChromaDotNet.Client.DependencyInjection` adds the registration for `Microsoft.Extensions.DependencyInjection`. Every change merged into `main` is also published as a preview version, installed with `--prerelease`.
 
 ## Example
 
@@ -58,10 +58,14 @@ foreach (var item in queryData)
 - Use the `/api/v2/` URI. Chroma 1.x answers the v1 routes with `410 Gone`.
 - Namespaces do not change: the code keeps `using ChromaDB.Client;`.
 - Replace the `ChromaDB.Client` package reference with `ChromaDotNet.Client`.
+- `ChromaCollectionQueryEntry.Distance` is a `float?`: it is `null` when the query does not include `ChromaQueryInclude.Distances`.
+- Every async method takes an optional `CancellationToken` as its last parameter. Code compiled against 1.x has to be rebuilt, and a method group like `client.Heartbeat` passed as a `Func<Task>` becomes `() => client.Heartbeat()`.
+
+The [migration guide](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/v2-migration/MIGRATION_GUIDE_V2.md) has the details.
 
 ## Status
 
-[![NuGet](https://img.shields.io/nuget/vpre/ChromaDotNet.Client)](https://www.nuget.org/packages/ChromaDotNet.Client/)
+[![NuGet](https://img.shields.io/nuget/v/ChromaDotNet.Client)](https://www.nuget.org/packages/ChromaDotNet.Client/)
 [![CI](https://img.shields.io/github/actions/workflow/status/ChromaDotNet/ChromaDB.Client/ci.yml?branch=main)](https://github.com/ChromaDotNet/ChromaDB.Client/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/ChromaDotNet/ChromaDB.Client)](LICENSE)
 

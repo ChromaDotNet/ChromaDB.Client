@@ -21,7 +21,7 @@
 		<PackageProjectUrl Condition="'$(GITHUB_REPOSITORY)' != ''">https://github.com/$(GITHUB_REPOSITORY)</PackageProjectUrl>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
-		<PackageReleaseNotes>v2.0.0: Migration to ChromaDB API v2 - Breaking change: Update your configuration URI from /api/v1/ to /api/v2/. See MIGRATION_GUIDE_V2.md for details.</PackageReleaseNotes>
+		<PackageReleaseNotes>2.0.0: uses the Chroma v2 API, so the configuration URI ends with /api/v2/. Other breaking changes: ChromaCollectionQueryEntry.Distance is float?, null when the query does not include distances; every async method takes an optional CancellationToken as its last parameter. Fixed: Modify, AddChromaClient, the request URLs of the netstandard2.0 build, the error messages, and the HttpClient passed to the clients is no longer modified. Migration: $(PackageProjectUrl)#migrating-from-chromadbclient-1x</PackageReleaseNotes>
 	</PropertyGroup>
 	<ItemGroup>
 		<None Include="..\README.md" Pack="true" PackagePath="\" />
