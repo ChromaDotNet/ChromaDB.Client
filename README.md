@@ -100,6 +100,14 @@ await client.DeleteDatabase("my_database", tenant: "my_tenant");
 
 `ListDatabases` and `DeleteDatabase` need the v2 API of Chroma 0.6.3 or later: the older servers answer `405 Method Not Allowed`.
 
+## Collections by id
+
+```csharp
+var collection = await client.GetCollectionById(id);
+```
+
+`GetCollectionById` looks for the id in the tenant and database of the options, or in the ones it is given. It needs the v2 API of Chroma 1.5.7 or later: the older servers answer `404 Not Found`.
+
 ## Authentication
 
 ```csharp
