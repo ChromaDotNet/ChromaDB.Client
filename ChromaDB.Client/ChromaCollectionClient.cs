@@ -70,7 +70,10 @@ public class ChromaCollectionClient
 		return response.Map() ?? [];
 	}
 
-	public async Task Add(List<string> ids, List<ReadOnlyMemory<float>>? embeddings = null, List<Dictionary<string, object>>? metadatas = null, List<string>? documents = null, CancellationToken cancellationToken = default)
+	public Task Add(List<string> ids, List<ReadOnlyMemory<float>>? embeddings = null, List<Dictionary<string, object>>? metadatas = null, List<string>? documents = null, CancellationToken cancellationToken = default)
+		=> Add(new ChromaRecords(ids) { Embeddings = embeddings, Metadatas = metadatas, Documents = documents }, cancellationToken);
+
+	public async Task Add(ChromaRecords records, CancellationToken cancellationToken = default)
 	{
 		var requestParams = new RequestQueryParams()
 			.Insert("{tenant}", _tenant)
@@ -78,15 +81,19 @@ public class ChromaCollectionClient
 			.Insert("{collection_id}", _collection.Id);
 		var request = new CollectionAddRequest()
 		{
-			Ids = ids,
-			Embeddings = embeddings,
-			Metadatas = metadatas,
-			Documents = documents,
+			Ids = records.Ids,
+			Embeddings = records.Embeddings,
+			Metadatas = records.Metadatas,
+			Documents = records.Documents,
+			Uris = records.Uris,
 		};
 		await _httpClient.Post(_httpClient.Routes.Collection + "/add", request, requestParams, cancellationToken);
 	}
 
-	public async Task Update(List<string> ids, List<ReadOnlyMemory<float>>? embeddings = null, List<Dictionary<string, object>>? metadatas = null, List<string>? documents = null, CancellationToken cancellationToken = default)
+	public Task Update(List<string> ids, List<ReadOnlyMemory<float>>? embeddings = null, List<Dictionary<string, object>>? metadatas = null, List<string>? documents = null, CancellationToken cancellationToken = default)
+		=> Update(new ChromaRecords(ids) { Embeddings = embeddings, Metadatas = metadatas, Documents = documents }, cancellationToken);
+
+	public async Task Update(ChromaRecords records, CancellationToken cancellationToken = default)
 	{
 		var requestParams = new RequestQueryParams()
 			.Insert("{tenant}", _tenant)
@@ -94,15 +101,19 @@ public class ChromaCollectionClient
 			.Insert("{collection_id}", _collection.Id);
 		var request = new CollectionUpdateRequest()
 		{
-			Ids = ids,
-			Embeddings = embeddings,
-			Metadatas = metadatas,
-			Documents = documents,
+			Ids = records.Ids,
+			Embeddings = records.Embeddings,
+			Metadatas = records.Metadatas,
+			Documents = records.Documents,
+			Uris = records.Uris,
 		};
 		await _httpClient.Post(_httpClient.Routes.Collection + "/update", request, requestParams, cancellationToken);
 	}
 
-	public async Task Upsert(List<string> ids, List<ReadOnlyMemory<float>>? embeddings = null, List<Dictionary<string, object>>? metadatas = null, List<string>? documents = null, CancellationToken cancellationToken = default)
+	public Task Upsert(List<string> ids, List<ReadOnlyMemory<float>>? embeddings = null, List<Dictionary<string, object>>? metadatas = null, List<string>? documents = null, CancellationToken cancellationToken = default)
+		=> Upsert(new ChromaRecords(ids) { Embeddings = embeddings, Metadatas = metadatas, Documents = documents }, cancellationToken);
+
+	public async Task Upsert(ChromaRecords records, CancellationToken cancellationToken = default)
 	{
 		var requestParams = new RequestQueryParams()
 			.Insert("{tenant}", _tenant)
@@ -110,10 +121,11 @@ public class ChromaCollectionClient
 			.Insert("{collection_id}", _collection.Id);
 		var request = new CollectionUpsertRequest()
 		{
-			Ids = ids,
-			Embeddings = embeddings,
-			Metadatas = metadatas,
-			Documents = documents,
+			Ids = records.Ids,
+			Embeddings = records.Embeddings,
+			Metadatas = records.Metadatas,
+			Documents = records.Documents,
+			Uris = records.Uris,
 		};
 		await _httpClient.Post(_httpClient.Routes.Collection + "/upsert", request, requestParams, cancellationToken);
 	}

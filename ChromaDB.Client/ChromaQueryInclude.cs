@@ -8,6 +8,7 @@ public enum ChromaQueryInclude
 	Metadatas = 1 << 1,
 	Documents = 1 << 2,
 	Distances = 1 << 3,
+	Uris = 1 << 4,
 }
 
 internal static class ChromaQueryIncludeExt
@@ -30,6 +31,10 @@ internal static class ChromaQueryIncludeExt
 		if (include.HasFlag(ChromaQueryInclude.Distances))
 		{
 			result.Add("distances");
+		}
+		if (include.HasFlag(ChromaQueryInclude.Uris))
+		{
+			result.Add("uris");
 		}
 		return result;
 	}

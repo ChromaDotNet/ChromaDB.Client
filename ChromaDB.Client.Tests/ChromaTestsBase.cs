@@ -84,6 +84,9 @@ public abstract class ChromaTestsBase
 	// Chroma 0.4.10 to 0.4.15 ignore the limit and the offset of the list of the collections; 0.4.23 applies them.
 	protected static bool ListCollectionsPagingSupported => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 4, 23);
 
+	// Chroma 0.4.10 to 0.4.15 reject "uris" in include; 0.4.23 stores and returns the URIs of the records.
+	protected static bool UrisSupported => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 4, 23);
+
 	// The servers before Chroma 0.5.1 configure their built-in authentication with other settings, and Chroma 1.0 removed it.
 	protected static bool BuiltInAuthenticationTested => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 5, 1) && !IsChroma1;
 

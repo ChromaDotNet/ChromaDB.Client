@@ -15,4 +15,9 @@ internal class CollectionUpsertRequest
 
 	[JsonPropertyName("documents")]
 	public List<string>? Documents { get; init; }
+
+	// Left out when null, so that the requests without URIs stay the same for the servers that do not know them.
+	[JsonPropertyName("uris")]
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public List<string?>? Uris { get; init; }
 }

@@ -13,7 +13,10 @@ internal static class CollectionEntryMapper
 				Embeddings = response.Embeddings?[i],
 				Metadata = response.Metadatas?[i],
 				Document = response.Documents?[i],
-				Uris = response.Uris?[i],
+				Uri = response.Uris?[i],
+#pragma warning disable CS0618 // Kept filled for the code that still reads it.
+				Uris = response.Uris?[i] is { } uri ? [uri] : null,
+#pragma warning restore CS0618
 				Data = response.Data,
 			})
 			.ToList();

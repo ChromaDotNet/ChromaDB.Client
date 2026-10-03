@@ -1,3 +1,4 @@
+using ChromaDB.Client.Models;
 using NUnit.Framework;
 
 namespace ChromaDB.Client.Tests;
@@ -248,6 +249,20 @@ public class CollectionClientCUDTests : ChromaTestsBase
 		var client = await Init();
 		var exception = Assert.ThrowsAsync<ChromaException>(() => client.Add(["a", "b"], embeddings: [new([1f, 2f]), new([1f, 2f, 3f])]));
 		Assert.That(exception!.Message, Does.Contain("dimension").IgnoreCase.And.Not.Contain("{"));
+	}
+
+	[Test]
+	public async Task RecordsWithUris()
+	{
+		Assume.That(UrisSupported, Is.True, "Chroma 0.4.15 and earlier do not return the URIs of the records.");
+		var client = await Init();
+		await client.Add(new ChromaRecords(["a", "b"]) { Embeddings = Embeddings(2), Uris = ["file://a", null] });
+		await client.Update(new ChromaRecords(["b"]) { Uris = ["file://b2"] });
+		await client.Upsert(new ChromaRecords(["c"]) { Embeddings = Embeddings(1), Uris = ["file://c"] });
+		var entries = await client.Get(["a", "b", "c"], include: ChromaGetInclude.Uris);
+		Assert.That(entries.ToDictionary(x => x.Id, x => x.Uri), Is.EquivalentTo(new Dictionary<string, string?> { ["a"] = "file://a", ["b"] = "file://b2", ["c"] = "file://c" }));
+		var nearest = await client.Query(new ReadOnlyMemory<float>([1f, 0.5f, 0f, -0.5f, -1f]), nResults: 3, include: ChromaQueryInclude.Uris);
+		Assert.That(nearest.Select(x => x.Uri), Is.EquivalentTo(new[] { "file://a", "file://b2", "file://c" }));
 	}
 
 	async Task<ChromaCollectionClient> Init()

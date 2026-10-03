@@ -21,7 +21,7 @@ internal class CollectionEntriesQueryResponse
 	public List<List<string?>>? Documents { get; init; }
 
 	[JsonPropertyName("uris")]
-	public List<List<List<string?>>>? Uris { get; init; }
+	public List<List<string?>>? Uris { get; init; }
 
 	[JsonPropertyName("data")]
 	public dynamic? Data { get; init; }

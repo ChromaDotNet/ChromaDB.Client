@@ -7,6 +7,7 @@ public enum ChromaGetInclude
 	Embeddings = 1 << 0,
 	Metadatas = 1 << 1,
 	Documents = 1 << 2,
+	Uris = 1 << 3,
 }
 
 internal static class ChromaGetIncludeExt
@@ -25,6 +26,10 @@ internal static class ChromaGetIncludeExt
 		if (include.HasFlag(ChromaGetInclude.Documents))
 		{
 			result.Add("documents");
+		}
+		if (include.HasFlag(ChromaGetInclude.Uris))
+		{
+			result.Add("uris");
 		}
 		return result;
 	}

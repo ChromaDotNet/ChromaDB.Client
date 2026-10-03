@@ -35,6 +35,9 @@ public class CancellationTests
 		yield return Case<ChromaCollectionClient>("QuerySingle", (c, t) => c.Query(Embedding, cancellationToken: t));
 		yield return Case<ChromaCollectionClient>("Query", (c, t) => c.Query([Embedding], cancellationToken: t));
 		yield return Case<ChromaCollectionClient>("Add", (c, t) => c.Add(["id"], embeddings: [Embedding], cancellationToken: t));
+		yield return Case<ChromaCollectionClient>("AddRecords", (c, t) => c.Add(new ChromaRecords(["id"]) { Embeddings = [Embedding] }, t));
+		yield return Case<ChromaCollectionClient>("UpdateRecords", (c, t) => c.Update(new ChromaRecords(["id"]), t));
+		yield return Case<ChromaCollectionClient>("UpsertRecords", (c, t) => c.Upsert(new ChromaRecords(["id"]) { Embeddings = [Embedding] }, t));
 		yield return Case<ChromaCollectionClient>("Update", (c, t) => c.Update(["id"], cancellationToken: t));
 		yield return Case<ChromaCollectionClient>("Upsert", (c, t) => c.Upsert(["id"], embeddings: [Embedding], cancellationToken: t));
 		yield return Case<ChromaCollectionClient>("Delete", (c, t) => c.Delete(["id"], cancellationToken: t));

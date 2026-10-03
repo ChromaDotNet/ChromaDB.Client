@@ -70,6 +70,17 @@ services.AddChromaClient(options => options!.WithUri("http://localhost:8000").Wi
 
 Chroma 0.5.16 to 0.5.20 serve both APIs. The v1 API of Chroma 0.6.3 fails on many requests, and Chroma 1.x answers it with `410 Gone`: use v2 there.
 
+## Records with URIs
+
+```csharp
+await collectionClient.Add(new ChromaRecords(["a"]) { Embeddings = [new([1f, 0.5f, 0f])], Uris = ["s3://bucket/a.png"] });
+
+var entries = await collectionClient.Get(["a"], include: ChromaGetInclude.Uris);
+Console.WriteLine(entries[0].Uri);
+```
+
+`ChromaRecords` holds the ids, embeddings, metadatas, documents and URIs of the records for `Add`, `Update` and `Upsert`.
+
 ## Tenants and databases
 
 ```csharp
