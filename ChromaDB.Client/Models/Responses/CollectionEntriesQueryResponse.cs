@@ -2,25 +2,26 @@
 
 namespace ChromaDB.Client.Models.Responses;
 
+// Only "ids" is always there: Chroma 0.4.10 to 0.4.15 do not send "uris", and the fields that are not included can be missing.
 internal class CollectionEntriesQueryResponse
 {
 	[JsonPropertyName("ids")]
 	public required List<List<string>> Ids { get; init; }
 
 	[JsonPropertyName("distances")]
-	public required List<List<float>>? Distances { get; init; }
+	public List<List<float>>? Distances { get; init; }
 
 	[JsonPropertyName("metadatas")]
-	public required List<List<Dictionary<string, object>>>? Metadatas { get; init; }
+	public List<List<Dictionary<string, object>>>? Metadatas { get; init; }
 
 	[JsonPropertyName("embeddings")]
-	public required List<List<ReadOnlyMemory<float>>>? Embeddings { get; init; }
+	public List<List<ReadOnlyMemory<float>>>? Embeddings { get; init; }
 
 	[JsonPropertyName("documents")]
-	public required List<List<string?>>? Documents { get; init; }
+	public List<List<string?>>? Documents { get; init; }
 
 	[JsonPropertyName("uris")]
-	public required List<List<List<string?>>>? Uris { get; init; }
+	public List<List<List<string?>>>? Uris { get; init; }
 
 	[JsonPropertyName("data")]
 	public dynamic? Data { get; init; }
