@@ -20,8 +20,10 @@
 		</PackageReference>
 	</ItemGroup>
 	<ItemGroup>
-	  <!-- -p:ChromaClientTargetFramework=netstandard2.0 runs the tests against the netstandard2.0 build of the client. -->
+	  <!-- -p:ChromaClientTargetFramework=netstandard2.0 runs the tests against the netstandard2.0 builds of the client and of the DI package. -->
 	  <ProjectReference Include="..\ChromaDB.Client\ChromaDB.Client.csproj" Condition="'$(ChromaClientTargetFramework)' == ''" />
 	  <ProjectReference Include="..\ChromaDB.Client\ChromaDB.Client.csproj" Condition="'$(ChromaClientTargetFramework)' != ''" SetTargetFramework="TargetFramework=$(ChromaClientTargetFramework)" />
+	  <ProjectReference Include="..\ChromaDB.Client.DependencyInjection\ChromaDB.Client.DependencyInjection.csproj" Condition="'$(ChromaClientTargetFramework)' == ''" />
+	  <ProjectReference Include="..\ChromaDB.Client.DependencyInjection\ChromaDB.Client.DependencyInjection.csproj" Condition="'$(ChromaClientTargetFramework)' != ''" SetTargetFramework="TargetFramework=$(ChromaClientTargetFramework)" />
 	</ItemGroup>
 </Project>

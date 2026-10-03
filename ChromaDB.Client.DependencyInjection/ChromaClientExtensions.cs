@@ -11,6 +11,7 @@ public static class ChromaClientExtensions
 		ChromaConfigurationOptions options = new();
 		options = configurationOptions(options);
 
+		services.AddSingleton(options);
 		services.AddScoped<ChromaClient>();
 		services.AddHttpClient<ChromaClient>(o =>
 		{
