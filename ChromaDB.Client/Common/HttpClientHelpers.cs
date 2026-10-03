@@ -170,7 +170,7 @@ internal static partial class HttpClientHelpers
 	private static List<string> PrepareQueryParams(string input)
 	{
 #if NETSTANDARD2_0
-		return ParseErrorMessageBodyRegex.Matches(input)
+		return PrepareQueryParamsRegex.Matches(input)
 			.Cast<Match>()
 			.Select(x => x.Value)
 			.ToList();
