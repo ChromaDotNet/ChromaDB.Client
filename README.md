@@ -2,6 +2,24 @@
 
 _ChromaDB.Client_ is a .NET SDK that offers a seamless connection to the Chroma database. It allows creating and managing collections, performing CRUD operations, and executing nearest neighbor search and filtering.
 
+> This is the community-maintained continuation of [ssone95/ChromaDB.Client](https://github.com/ssone95/ChromaDB.Client), kept up to date with current Chroma versions. It is an independent project and is not affiliated with or endorsed by Chroma. See [About this fork](#about-this-fork).
+
+## Compatibility
+
+| Chroma server | Server API | Status | Tested in CI |
+|---|---|---|---|
+| 1.x | v2 | supported | 1.5.9, latest |
+| 0.5.16 to 0.6.x | v1 and v2 | supported, through v2 | 0.5.20, 0.6.3 |
+| 0.5.15 and earlier | v1 only | not supported yet | - |
+
+Since Chroma 1.0.16 the server requires embeddings in `Add` and `Upsert`: the client does not compute them, so pass them explicitly.
+
+The package targets .NET 8 and .NET Standard 2.0; the tests run against both builds.
+
+## Installation
+
+The first release on NuGet is in preparation, as `ChromaDotNet.Client` and `ChromaDotNet.Client.DependencyInjection`.
+
 ## Example
 
 ```csharp
@@ -31,10 +49,27 @@ foreach (var item in queryData)
 }
 ```
 
+## Migrating from ChromaDB.Client 1.x
+
+- Use the `/api/v2/` URI. Chroma 1.x answers the v1 routes with `410 Gone`.
+- Namespaces do not change: the code keeps `using ChromaDB.Client;`.
+- When the package is published, replace the `ChromaDB.Client` package reference with `ChromaDotNet.Client`.
+
 ## Status
 
-[![NuGet Downloads](https://img.shields.io/nuget/dt/ChromaDB.Client)](https://www.nuget.org/packages/ChromaDB.Client/)
-[![NuGet](https://img.shields.io/nuget/v/ChromaDB.Client)](https://www.nuget.org/packages/ChromaDB.Client/)
-[![NuGet Prerelease](https://img.shields.io/nuget/vpre/ChromaDB.Client)](https://www.nuget.org/packages/ChromaDB.Client/)
-[![License](https://img.shields.io/github/license/ssone95/ChromaDB.Client)](https://github.com/ssone95/ChromaDB.Client/LICENSE)
-[![CI](https://img.shields.io/github/actions/workflow/status/ssone95/ChromaDB.Client/ci.yml)](https://github.com/ssone95/ChromaDB.Client/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/ChromaDotNet/ChromaDB.Client/ci.yml?branch=main)](https://github.com/ChromaDotNet/ChromaDB.Client/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/ChromaDotNet/ChromaDB.Client)](LICENSE)
+
+## About this fork
+
+The original project was created by ssone95 and largely written by cincuranet. Its last change dates from February 2025, and it still targets the Chroma v1 API, which Chroma 1.x no longer serves.
+
+This fork:
+
+- integrates the pending upstream pull requests 80, by inlineHamed, and 82, by richlander, which migrate the client to the v2 API;
+- tests the client against several Chroma versions and against both target frameworks;
+- works through the issues reported upstream, one pull request each.
+
+The original commits of the upstream pull requests, which were squash-merged, are kept in the [`upstream-history`](https://github.com/ChromaDotNet/ChromaDB.Client/tree/upstream-history) branch.
+
+The project is released under the MIT License, keeping the original copyright notice.
