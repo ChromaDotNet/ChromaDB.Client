@@ -26,6 +26,8 @@ dotnet add package ChromaDotNet.Client
 
 ## Example
 
+The URI can be just the address of the server, like `http://localhost:8000`: the client adds `/api/v2/`. A URI with a path, like `http://localhost:8000/api/v2`, is used as it is, with or without the trailing slash.
+
 ```csharp
 using ChromaDB.Client;
 
@@ -55,7 +57,7 @@ foreach (var item in queryData)
 
 ## Migrating from ChromaDB.Client 1.x
 
-- Use the `/api/v2/` URI. Chroma 1.x answers the v1 routes with `410 Gone`.
+- Use the `/api/v2/` URI, or just the address of the server. Chroma 1.x answers the v1 routes with `410 Gone`.
 - Namespaces do not change: the code keeps `using ChromaDB.Client;`.
 - Replace the `ChromaDB.Client` package reference with `ChromaDotNet.Client`.
 - `ChromaCollectionQueryEntry.Distance` is a `float?`: it is `null` when the query does not include `ChromaQueryInclude.Distances`.

@@ -52,6 +52,16 @@ public class ClientTests : ChromaTestsBase
 	}
 
 	[Test]
+	public async Task UriWithHostAndPortOnly()
+	{
+		var options = BaseConfigurationOptions.WithUri(BaseConfigurationOptions.Uri.GetLeftPart(UriPartial.Authority));
+		var client = new ChromaClient(options, HttpClient);
+		var collection = await client.GetOrCreateCollection($"collection{Random.Shared.Next()}");
+		var result = await new ChromaCollectionClient(collection, options, HttpClient).Count();
+		Assert.That(result, Is.EqualTo(0));
+	}
+
+	[Test]
 	[Ignore("Failing because of bug on Chroma's side.", Until = "2025-04-21")]
 	public async Task GetCollectionSimple()
 	{
