@@ -16,6 +16,7 @@ internal sealed class ChromaRoutes
 		Database = "tenants/{tenant}/databases/{database}",
 		Collections = "tenants/{tenant}/databases/{database}/collections",
 		CollectionByName = "tenants/{tenant}/databases/{database}/collections/{collectionName}",
+		CollectionById = "tenants/{tenant}/databases/{database}/collections/by-id/{collection_id}",
 		CollectionsCount = "tenants/{tenant}/databases/{database}/collections_count",
 		Collection = "tenants/{tenant}/databases/{database}/collections/{collection_id}",
 	};
@@ -34,6 +35,7 @@ internal sealed class ChromaRoutes
 		Database = "databases/{database}?tenant={tenant}",
 		Collections = "collections?tenant={tenant}&database={database}",
 		CollectionByName = "collections/{collectionName}?tenant={tenant}&database={database}",
+		CollectionById = "collections/by-id/{collection_id}?tenant={tenant}&database={database}",
 		CollectionsCount = "count_collections?tenant={tenant}&database={database}",
 		Collection = "collections/{collection_id}",
 	};
@@ -50,6 +52,8 @@ internal sealed class ChromaRoutes
 	public required string Database { get; init; }
 	public required string Collections { get; init; }
 	public required string CollectionByName { get; init; }
+	// Only the v2 API of Chroma 1.5.7 and later has it.
+	public required string CollectionById { get; init; }
 	public required string CollectionsCount { get; init; }
 	public required string Collection { get; init; }
 }

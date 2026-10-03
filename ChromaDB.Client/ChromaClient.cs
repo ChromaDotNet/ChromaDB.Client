@@ -58,6 +58,17 @@ public class ChromaClient
 		return await _httpClient.Get<ChromaCollection>(_httpClient.Routes.CollectionByName, requestParams, cancellationToken);
 	}
 
+	public async Task<ChromaCollection> GetCollectionById(Guid id, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	{
+		tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
+		database = database is not null and not [] ? database : _currentDatabase.Name;
+		var requestParams = new RequestQueryParams()
+			.Insert("{collection_id}", id.ToString())
+			.Insert("{tenant}", tenant)
+			.Insert("{database}", database);
+		return await _httpClient.Get<ChromaCollection>(_httpClient.Routes.CollectionById, requestParams, cancellationToken);
+	}
+
 	public async Task<ChromaHeartbeat> Heartbeat(CancellationToken cancellationToken = default)
 	{
 		return await _httpClient.Get<ChromaHeartbeat>(_httpClient.Routes.Heartbeat, new RequestQueryParams(), cancellationToken);

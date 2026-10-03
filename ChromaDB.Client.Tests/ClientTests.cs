@@ -95,6 +95,57 @@ public class ClientTests : ChromaTestsBase
 	}
 
 	[Test]
+	public async Task GetCollectionById()
+	{
+		Assume.That(CollectionByIdSupported, Is.True, "Only the v2 API of Chroma 1.5.7 and later gets a collection by its id.");
+		var name = $"collection{Random.Shared.Next()}";
+
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var collection = await client.CreateCollection(name, metadata: new() { ["key"] = "value" });
+		var result = await client.GetCollectionById(collection.Id);
+		Assert.That(result.Id, Is.EqualTo(collection.Id));
+		Assert.That(result.Name, Is.EqualTo(name));
+		Assert.That(result.Metadata?["key"], Is.EqualTo("value"));
+		Assert.That(result.Tenant, Is.EqualTo(collection.Tenant));
+		Assert.That(result.Database, Is.EqualTo(collection.Database));
+	}
+
+	[Test]
+	public async Task GetCollectionByIdNotExists()
+	{
+		Assume.That(CollectionByIdSupported, Is.True, "Only the v2 API of Chroma 1.5.7 and later gets a collection by its id.");
+
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		await Assert.ThatAsync(() => client.GetCollectionById(Guid.NewGuid()), Throws.InstanceOf<ChromaException>().With.Message.Contains("does not exist"));
+	}
+
+	// The id is looked up in the tenant and database of the request only.
+	[Test]
+	public async Task GetCollectionByIdInAnotherDatabase()
+	{
+		Assume.That(CollectionByIdSupported, Is.True, "Only the v2 API of Chroma 1.5.7 and later gets a collection by its id.");
+		var database = $"database{Random.Shared.Next()}";
+
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var collection = await client.CreateCollection($"collection{Random.Shared.Next()}");
+		await client.CreateDatabase(database);
+		Assert.That((await client.GetCollectionById(collection.Id)).Id, Is.EqualTo(collection.Id));
+		await Assert.ThatAsync(() => client.GetCollectionById(collection.Id, database: database), Throws.InstanceOf<ChromaException>().With.Message.Contains("does not exist"));
+	}
+
+	// The older servers have no such path: the client reports it with a ChromaException that names the request,
+	// "Not Found" from the Python servers, "NotFound" from Chroma 1.x, which answers with an empty body.
+	[Test]
+	public async Task GetCollectionByIdNotSupported()
+	{
+		Assume.That(CollectionByIdSupported, Is.False, "This server gets a collection by its id.");
+
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var collection = await client.CreateCollection($"collection{Random.Shared.Next()}");
+		await Assert.ThatAsync(() => client.GetCollectionById(collection.Id), Throws.InstanceOf<ChromaException>().With.Message.Match($"^Not ?Found: GET /api/v[12]/.*collections/by-id/{collection.Id}$"));
+	}
+
+	[Test]
 	[Ignore("Failing because of bug on Chroma's side.", Until = "2025-04-21")]
 	public async Task ListCollectionsSimple()
 	{
