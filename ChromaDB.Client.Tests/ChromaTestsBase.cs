@@ -22,7 +22,7 @@ public abstract class ChromaTestsBase
 		_baseConfigurationOptions = new ChromaConfigurationOptions(uri: $"http://{_container.IpAddress}:{_container.GetMappedPublicPort(ChromaDBBuilder.ChromaDBPort)}/api/v2/");
 		if (TestTenant is not null || TestDatabase is not null)
 		{
-			var client = new ChromaClient(ServerToken is not null ? _baseConfigurationOptions.WithChromaToken(ServerToken) : _baseConfigurationOptions, HttpClient);
+			var client = new ChromaClient(WithServerCredentials(_baseConfigurationOptions), HttpClient);
 			if (TestTenant is not null)
 			{
 				await client.CreateTenant(TestTenant);
@@ -70,6 +70,6 @@ public abstract class ChromaTestsBase
 
 	protected virtual ChromaDBBuilder ConfigureContainer(ChromaDBBuilder builder) => builder;
 
-	// The token the server of the fixture requires, if any: the setup needs it to create the test tenant and database.
-	protected virtual string? ServerToken => null;
+	// The credentials the server of the fixture requires, if any: the setup needs them to create the test tenant and database.
+	protected virtual ChromaConfigurationOptions WithServerCredentials(ChromaConfigurationOptions options) => options;
 }

@@ -66,6 +66,23 @@ var options = new ChromaConfigurationOptions(uri: "http://localhost:8000", defau
 
 The collections created with these options belong to that tenant and database.
 
+## Authentication
+
+```csharp
+var options = new ChromaConfigurationOptions(uri: "http://localhost:8000");
+
+// X-Chroma-Token: <token>, the header of Chroma Cloud.
+var tokenOptions = options.WithChromaToken("token");
+
+// Authorization: Bearer <token>, the default of the token authentication of the Chroma 0.x servers.
+var bearerOptions = options.WithChromaToken("token", ChromaTokenTransportHeader.Authorization);
+
+// Authorization: Basic, for the Chroma 0.x servers with basic authentication.
+var basicOptions = options.WithBasicAuth("admin", "password");
+```
+
+The client adds the credentials to each of its requests, without changing the `HttpClient` it is given. Chroma 1.x servers have no built-in authentication.
+
 ## Migrating from ChromaDB.Client 1.x
 
 - Use the `/api/v2/` URI, or just the address of the server. Chroma 1.x answers the v1 routes with `410 Gone`.

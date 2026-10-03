@@ -8,6 +8,9 @@ public class ChromaConfigurationOptions
 	public string? Tenant { get; init; }
 	public string? Database { get; init; }
 	public string? ChromaToken { get; init; }
+	public ChromaTokenTransportHeader ChromaTokenTransportHeader { get; init; }
+	public string? BasicAuthUsername { get; init; }
+	public string? BasicAuthPassword { get; init; }
 
 	public ChromaConfigurationOptions(Uri uri, string? defaultTenant = null, string? defaultDatabase = null, string? chromaToken = null)
 	{
@@ -25,18 +28,32 @@ public class ChromaConfigurationOptions
 		: this(ClientConstants.DefaultUri)
 	{ }
 
+	private ChromaConfigurationOptions(ChromaConfigurationOptions options)
+		: this(options.Uri, options.Tenant, options.Database, options.ChromaToken)
+	{
+		ChromaTokenTransportHeader = options.ChromaTokenTransportHeader;
+		BasicAuthUsername = options.BasicAuthUsername;
+		BasicAuthPassword = options.BasicAuthPassword;
+	}
+
 	public ChromaConfigurationOptions WithUri(Uri uri)
-		=> new(uri, Tenant, Database, ChromaToken);
+		=> new(this) { Uri = uri };
 
 	public ChromaConfigurationOptions WithUri(string uri)
-		=> new(uri, Tenant, Database, ChromaToken);
+		=> new(this) { Uri = new Uri(uri) };
 
 	public ChromaConfigurationOptions WithTenant(string tenant)
-		=> new(Uri, tenant, Database, ChromaToken);
+		=> new(this) { Tenant = tenant };
 
 	public ChromaConfigurationOptions WithDatabase(string database)
-		=> new(Uri, Tenant, database, ChromaToken);
+		=> new(this) { Database = database };
 
 	public ChromaConfigurationOptions WithChromaToken(string chromaToken)
-		=> new(Uri, Tenant, Database, chromaToken);
+		=> new(this) { ChromaToken = chromaToken };
+
+	public ChromaConfigurationOptions WithChromaToken(string chromaToken, ChromaTokenTransportHeader transportHeader)
+		=> new(this) { ChromaToken = chromaToken, ChromaTokenTransportHeader = transportHeader };
+
+	public ChromaConfigurationOptions WithBasicAuth(string username, string password)
+		=> new(this) { BasicAuthUsername = username, BasicAuthPassword = password };
 }
