@@ -10,7 +10,7 @@ _ChromaDB.Client_ is a .NET SDK that offers a seamless connection to the Chroma 
 |---|---|---|---|
 | 1.x | v2 | supported | 1.5.9, latest |
 | 0.5.16 to 0.6.x | v1 and v2 | supported, through v2 | 0.5.16, 0.5.20, 0.6.3 |
-| 0.5.15 and earlier | v1 only | not supported yet | - |
+| 0.5.15 | v1 only | supported, with `ChromaApiVersion.V1` | 0.5.15 |
 
 Since Chroma 1.0.16 the server requires embeddings in `Add` and `Upsert`: the client does not compute them, so pass them explicitly.
 
@@ -54,6 +54,19 @@ foreach (var item in queryData)
 	}
 }
 ```
+
+## API version
+
+The client uses the v2 API. For the servers that have only the v1 API, like Chroma 0.5.15, choose it once in the options:
+
+```csharp
+var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithApiVersion(ChromaApiVersion.V1);
+
+// or, with dependency injection
+services.AddChromaClient(options => options!.WithUri("http://localhost:8000").WithApiVersion(ChromaApiVersion.V1));
+```
+
+Chroma 0.5.16 to 0.5.20 serve both APIs. The v1 API of Chroma 0.6.3 fails on many requests, and Chroma 1.x answers it with `410 Gone`: use v2 there.
 
 ## Tenants and databases
 

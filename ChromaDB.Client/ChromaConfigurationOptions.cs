@@ -11,6 +11,7 @@ public class ChromaConfigurationOptions
 	public ChromaTokenTransportHeader ChromaTokenTransportHeader { get; init; }
 	public string? BasicAuthUsername { get; init; }
 	public string? BasicAuthPassword { get; init; }
+	public ChromaApiVersion ApiVersion { get; init; }
 
 	public ChromaConfigurationOptions(Uri uri, string? defaultTenant = null, string? defaultDatabase = null, string? chromaToken = null)
 	{
@@ -34,6 +35,7 @@ public class ChromaConfigurationOptions
 		ChromaTokenTransportHeader = options.ChromaTokenTransportHeader;
 		BasicAuthUsername = options.BasicAuthUsername;
 		BasicAuthPassword = options.BasicAuthPassword;
+		ApiVersion = options.ApiVersion;
 	}
 
 	public ChromaConfigurationOptions WithUri(Uri uri)
@@ -56,4 +58,7 @@ public class ChromaConfigurationOptions
 
 	public ChromaConfigurationOptions WithBasicAuth(string username, string password)
 		=> new(this) { BasicAuthUsername = username, BasicAuthPassword = password };
+
+	public ChromaConfigurationOptions WithApiVersion(ChromaApiVersion apiVersion)
+		=> new(this) { ApiVersion = apiVersion };
 }

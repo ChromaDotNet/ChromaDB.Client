@@ -12,10 +12,13 @@ internal sealed class ChromaHttpClient
 	private readonly string? _chromaToken;
 	private readonly AuthenticationHeaderValue? _authorization;
 
+	public ChromaRoutes Routes { get; }
+
 	public ChromaHttpClient(HttpClient httpClient, ChromaConfigurationOptions options)
 	{
 		_httpClient = httpClient;
-		_baseUri = CreateBaseUri(options.Uri);
+		_baseUri = CreateBaseUri(options.Uri, options.ApiVersion);
+		Routes = options.ApiVersion == ChromaApiVersion.V1 ? ChromaRoutes.V1 : ChromaRoutes.V2;
 		if (options.ChromaToken is not null and not [])
 		{
 			if (options.ChromaTokenTransportHeader == ChromaTokenTransportHeader.Authorization)
@@ -40,12 +43,12 @@ internal sealed class ChromaHttpClient
 	public Uri CreateUri(string endpoint) => new(_baseUri, endpoint);
 
 	// The endpoints are relative to the base URI, so it needs the trailing slash: without it, new Uri(base, endpoint)
-	// replaces the last segment ("api/v2" becomes "api/"). A URI with just the server address gets the v2 API path.
-	private static Uri CreateBaseUri(Uri uri)
+	// replaces the last segment ("api/v2" becomes "api/"). A URI with just the server address gets the path of the API version.
+	private static Uri CreateBaseUri(Uri uri, ChromaApiVersion apiVersion)
 	{
 		if (uri.AbsolutePath is "/")
 		{
-			return new Uri(uri, "api/v2/");
+			return new Uri(uri, apiVersion == ChromaApiVersion.V1 ? "api/v1/" : "api/v2/");
 		}
 		var path = uri.GetLeftPart(UriPartial.Path);
 		return path.EndsWith("/") ? uri : new Uri(path + "/");

@@ -28,7 +28,7 @@ public class ChromaClient
 		var requestParams = new RequestQueryParams()
 			.Insert("{tenant}", tenant)
 			.Insert("{database}", database);
-		return await _httpClient.Get<List<ChromaCollection>>("tenants/{tenant}/databases/{database}/collections", requestParams, cancellationToken);
+		return await _httpClient.Get<List<ChromaCollection>>(_httpClient.Routes.Collections, requestParams, cancellationToken);
 	}
 
 	public async Task<ChromaCollection> GetCollection(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
@@ -39,12 +39,12 @@ public class ChromaClient
 			.Insert("{collectionName}", name)
 			.Insert("{tenant}", tenant)
 			.Insert("{database}", database);
-		return await _httpClient.Get<ChromaCollection>("tenants/{tenant}/databases/{database}/collections/{collectionName}", requestParams, cancellationToken);
+		return await _httpClient.Get<ChromaCollection>(_httpClient.Routes.CollectionByName, requestParams, cancellationToken);
 	}
 
 	public async Task<ChromaHeartbeat> Heartbeat(CancellationToken cancellationToken = default)
 	{
-		return await _httpClient.Get<ChromaHeartbeat>("heartbeat", new RequestQueryParams(), cancellationToken);
+		return await _httpClient.Get<ChromaHeartbeat>(_httpClient.Routes.Heartbeat, new RequestQueryParams(), cancellationToken);
 	}
 
 	public async Task<ChromaCollection> CreateCollection(string name, Dictionary<string, object>? metadata = null, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
@@ -59,7 +59,7 @@ public class ChromaClient
 			Name = name,
 			Metadata = metadata
 		};
-		return await _httpClient.Post<CreateCollectionRequest, ChromaCollection>("tenants/{tenant}/databases/{database}/collections", request, requestParams, cancellationToken);
+		return await _httpClient.Post<CreateCollectionRequest, ChromaCollection>(_httpClient.Routes.Collections, request, requestParams, cancellationToken);
 	}
 
 	public async Task<ChromaCollection> GetOrCreateCollection(string name, Dictionary<string, object>? metadata = null, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
@@ -74,7 +74,7 @@ public class ChromaClient
 			Name = name,
 			Metadata = metadata
 		};
-		return await _httpClient.Post<GetOrCreateCollectionRequest, ChromaCollection>("tenants/{tenant}/databases/{database}/collections", request, requestParams, cancellationToken);
+		return await _httpClient.Post<GetOrCreateCollectionRequest, ChromaCollection>(_httpClient.Routes.Collections, request, requestParams, cancellationToken);
 	}
 
 	public async Task DeleteCollection(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
@@ -85,17 +85,17 @@ public class ChromaClient
 			.Insert("{collectionName}", name)
 			.Insert("{tenant}", tenant)
 			.Insert("{database}", database);
-		await _httpClient.Delete("tenants/{tenant}/databases/{database}/collections/{collectionName}", requestParams, cancellationToken);
+		await _httpClient.Delete(_httpClient.Routes.CollectionByName, requestParams, cancellationToken);
 	}
 
 	public async Task<string> GetVersion(CancellationToken cancellationToken = default)
 	{
-		return await _httpClient.Get<string>("version", new RequestQueryParams(), cancellationToken);
+		return await _httpClient.Get<string>(_httpClient.Routes.Version, new RequestQueryParams(), cancellationToken);
 	}
 
 	public async Task<bool> Reset(CancellationToken cancellationToken = default)
 	{
-		return await _httpClient.Post<ResetRequest, bool>("reset", null, new RequestQueryParams(), cancellationToken);
+		return await _httpClient.Post<ResetRequest, bool>(_httpClient.Routes.Reset, null, new RequestQueryParams(), cancellationToken);
 	}
 
 	public async Task<int> CountCollections(string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
@@ -105,7 +105,7 @@ public class ChromaClient
 		var requestParams = new RequestQueryParams()
 			.Insert("{tenant}", tenant)
 			.Insert("{database}", database);
-		return await _httpClient.Get<int>("tenants/{tenant}/databases/{database}/collections_count", requestParams, cancellationToken);
+		return await _httpClient.Get<int>(_httpClient.Routes.CollectionsCount, requestParams, cancellationToken);
 	}
 
 	public async Task CreateTenant(string name, CancellationToken cancellationToken = default)
@@ -114,14 +114,14 @@ public class ChromaClient
 		{
 			Name = name,
 		};
-		await _httpClient.Post("tenants", request, new RequestQueryParams(), cancellationToken);
+		await _httpClient.Post(_httpClient.Routes.Tenants, request, new RequestQueryParams(), cancellationToken);
 	}
 
 	public async Task<ChromaTenant> GetTenant(string name, CancellationToken cancellationToken = default)
 	{
 		var requestParams = new RequestQueryParams()
 			.Insert("{tenant}", name);
-		return await _httpClient.Get<ChromaTenant>("tenants/{tenant}", requestParams, cancellationToken);
+		return await _httpClient.Get<ChromaTenant>(_httpClient.Routes.Tenant, requestParams, cancellationToken);
 	}
 
 	public async Task CreateDatabase(string name, string? tenant = null, CancellationToken cancellationToken = default)
@@ -133,7 +133,7 @@ public class ChromaClient
 		{
 			Name = name,
 		};
-		await _httpClient.Post("tenants/{tenant}/databases", request, requestParams, cancellationToken);
+		await _httpClient.Post(_httpClient.Routes.Databases, request, requestParams, cancellationToken);
 	}
 
 	public async Task<ChromaDatabase> GetDatabase(string name, string? tenant = null, CancellationToken cancellationToken = default)
@@ -142,6 +142,6 @@ public class ChromaClient
 		var requestParams = new RequestQueryParams()
 			.Insert("{database}", name)
 			.Insert("{tenant}", tenant);
-		return await _httpClient.Get<ChromaDatabase>("tenants/{tenant}/databases/{database}", requestParams, cancellationToken);
+		return await _httpClient.Get<ChromaDatabase>(_httpClient.Routes.Database, requestParams, cancellationToken);
 	}
 }

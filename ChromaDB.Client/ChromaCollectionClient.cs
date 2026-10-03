@@ -45,7 +45,7 @@ public class ChromaCollectionClient
 			Offset = offset,
 			Include = (include ?? ChromaGetInclude.Metadatas | ChromaGetInclude.Documents).ToInclude(),
 		};
-		var response = await _httpClient.Post<CollectionGetRequest, CollectionEntriesGetResponse>("tenants/{tenant}/databases/{database}/collections/{collection_id}/get", request, requestParams, cancellationToken);
+		var response = await _httpClient.Post<CollectionGetRequest, CollectionEntriesGetResponse>(_httpClient.Routes.Collection + "/get", request, requestParams, cancellationToken);
 		return response.Map() ?? [];
 	}
 
@@ -66,7 +66,7 @@ public class ChromaCollectionClient
 			WhereDocument = whereDocument?.ToWhereDocument(),
 			Include = (include ?? ChromaQueryInclude.Metadatas | ChromaQueryInclude.Documents | ChromaQueryInclude.Distances).ToInclude(),
 		};
-		var response = await _httpClient.Post<CollectionQueryRequest, CollectionEntriesQueryResponse>("tenants/{tenant}/databases/{database}/collections/{collection_id}/query", request, requestParams, cancellationToken);
+		var response = await _httpClient.Post<CollectionQueryRequest, CollectionEntriesQueryResponse>(_httpClient.Routes.Collection + "/query", request, requestParams, cancellationToken);
 		return response.Map() ?? [];
 	}
 
@@ -83,7 +83,7 @@ public class ChromaCollectionClient
 			Metadatas = metadatas,
 			Documents = documents,
 		};
-		await _httpClient.Post("tenants/{tenant}/databases/{database}/collections/{collection_id}/add", request, requestParams, cancellationToken);
+		await _httpClient.Post(_httpClient.Routes.Collection + "/add", request, requestParams, cancellationToken);
 	}
 
 	public async Task Update(List<string> ids, List<ReadOnlyMemory<float>>? embeddings = null, List<Dictionary<string, object>>? metadatas = null, List<string>? documents = null, CancellationToken cancellationToken = default)
@@ -99,7 +99,7 @@ public class ChromaCollectionClient
 			Metadatas = metadatas,
 			Documents = documents,
 		};
-		await _httpClient.Post("tenants/{tenant}/databases/{database}/collections/{collection_id}/update", request, requestParams, cancellationToken);
+		await _httpClient.Post(_httpClient.Routes.Collection + "/update", request, requestParams, cancellationToken);
 	}
 
 	public async Task Upsert(List<string> ids, List<ReadOnlyMemory<float>>? embeddings = null, List<Dictionary<string, object>>? metadatas = null, List<string>? documents = null, CancellationToken cancellationToken = default)
@@ -115,7 +115,7 @@ public class ChromaCollectionClient
 			Metadatas = metadatas,
 			Documents = documents,
 		};
-		await _httpClient.Post("tenants/{tenant}/databases/{database}/collections/{collection_id}/upsert", request, requestParams, cancellationToken);
+		await _httpClient.Post(_httpClient.Routes.Collection + "/upsert", request, requestParams, cancellationToken);
 	}
 
 	public async Task Delete(List<string> ids, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, CancellationToken cancellationToken = default)
@@ -130,7 +130,7 @@ public class ChromaCollectionClient
 			Where = where?.ToWhere(),
 			WhereDocument = whereDocument?.ToWhereDocument(),
 		};
-		await _httpClient.Post("tenants/{tenant}/databases/{database}/collections/{collection_id}/delete", request, requestParams, cancellationToken);
+		await _httpClient.Post(_httpClient.Routes.Collection + "/delete", request, requestParams, cancellationToken);
 	}
 
 	public async Task<int> Count(CancellationToken cancellationToken = default)
@@ -139,7 +139,7 @@ public class ChromaCollectionClient
 			.Insert("{tenant}", _tenant)
 			.Insert("{database}", _database)
 			.Insert("{collection_id}", _collection.Id);
-		return await _httpClient.Get<int>("tenants/{tenant}/databases/{database}/collections/{collection_id}/count", requestParams, cancellationToken);
+		return await _httpClient.Get<int>(_httpClient.Routes.Collection + "/count", requestParams, cancellationToken);
 	}
 
 	public async Task<List<ChromaCollectionEntry>> Peek(int limit = 10, CancellationToken cancellationToken = default)
@@ -152,7 +152,7 @@ public class ChromaCollectionClient
 		{
 			Limit = limit,
 		};
-		var response = await _httpClient.Post<CollectionPeekRequest, CollectionEntriesGetResponse>("tenants/{tenant}/databases/{database}/collections/{collection_id}/get", request, requestParams, cancellationToken);
+		var response = await _httpClient.Post<CollectionPeekRequest, CollectionEntriesGetResponse>(_httpClient.Routes.Collection + "/get", request, requestParams, cancellationToken);
 		return response.Map() ?? [];
 	}
 
@@ -167,6 +167,6 @@ public class ChromaCollectionClient
 			Name = name,
 			Metadata = metadata,
 		};
-		await _httpClient.Put("tenants/{tenant}/databases/{database}/collections/{collection_id}", request, requestParams, cancellationToken);
+		await _httpClient.Put(_httpClient.Routes.Collection, request, requestParams, cancellationToken);
 	}
 }

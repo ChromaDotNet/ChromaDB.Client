@@ -25,11 +25,15 @@ jobs:
         # 0.5.16, the first release with the v2 API, 0.5.20 and 0.6.3: 0.x servers with both v1 and v2 (the client uses v2 only); 1.5.9: current release; latest: catches new releases without blocking.
         chroma: ['0.5.16', '0.5.20', '0.6.3', '1.5.9', 'latest']
         include:
+          # 0.5.15: the last release with only the v1 API, tested with ChromaApiVersion.V1.
+          - chroma: '0.5.15'
+            api: v1
           - chroma: '1.5.9'
             pack: true
     continue-on-error: ${{ matrix.chroma == 'latest' }}
     env:
       CHROMA_IMAGE: chromadb/chroma:${{ matrix.chroma }}
+      CHROMA_TEST_API_VERSION: ${{ matrix.api }}
       # An environment variable, so that the restore in the Build step reads it too:
       # pack --no-build takes the package id of the referenced client project from that restore.
       PackageIdPrefix: ${{ vars.PACKAGE_ID_PREFIX }}

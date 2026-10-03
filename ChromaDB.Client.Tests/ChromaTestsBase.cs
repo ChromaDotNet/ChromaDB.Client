@@ -11,6 +11,9 @@ public abstract class ChromaTestsBase
 	private static readonly string? TestTenant = Environment.GetEnvironmentVariable("CHROMA_TEST_TENANT") is { Length: > 0 } tenant ? tenant : null;
 	private static readonly string? TestDatabase = Environment.GetEnvironmentVariable("CHROMA_TEST_DATABASE") is { Length: > 0 } database ? database : null;
 
+	// CHROMA_TEST_API_VERSION=v1 runs the tests with the v1 API, the only one of Chroma 0.5.15 and earlier.
+	protected static readonly ChromaApiVersion ApiVersion = Environment.GetEnvironmentVariable("CHROMA_TEST_API_VERSION") is "v1" ? ChromaApiVersion.V1 : ChromaApiVersion.V2;
+
 	private ChromaDBContainer _container;
 	private ChromaConfigurationOptions? _baseConfigurationOptions;
 
@@ -19,7 +22,8 @@ public abstract class ChromaTestsBase
 	{
 		_container = ConfigureContainer(new ChromaDBBuilder()).Build();
 		await _container.StartAsync();
-		_baseConfigurationOptions = new ChromaConfigurationOptions(uri: $"http://{_container.IpAddress}:{_container.GetMappedPublicPort(ChromaDBBuilder.ChromaDBPort)}/api/v2/");
+		_baseConfigurationOptions = new ChromaConfigurationOptions(uri: $"http://{_container.IpAddress}:{_container.GetMappedPublicPort(ChromaDBBuilder.ChromaDBPort)}/api/{(ApiVersion == ChromaApiVersion.V1 ? "v1" : "v2")}/")
+			.WithApiVersion(ApiVersion);
 		if (TestTenant is not null || TestDatabase is not null)
 		{
 			var client = new ChromaClient(WithServerCredentials(_baseConfigurationOptions), HttpClient);
