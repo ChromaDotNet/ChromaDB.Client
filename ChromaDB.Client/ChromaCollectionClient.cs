@@ -16,8 +16,13 @@ public class ChromaCollectionClient
 	{
 		_collection = collection;
 		_httpClient = new ChromaHttpClient(httpClient, options);
-		_tenant = collection.Tenant ?? options.Tenant ?? ClientConstants.DefaultTenantName;
-		_database = collection.Database ?? options.Database ?? ClientConstants.DefaultDatabaseName;
+		// An empty tenant or database means the default, as in ChromaClient.
+		_tenant = collection.Tenant is not null and not [] ? collection.Tenant
+			: options.Tenant is not null and not [] ? options.Tenant
+			: ClientConstants.DefaultTenantName;
+		_database = collection.Database is not null and not [] ? collection.Database
+			: options.Database is not null and not [] ? options.Database
+			: ClientConstants.DefaultDatabaseName;
 	}
 
 	public ChromaCollection Collection => _collection;
