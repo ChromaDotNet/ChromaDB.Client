@@ -71,11 +71,11 @@ The [migration guide](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/
 
 ## About this fork
 
-The original project was created by ssone95 and largely written by cincuranet. Its last change dates from February 2025, and it still targets the Chroma v1 API, which Chroma 1.x no longer serves.
+The original project was created by [ssone95](https://github.com/ssone95) and largely written by [cincuranet](https://github.com/cincuranet). Its last change dates from February 2025, and it still targets the Chroma v1 API, which Chroma 1.x no longer serves.
 
 This fork:
 
-- integrates the pending upstream pull requests 80, by inlineHamed, and 82, by richlander, which migrate the client to the v2 API;
+- integrates the pending upstream pull requests [80](https://github.com/ssone95/ChromaDB.Client/pull/80), by [inlineHamed](https://github.com/inlineHamed), and [82](https://github.com/ssone95/ChromaDB.Client/pull/82), by [richlander](https://github.com/richlander), which migrate the client to the v2 API;
 - tests the client against several Chroma versions and against both target frameworks;
 - works through the issues reported upstream, one pull request each.
 
