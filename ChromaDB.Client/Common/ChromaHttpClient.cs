@@ -17,12 +17,12 @@ internal sealed class ChromaHttpClient
 
 	public Uri CreateUri(string endpoint) => new(_baseUri, endpoint);
 
-	public Task<HttpResponseMessage> SendAsync(HttpRequestMessage httpRequestMessage)
+	public Task<HttpResponseMessage> SendAsync(HttpRequestMessage httpRequestMessage, CancellationToken cancellationToken)
 	{
 		if (_chromaToken is not null and not [])
 		{
 			httpRequestMessage.Headers.Add(ClientConstants.ChromaTokenHeader, _chromaToken);
 		}
-		return _httpClient.SendAsync(httpRequestMessage);
+		return _httpClient.SendAsync(httpRequestMessage, cancellationToken);
 	}
 }

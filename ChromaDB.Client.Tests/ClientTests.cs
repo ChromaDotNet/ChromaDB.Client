@@ -38,7 +38,7 @@ public class ClientTests : ChromaTestsBase
 		var client = new ChromaClient(BaseConfigurationOptions, httpClient);
 		await client.Heartbeat();
 		_ = new ChromaClient(BaseConfigurationOptions.WithUri("http://localhost:1/api/v2/"), httpClient);
-		await Assert.ThatAsync(client.Heartbeat, Throws.Nothing);
+		await Assert.ThatAsync(() => client.Heartbeat(), Throws.Nothing);
 	}
 
 	[Test]

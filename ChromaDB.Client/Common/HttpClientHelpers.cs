@@ -26,18 +26,18 @@ internal static partial class HttpClientHelpers
 		},
 	};
 
-	public static async Task<TResponse> Get<TResponse>(this ChromaHttpClient httpClient, string endpoint, RequestQueryParams queryParams)
+	public static async Task<TResponse> Get<TResponse>(this ChromaHttpClient httpClient, string endpoint, RequestQueryParams queryParams, CancellationToken cancellationToken)
 	{
 		using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Get, requestUri: httpClient.CreateUri(ValidateAndPrepareEndpoint(endpoint, queryParams)));
-		return await Send<TResponse>(httpClient, httpRequestMessage);
+		return await Send<TResponse>(httpClient, httpRequestMessage, cancellationToken);
 	}
-	public static async Task Get(this ChromaHttpClient httpClient, string endpoint, RequestQueryParams queryParams)
+	public static async Task Get(this ChromaHttpClient httpClient, string endpoint, RequestQueryParams queryParams, CancellationToken cancellationToken)
 	{
 		using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Get, requestUri: httpClient.CreateUri(ValidateAndPrepareEndpoint(endpoint, queryParams)));
-		await Send(httpClient, httpRequestMessage);
+		await Send(httpClient, httpRequestMessage, cancellationToken);
 	}
 
-	public static async Task<TResponse> Post<TInput, TResponse>(this ChromaHttpClient httpClient, string endpoint, TInput? input, RequestQueryParams queryParams)
+	public static async Task<TResponse> Post<TInput, TResponse>(this ChromaHttpClient httpClient, string endpoint, TInput? input, RequestQueryParams queryParams, CancellationToken cancellationToken)
 	{
 		using var content = new StringContent(JsonSerializer.Serialize(input, PostJsonSerializerOptions) ?? string.Empty, Encoding.UTF8, "application/json");
 		using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri: httpClient.CreateUri(ValidateAndPrepareEndpoint(endpoint, queryParams)))
@@ -45,9 +45,9 @@ internal static partial class HttpClientHelpers
 			Content = content,
 			Headers = { Accept = { new MediaTypeWithQualityHeaderValue("application/json") } }
 		};
-		return await Send<TResponse>(httpClient, httpRequestMessage);
+		return await Send<TResponse>(httpClient, httpRequestMessage, cancellationToken);
 	}
-	public static async Task Post<TInput>(this ChromaHttpClient httpClient, string endpoint, TInput? input, RequestQueryParams queryParams)
+	public static async Task Post<TInput>(this ChromaHttpClient httpClient, string endpoint, TInput? input, RequestQueryParams queryParams, CancellationToken cancellationToken)
 	{
 		using var content = new StringContent(JsonSerializer.Serialize(input, PostJsonSerializerOptions) ?? string.Empty, Encoding.UTF8, "application/json");
 		using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri: httpClient.CreateUri(ValidateAndPrepareEndpoint(endpoint, queryParams)))
@@ -55,10 +55,10 @@ internal static partial class HttpClientHelpers
 			Content = content,
 			Headers = { Accept = { new MediaTypeWithQualityHeaderValue("application/json") } }
 		};
-		await Send(httpClient, httpRequestMessage);
+		await Send(httpClient, httpRequestMessage, cancellationToken);
 	}
 
-	public static async Task<TResponse> Put<TInput, TResponse>(this ChromaHttpClient httpClient, string endpoint, TInput? input, RequestQueryParams queryParams)
+	public static async Task<TResponse> Put<TInput, TResponse>(this ChromaHttpClient httpClient, string endpoint, TInput? input, RequestQueryParams queryParams, CancellationToken cancellationToken)
 	{
 		using var content = new StringContent(JsonSerializer.Serialize(input, PostJsonSerializerOptions) ?? string.Empty, Encoding.UTF8, "application/json");
 		using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Put, requestUri: httpClient.CreateUri(ValidateAndPrepareEndpoint(endpoint, queryParams)))
@@ -66,9 +66,9 @@ internal static partial class HttpClientHelpers
 			Content = content,
 			Headers = { Accept = { new MediaTypeWithQualityHeaderValue("application/json") } }
 		};
-		return await Send<TResponse>(httpClient, httpRequestMessage);
+		return await Send<TResponse>(httpClient, httpRequestMessage, cancellationToken);
 	}
-	public static async Task Put<TInput>(this ChromaHttpClient httpClient, string endpoint, TInput? input, RequestQueryParams queryParams)
+	public static async Task Put<TInput>(this ChromaHttpClient httpClient, string endpoint, TInput? input, RequestQueryParams queryParams, CancellationToken cancellationToken)
 	{
 		using var content = new StringContent(JsonSerializer.Serialize(input, PostJsonSerializerOptions) ?? string.Empty, Encoding.UTF8, "application/json");
 		using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Put, requestUri: httpClient.CreateUri(ValidateAndPrepareEndpoint(endpoint, queryParams)))
@@ -76,41 +76,41 @@ internal static partial class HttpClientHelpers
 			Content = content,
 			Headers = { Accept = { new MediaTypeWithQualityHeaderValue("application/json") } }
 		};
-		await Send(httpClient, httpRequestMessage);
+		await Send(httpClient, httpRequestMessage, cancellationToken);
 	}
 
-	public static async Task<TResponse> Delete<TResponse>(this ChromaHttpClient httpClient, string endpoint, RequestQueryParams queryParams)
+	public static async Task<TResponse> Delete<TResponse>(this ChromaHttpClient httpClient, string endpoint, RequestQueryParams queryParams, CancellationToken cancellationToken)
 	{
 		using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Delete, requestUri: httpClient.CreateUri(ValidateAndPrepareEndpoint(endpoint, queryParams)));
-		return await Send<TResponse>(httpClient, httpRequestMessage);
+		return await Send<TResponse>(httpClient, httpRequestMessage, cancellationToken);
 	}
-	public static async Task Delete(this ChromaHttpClient httpClient, string endpoint, RequestQueryParams queryParams)
+	public static async Task Delete(this ChromaHttpClient httpClient, string endpoint, RequestQueryParams queryParams, CancellationToken cancellationToken)
 	{
 		using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Delete, requestUri: httpClient.CreateUri(ValidateAndPrepareEndpoint(endpoint, queryParams)));
-		await Send(httpClient, httpRequestMessage);
+		await Send(httpClient, httpRequestMessage, cancellationToken);
 	}
 
-	private static async Task<TResponse> Send<TResponse>(ChromaHttpClient httpClient, HttpRequestMessage httpRequestMessage)
+	private static async Task<TResponse> Send<TResponse>(ChromaHttpClient httpClient, HttpRequestMessage httpRequestMessage, CancellationToken cancellationToken)
 	{
 		try
 		{
-			using var httpResponseMessage = await httpClient.SendAsync(httpRequestMessage);
+			using var httpResponseMessage = await httpClient.SendAsync(httpRequestMessage, cancellationToken);
 			return (int)httpResponseMessage.StatusCode switch
 			{
 				>= 200 and <= 299 => JsonSerializer.Deserialize<TResponse>(await httpResponseMessage.Content.ReadAsStringAsync(), DeserializerJsonSerializerOptions)!,
 				_ => throw await HandleErrorStatusCode(httpResponseMessage),
 			};
 		}
-		catch (Exception ex) when (ex is not ChromaException)
+		catch (Exception ex) when (ex is not ChromaException && !(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
 		{
 			throw new ChromaException(ex.Message, ex);
 		}
 	}
-	private static async Task Send(ChromaHttpClient httpClient, HttpRequestMessage httpRequestMessage)
+	private static async Task Send(ChromaHttpClient httpClient, HttpRequestMessage httpRequestMessage, CancellationToken cancellationToken)
 	{
 		try
 		{
-			using var httpResponseMessage = await httpClient.SendAsync(httpRequestMessage);
+			using var httpResponseMessage = await httpClient.SendAsync(httpRequestMessage, cancellationToken);
 			switch ((int)httpResponseMessage.StatusCode)
 			{
 				case >= 200 and <= 299:
@@ -119,7 +119,7 @@ internal static partial class HttpClientHelpers
 					throw await HandleErrorStatusCode(httpResponseMessage);
 			};
 		}
-		catch (Exception ex) when (ex is not ChromaException)
+		catch (Exception ex) when (ex is not ChromaException && !(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
 		{
 			throw new ChromaException(ex.Message, ex);
 		}

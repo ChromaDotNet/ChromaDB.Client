@@ -12,7 +12,7 @@ public class ClientResetTests
 		public async Task ResetSimple()
 		{
 			var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-			await Assert.ThatAsync(client.Reset, Throws.InstanceOf<ChromaException>().With.Message.Contains(IsChroma1 ? "Forbidden" : "ALLOW_RESET"));
+			await Assert.ThatAsync(() => client.Reset(), Throws.InstanceOf<ChromaException>().With.Message.Contains(IsChroma1 ? "Forbidden" : "ALLOW_RESET"));
 		}
 	}
 
