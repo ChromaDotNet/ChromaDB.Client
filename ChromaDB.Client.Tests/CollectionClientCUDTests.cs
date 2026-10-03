@@ -244,6 +244,7 @@ public class CollectionClientCUDTests : ChromaTestsBase
 	[Test]
 	public async Task AddWithInconsistentDimensions()
 	{
+		Assume.That(EmbeddingDimensionsChecked, Is.True, "Before Chroma 0.5.20 the server accepts embeddings of different dimensions.");
 		var client = await Init();
 		var exception = Assert.ThrowsAsync<ChromaException>(() => client.Add(["a", "b"], embeddings: [new([1f, 2f]), new([1f, 2f, 3f])]));
 		Assert.That(exception!.Message, Does.Contain("dimension").IgnoreCase.And.Not.Contain("{"));

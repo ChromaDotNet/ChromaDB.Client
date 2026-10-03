@@ -22,8 +22,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 0.5.20 and 0.6.3: 0.x servers that already have the v2 API (the client uses v2 only); 1.5.9: current release; latest: catches new releases without blocking.
-        chroma: ['0.5.20', '0.6.3', '1.5.9', 'latest']
+        # 0.5.16, the first release with the v2 API, 0.5.20 and 0.6.3: 0.x servers with both v1 and v2 (the client uses v2 only); 1.5.9: current release; latest: catches new releases without blocking.
+        chroma: ['0.5.16', '0.5.20', '0.6.3', '1.5.9', 'latest']
         include:
           - chroma: '1.5.9'
             pack: true

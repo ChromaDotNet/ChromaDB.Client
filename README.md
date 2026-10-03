@@ -9,7 +9,7 @@ _ChromaDB.Client_ is a .NET SDK that offers a seamless connection to the Chroma 
 | Chroma server | Server API | Status | Tested in CI |
 |---|---|---|---|
 | 1.x | v2 | supported | 1.5.9, latest |
-| 0.5.16 to 0.6.x | v1 and v2 | supported, through v2 | 0.5.20, 0.6.3 |
+| 0.5.16 to 0.6.x | v1 and v2 | supported, through v2 | 0.5.16, 0.5.20, 0.6.3 |
 | 0.5.15 and earlier | v1 only | not supported yet | - |
 
 Since Chroma 1.0.16 the server requires embeddings in `Add` and `Upsert`: the client does not compute them, so pass them explicitly.

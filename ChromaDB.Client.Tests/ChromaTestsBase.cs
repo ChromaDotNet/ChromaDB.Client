@@ -30,6 +30,9 @@ public abstract class ChromaTestsBase
 	// Chroma 1.0 removed the built-in authentication and reads its settings from a configuration file.
 	protected static bool IsChroma1 => ChromaDBBuilder.ChromaDBVersion.Major >= 1;
 
+	// Since Chroma 0.5.20, the server rejects embeddings of different dimensions in the same request.
+	protected static bool EmbeddingDimensionsChecked => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 5, 20);
+
 	// Since Chroma 1.0.16, add and upsert require embeddings.
 	protected static bool EmbeddingsRequired => ChromaDBBuilder.ChromaDBVersion >= new Version(1, 0, 16);
 
