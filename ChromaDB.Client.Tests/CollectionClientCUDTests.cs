@@ -241,6 +241,14 @@ public class CollectionClientCUDTests : ChromaTestsBase
 			whereDocument: ChromaWhereDocumentOperator.Contains("2"));
 	}
 
+	[Test]
+	public async Task AddWithInconsistentDimensions()
+	{
+		var client = await Init();
+		var exception = Assert.ThrowsAsync<ChromaException>(() => client.Add(["a", "b"], embeddings: [new([1f, 2f]), new([1f, 2f, 3f])]));
+		Assert.That(exception!.Message, Does.Contain("dimension").IgnoreCase.And.Not.Contain("{"));
+	}
+
 	async Task<ChromaCollectionClient> Init()
 	{
 		var name = $"collection{Random.Shared.Next()}";

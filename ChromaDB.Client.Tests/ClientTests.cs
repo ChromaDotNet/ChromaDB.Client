@@ -118,7 +118,7 @@ public class ClientTests : ChromaTestsBase
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
 		await client.CreateCollection(name);
-		await Assert.ThatAsync(async () => await client.CreateCollection(name), Throws.InstanceOf<ChromaException>().With.Message.Not.Null.And.With.Message.Not.Empty);
+		await Assert.ThatAsync(async () => await client.CreateCollection(name), Throws.InstanceOf<ChromaException>().With.Message.Matches($@"^Collection \[?{name}\]? already exists"));
 	}
 
 	[Test]
@@ -138,7 +138,7 @@ public class ClientTests : ChromaTestsBase
 		var name = $"collection{Random.Shared.Next()}";
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		await Assert.ThatAsync(async () => await client.DeleteCollection(name), Throws.InstanceOf<ChromaException>().With.Message.Not.Null.And.With.Message.Not.Empty);
+		await Assert.ThatAsync(async () => await client.DeleteCollection(name), Throws.InstanceOf<ChromaException>().With.Message.Matches($@"^Collection \[?{name}\]? does not exist"));
 	}
 
 	[Test]

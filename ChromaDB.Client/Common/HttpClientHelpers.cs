@@ -1,5 +1,4 @@
-﻿using System.Net;
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -127,18 +126,8 @@ internal static partial class HttpClientHelpers
 
 	private static async Task<ChromaException> HandleErrorStatusCode(HttpResponseMessage httpResponseMessage)
 	{
-		return httpResponseMessage.StatusCode switch
-		{
-			HttpStatusCode.BadRequest
-#if NETSTANDARD2_0
-				or (HttpStatusCode)422
-#else
-				or HttpStatusCode.UnprocessableContent
-#endif
-				or HttpStatusCode.InternalServerError
-				=> new ChromaException(ParseErrorMessageBody(await httpResponseMessage.Content.ReadAsStringAsync())),
-			_ => new ChromaException($"Unexpected status code: {httpResponseMessage.StatusCode}."),
-		};
+		var errorMessageBody = await httpResponseMessage.Content.ReadAsStringAsync();
+		return new ChromaException(ParseErrorMessageBody(errorMessageBody) ?? $"Unexpected status code: {httpResponseMessage.StatusCode}.");
 	}
 
 	private static string? ParseErrorMessageBody(string? errorMessageBody)
@@ -151,6 +140,17 @@ internal static partial class HttpClientHelpers
 		try
 		{
 			var deserialized = JsonSerializer.Deserialize<GeneralError>(errorMessageBody, DeserializerJsonSerializerOptions)!;
+			// v2 API: {"error": "NotFoundError", "message": "..."}. Errors of the 0.x servers outside the API, like a 500: {"detail": "..."}.
+			if (deserialized?.Message is { Length: > 0 } message)
+			{
+				return message;
+			}
+			if (deserialized?.Detail is { Length: > 0 } detail)
+			{
+				return detail;
+			}
+
+			// v1 API: {"error": "ValueError('...')"}.
 #if NETSTANDARD2_0
 			var match = ParseErrorMessageBodyRegex.Match(deserialized?.Error ?? string.Empty);
 #else
