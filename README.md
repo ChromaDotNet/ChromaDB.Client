@@ -67,7 +67,7 @@ The [migration guide](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/
 
 [![NuGet](https://img.shields.io/nuget/v/ChromaDotNet.Client)](https://www.nuget.org/packages/ChromaDotNet.Client/)
 [![CI](https://img.shields.io/github/actions/workflow/status/ChromaDotNet/ChromaDB.Client/ci.yml?branch=main)](https://github.com/ChromaDotNet/ChromaDB.Client/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/ChromaDotNet/ChromaDB.Client)](LICENSE)
+[![License](https://img.shields.io/github/license/ChromaDotNet/ChromaDB.Client)](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/LICENSE)
 
 ## About this fork
 
