@@ -9,6 +9,7 @@
 		<PackageId>ChromaDB.Client</PackageId>
 		<!-- -p:PackageIdPrefix=Name publishes the package as Name.Client. -->
 		<PackageId Condition="'$(PackageIdPrefix)' != ''">$(PackageIdPrefix).Client</PackageId>
+		<Authors>ssone95, cincuranet, ChromaDotNet contributors</Authors>
 		<PackageDescription>.NET SDK for Chroma database</PackageDescription>
 		<PackageTags>chroma chromadb vector database</PackageTags>
 		<PackageReadmeFile>README.md</PackageReadmeFile>

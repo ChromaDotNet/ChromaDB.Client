@@ -9,6 +9,7 @@
 		<PackageId>ChromaDB.Client.DependencyInjection</PackageId>
 		<!-- -p:PackageIdPrefix=Name publishes the package as Name.Client.DependencyInjection. -->
 		<PackageId Condition="'$(PackageIdPrefix)' != ''">$(PackageIdPrefix).Client.DependencyInjection</PackageId>
+		<Authors>ssone95, cincuranet, ChromaDotNet contributors</Authors>
 		<PackageDescription>.NET SDK for Chroma database</PackageDescription>
 		<PackageTags>chroma chromadb vector database</PackageTags>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
