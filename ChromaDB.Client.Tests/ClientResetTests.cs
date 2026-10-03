@@ -12,7 +12,7 @@ public class ClientResetTests
 		public async Task ResetSimple()
 		{
 			var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-			await Assert.ThatAsync(client.Reset, Throws.InstanceOf<ChromaException>().With.Message.Contains("ALLOW_RESET"));
+			await Assert.ThatAsync(client.Reset, Throws.InstanceOf<ChromaException>().With.Message.Contains(IsChroma1 ? "Forbidden" : "ALLOW_RESET"));
 		}
 	}
 
@@ -28,7 +28,8 @@ public class ClientResetTests
 		}
 
 		protected override ChromaDBBuilder ConfigureContainer(ChromaDBBuilder builder)
-			=> builder
-				.WithEnvironment("ALLOW_RESET", "TRUE");
+			=> IsChroma1
+				? builder.WithEnvironment("CHROMA_ALLOW_RESET", "true")
+				: builder.WithEnvironment("ALLOW_RESET", "TRUE");
 	}
 }

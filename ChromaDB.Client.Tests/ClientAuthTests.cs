@@ -19,6 +19,10 @@ public class ClientAuthTests
 	[TestFixture]
 	public class ChromaTokenAuth : ChromaTestsBase
 	{
+		[SetUp]
+		public void SetUp()
+			=> Assume.That(IsChroma1, Is.False, "Chroma 1.0 removed the built-in token authentication.");
+
 		[Test]
 		public async Task Success()
 		{

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - main
     tags:
       - v*
   pull_request:
@@ -17,7 +18,18 @@ env:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    name: ${{ github.event_name != 'schedule' && 'CI' || 'CI (schedule)' }}
+    name: ${{ github.event_name != 'schedule' && 'CI' || 'CI (schedule)' }} (Chroma ${{ matrix.chroma }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # 0.5.20 and 0.6.3: 0.x servers that already have the v2 API (the client uses v2 only); 1.5.9: current release; latest: catches new releases without blocking.
+        chroma: ['0.5.20', '0.6.3', '1.5.9', 'latest']
+        include:
+          - chroma: '1.5.9'
+            pack: true
+    continue-on-error: ${{ matrix.chroma == 'latest' }}
+    env:
+      CHROMA_IMAGE: chromadb/chroma:${{ matrix.chroma }}
 
     steps:
     - uses: actions/checkout@v4
@@ -42,10 +54,11 @@ jobs:
       run: dotnet test -c ${{ env.CONFIGURATION }} --no-build --verbosity normal --logger 'GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true'
 
     - name: Pack
+      if: ${{ matrix.pack }}
       run: dotnet pack -c ${{ env.CONFIGURATION }} --no-build --version-suffix '${{ env.VERSION_SUFFIX }}'
 
     - name: Upload
-      if: ${{ github.event_name != 'schedule' }}
+      if: ${{ matrix.pack && github.event_name != 'schedule' }}
       uses: actions/upload-artifact@v4
       with:
         name: packages
