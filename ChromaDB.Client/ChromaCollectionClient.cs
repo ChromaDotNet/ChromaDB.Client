@@ -8,21 +8,16 @@ namespace ChromaDB.Client;
 public class ChromaCollectionClient
 {
 	private readonly ChromaCollection _collection;
-	private readonly HttpClient _httpClient;
+	private readonly ChromaHttpClient _httpClient;
 	private readonly string _tenant;
 	private readonly string _database;
 
 	public ChromaCollectionClient(ChromaCollection collection, ChromaConfigurationOptions options, HttpClient httpClient)
 	{
 		_collection = collection;
-		_httpClient = httpClient;
+		_httpClient = new ChromaHttpClient(httpClient, options);
 		_tenant = collection.Tenant ?? options.Tenant ?? ClientConstants.DefaultTenantName;
 		_database = collection.Database ?? options.Database ?? ClientConstants.DefaultDatabaseName;
-
-		if (_httpClient.BaseAddress != options.Uri)
-		{
-			_httpClient.BaseAddress = options.Uri;
-		}
 	}
 
 	public ChromaCollection Collection => _collection;

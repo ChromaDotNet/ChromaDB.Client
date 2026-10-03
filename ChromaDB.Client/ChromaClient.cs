@@ -6,29 +6,19 @@ namespace ChromaDB.Client;
 
 public class ChromaClient
 {
-	private readonly HttpClient _httpClient;
+	private readonly ChromaHttpClient _httpClient;
 	private readonly ChromaTenant _currentTenant;
 	private readonly ChromaDatabase _currentDatabase;
 
 	public ChromaClient(ChromaConfigurationOptions options, HttpClient httpClient)
 	{
-		_httpClient = httpClient;
+		_httpClient = new ChromaHttpClient(httpClient, options);
 		_currentTenant = options.Tenant is not null and not []
 			? new ChromaTenant(options.Tenant)
 			: ClientConstants.DefaultTenant;
 		_currentDatabase = options.Database is not null and not []
 			? new ChromaDatabase(options.Database)
 			: ClientConstants.DefaultDatabase;
-
-		if (_httpClient.BaseAddress != options.Uri)
-		{
-			_httpClient.BaseAddress = options.Uri;
-		}
-		if (options.ChromaToken is not null and not [])
-		{
-			_httpClient.DefaultRequestHeaders.Remove(ClientConstants.ChromaTokenHeader);
-			_httpClient.DefaultRequestHeaders.Add(ClientConstants.ChromaTokenHeader, options.ChromaToken);
-		}
 	}
 
 	public async Task<List<ChromaCollection>> ListCollections(string? tenant = null, string? database = null)

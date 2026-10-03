@@ -22,6 +22,36 @@ public class ClientTests : ChromaTestsBase
 	}
 
 	[Test]
+	public async Task SharedHttpClientIsNotModified()
+	{
+		using var httpClient = new HttpClient();
+		var client = new ChromaClient(BaseConfigurationOptions.WithChromaToken("token"), httpClient);
+		await client.Heartbeat();
+		Assert.That(httpClient.BaseAddress, Is.Null);
+		Assert.That(httpClient.DefaultRequestHeaders.Contains("X-Chroma-Token"), Is.False);
+	}
+
+	[Test]
+	public async Task SharedHttpClientWithAnotherUri()
+	{
+		using var httpClient = new HttpClient();
+		var client = new ChromaClient(BaseConfigurationOptions, httpClient);
+		await client.Heartbeat();
+		_ = new ChromaClient(BaseConfigurationOptions.WithUri("http://localhost:1/api/v2/"), httpClient);
+		await Assert.ThatAsync(client.Heartbeat, Throws.Nothing);
+	}
+
+	[Test]
+	public async Task SharedHttpClientWithAnotherUriForCollection()
+	{
+		using var httpClient = new HttpClient();
+		var client = new ChromaClient(BaseConfigurationOptions, httpClient);
+		var collection = await client.CreateCollection($"collection{Random.Shared.Next()}");
+		Assert.That(() => new ChromaCollectionClient(collection, BaseConfigurationOptions.WithUri("http://localhost:1/api/v2/"), httpClient), Throws.Nothing);
+		await Assert.ThatAsync(() => new ChromaCollectionClient(collection, BaseConfigurationOptions, httpClient).Count(), Throws.Nothing);
+	}
+
+	[Test]
 	[Ignore("Failing because of bug on Chroma's side.", Until = "2025-04-21")]
 	public async Task GetCollectionSimple()
 	{
