@@ -22,10 +22,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 0.5.16, the first release with the v2 API, 0.5.20 and 0.6.3: 0.x servers with both v1 and v2 (the client uses v2 only); 1.5.9: current release; latest: catches new releases without blocking.
-        chroma: ['0.5.16', '0.5.20', '0.6.3', '1.5.9', 'latest']
+        # v2 API: 0.5.16, the first release with it; 0.5.20, the first that rejects embeddings of different dimensions;
+        # 0.6.3, the last 0.x; 1.0.0, the first 1.x; 1.5.9, the current release; latest catches new releases without blocking.
+        chroma: ['0.5.16', '0.5.20', '0.6.3', '1.0.0', '1.5.9', 'latest']
         include:
-          # 0.5.15: the last release with only the v1 API, tested with ChromaApiVersion.V1.
+          # v1 API, with ChromaApiVersion.V1: 0.4.10, without tenants and databases; 0.4.15, without count_collections
+          # and $not_contains; 0.4.23, with both; 0.5.15, the last release with only the v1 API. See docs/COMPATIBILITY.md.
+          - chroma: '0.4.10'
+            api: v1
+          - chroma: '0.4.15'
+            api: v1
+          - chroma: '0.4.23'
+            api: v1
           - chroma: '0.5.15'
             api: v1
           - chroma: '1.5.9'

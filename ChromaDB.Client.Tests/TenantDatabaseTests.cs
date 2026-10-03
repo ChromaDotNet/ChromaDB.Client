@@ -5,6 +5,10 @@ namespace ChromaDB.Client.Tests;
 [TestFixture]
 public class TenantDatabaseTests : ChromaTestsBase
 {
+	[SetUp]
+	public void SetUp()
+		=> Assume.That(TenantsSupported, Is.True, "Chroma 0.4.14 and earlier have no tenants and databases.");
+
 	[Test]
 	public async Task CreateTenant()
 	{
@@ -79,6 +83,7 @@ public class TenantDatabaseTests : ChromaTestsBase
 	[Test]
 	public async Task CollectionInTenantAndDatabase()
 	{
+		Assume.That(RecordsInOtherTenantsSupported, Is.True, "Chroma 0.4.15 does not add records to the collections of other tenants and databases.");
 		var tenant = $"tenant{Random.Shared.Next()}";
 		var database = $"database{Random.Shared.Next()}";
 		var name = $"collection{Random.Shared.Next()}";

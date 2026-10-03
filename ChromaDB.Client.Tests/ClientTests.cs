@@ -181,6 +181,7 @@ public class ClientTests : ChromaTestsBase
 	[Ignore("Failing because of bug on Chroma's side.", Until = "2025-04-21")]
 	public async Task CountCollections()
 	{
+		Assume.That(CountCollectionsAndNotContainsSupported, Is.True, "Chroma 0.4.15 has no count_collections, no $not_contains filter and no tenant and database in the collections.");
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
 		var list = await client.ListCollections();
 		var result = await client.CountCollections();

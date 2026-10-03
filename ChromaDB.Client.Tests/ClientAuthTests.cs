@@ -19,9 +19,7 @@ public class ClientAuthTests
 	[TestFixture]
 	public class ChromaTokenAuth : ChromaTestsBase
 	{
-		[SetUp]
-		public void SetUp()
-			=> Assume.That(IsChroma1, Is.False, "Chroma 1.0 removed the built-in token authentication.");
+		protected override string? SkipReason => BuiltInAuthenticationTested ? null : "Chroma 1.0 removed the built-in authentication, and the servers before 0.5.1 configure it with other settings.";
 
 		[Test]
 		public async Task Success()
@@ -65,9 +63,7 @@ public class ClientAuthTests
 	[TestFixture]
 	public class ChromaTokenInAuthorizationHeader : ChromaTestsBase
 	{
-		[SetUp]
-		public void SetUp()
-			=> Assume.That(IsChroma1, Is.False, "Chroma 1.0 removed the built-in token authentication.");
+		protected override string? SkipReason => BuiltInAuthenticationTested ? null : "Chroma 1.0 removed the built-in authentication, and the servers before 0.5.1 configure it with other settings.";
 
 		[Test]
 		public async Task Success()
@@ -105,9 +101,7 @@ public class ClientAuthTests
 		// The htpasswd line of the user "admin" with the password "secret", hashed with bcrypt.
 		const string Credentials = "admin:$2b$12$XkWBowOjcQqb09GdfnT0CurP1VJVZwbmcfkIeXQtkzZqmVQKrOug2";
 
-		[SetUp]
-		public void SetUp()
-			=> Assume.That(IsChroma1, Is.False, "Chroma 1.0 removed the built-in basic authentication.");
+		protected override string? SkipReason => BuiltInAuthenticationTested ? null : "Chroma 1.0 removed the built-in authentication, and the servers before 0.5.1 configure it with other settings.";
 
 		[Test]
 		public async Task Success()

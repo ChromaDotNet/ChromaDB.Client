@@ -6,11 +6,13 @@ _ChromaDB.Client_ is a .NET SDK that offers a seamless connection to the Chroma 
 
 ## Compatibility
 
-| Chroma server | Server API | Status | Tested in CI |
-|---|---|---|---|
-| 1.x | v2 | supported | 1.5.9, latest |
-| 0.5.16 to 0.6.x | v1 and v2 | supported, through v2 | 0.5.16, 0.5.20, 0.6.3 |
-| 0.5.15 | v1 only | supported, with `ChromaApiVersion.V1` | 0.5.15 |
+| Chroma server | API | Tested |
+|---|---|---|
+| 0.5.16 – 1.5.9 | v2, the default | all the tests pass on each release tested |
+| 0.5.1 – 0.5.15 | v1, with `ChromaApiVersion.V1` | all the tests pass on each release tested |
+| 0.4.10 – 0.5.0 | v1, with `ChromaApiVersion.V1` | collections and records work on each release tested; some of these servers miss tenants, `CountCollections` or the `$not_contains` filter |
+
+Each release tested, the differences between them and the versions in the CI are listed in [docs/COMPATIBILITY.md](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/COMPATIBILITY.md).
 
 Since Chroma 1.0.16 the server requires embeddings in `Add` and `Upsert`: the client does not compute them, so pass them explicitly.
 

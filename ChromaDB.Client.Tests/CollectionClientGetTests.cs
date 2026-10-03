@@ -349,6 +349,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	[Test]
 	public async Task GetWhereDocumentNotContainsIncludeDocuments()
 	{
+		Assume.That(CountCollectionsAndNotContainsSupported, Is.True, "Chroma 0.4.15 has no count_collections, no $not_contains filter and no tenant and database in the collections.");
 		var client = await Init();
 		var result = await client.Get(
 			whereDocument: ChromaWhereDocumentOperator.NotContains(Doc2[^1]),
@@ -363,6 +364,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	[Test]
 	public async Task GetWhereDocumentAndOrIncludeDocuments()
 	{
+		Assume.That(CountCollectionsAndNotContainsSupported, Is.True, "Chroma 0.4.15 has no count_collections, no $not_contains filter and no tenant and database in the collections.");
 		var client = await Init();
 		var result = await client.Get(
 			whereDocument: ChromaWhereDocumentOperator.Contains(Doc1) && ChromaWhereDocumentOperator.NotContains(Doc1) || ChromaWhereDocumentOperator.NotContains(Doc2),

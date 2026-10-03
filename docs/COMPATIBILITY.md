@@ -1,0 +1,46 @@
+# Compatibility with Chroma
+
+On 3 October 2026 the whole test suite of the client ran against each Chroma release listed on this page, using the official Docker image `chromadb/chroma`. The page lists only those runs: a version that is not here was not tested.
+
+The suite covers collections (create, get, list, count, modify, delete), records (add, update, upsert, delete, get, query, count, peek, filters), tenants and databases, error messages, cancellation, and the built-in authentication of the server where noted.
+
+## v2 API (the default)
+
+All the tests pass on:
+
+0.5.16 – 0.5.18, 0.5.20 – 0.5.21, 0.5.23, 0.6.0 – 0.6.3, 1.0.0, 1.0.2 – 1.0.10, 1.0.12 – 1.0.13, 1.0.15 – 1.0.21, 1.1.0 – 1.1.1, 1.2.0 – 1.2.2, 1.3.0, 1.3.2 – 1.3.3, 1.3.5 – 1.3.7, 1.4.0 – 1.4.1, 1.5.0 – 1.5.9
+
+Differences between these servers, seen in the tests:
+
+| Behavior | Versions |
+|---|---|
+| Rejects embeddings of different dimensions in the same request | 0.5.20 – 1.5.9; 0.5.16 – 0.5.18 accept them |
+| Requires embeddings in `Add` and `Upsert` | 1.0.16 – 1.5.9; the earlier versions accept records without embeddings |
+| Built-in authentication: token in `X-Chroma-Token` or `Authorization: Bearer`, and basic | 0.5.16 – 0.6.3; Chroma 1.5.9 accepts requests without credentials |
+
+## v1 API (`ChromaApiVersion.V1`)
+
+All the tests pass on, including the built-in authentication:
+
+0.5.1 – 0.5.7, 0.5.9 – 0.5.18, 0.5.20 – 0.5.21, 0.5.23
+
+On these older servers collections and records work; some features are missing on the server, and the client reports them with a `ChromaException`:
+
+| Versions | Missing on the server |
+|---|---|
+| 0.4.23, 0.4.24, 0.5.0 | nothing among the features above; the built-in authentication was not tested |
+| 0.4.15 | `CountCollections`; the `$not_contains` document filter; the tenant and database of the collections it returns; records in the collections of a tenant or database other than the default: the server answers that the collection does not exist |
+| 0.4.10, 0.4.12 – 0.4.14 | tenants and databases; `CountCollections`; the `$not_contains` document filter |
+
+A missing endpoint gives a message that names the request, like `Not Found: POST /api/v1/tenants`.
+
+The v1 API of Chroma 0.6.3 fails on most requests, and Chroma 1.5.9 answers it with `410 Gone`: use the v2 API there.
+
+## Versions tested in the CI
+
+Every change runs the whole suite against:
+
+- v2 API: 0.5.16, 0.5.20, 0.6.3, 1.0.0, 1.5.9, and `latest` without blocking;
+- v1 API: 0.4.10, 0.4.15, 0.4.23, 0.5.15.
+
+On the older servers the tests of the features they miss are skipped, with the reason.
