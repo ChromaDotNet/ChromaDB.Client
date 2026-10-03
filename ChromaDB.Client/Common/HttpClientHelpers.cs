@@ -97,7 +97,7 @@ internal static partial class HttpClientHelpers
 			return (int)httpResponseMessage.StatusCode switch
 			{
 				>= 200 and <= 299 => JsonSerializer.Deserialize<TResponse>(await httpResponseMessage.Content.ReadAsStringAsync(), DeserializerJsonSerializerOptions)!,
-				_ => throw await HandleErrorStatusCode(httpResponseMessage),
+				_ => throw await HandleErrorStatusCode(httpRequestMessage, httpResponseMessage),
 			};
 		}
 		catch (Exception ex) when (ex is not ChromaException && !(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
@@ -115,7 +115,7 @@ internal static partial class HttpClientHelpers
 				case >= 200 and <= 299:
 					return;
 				default:
-					throw await HandleErrorStatusCode(httpResponseMessage);
+					throw await HandleErrorStatusCode(httpRequestMessage, httpResponseMessage);
 			};
 		}
 		catch (Exception ex) when (ex is not ChromaException && !(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
@@ -124,10 +124,16 @@ internal static partial class HttpClientHelpers
 		}
 	}
 
-	private static async Task<ChromaException> HandleErrorStatusCode(HttpResponseMessage httpResponseMessage)
+	private static async Task<ChromaException> HandleErrorStatusCode(HttpRequestMessage httpRequestMessage, HttpResponseMessage httpResponseMessage)
 	{
 		var errorMessageBody = await httpResponseMessage.Content.ReadAsStringAsync();
-		return new ChromaException(ParseErrorMessageBody(errorMessageBody) ?? $"Unexpected status code: {httpResponseMessage.StatusCode}.");
+		var message = ParseErrorMessageBody(errorMessageBody);
+		// A bare 404 or 405 usually means that this version of Chroma does not have the endpoint: name the request.
+		if ((int)httpResponseMessage.StatusCode is 404 or 405 && message is null or "Not Found" or "Method Not Allowed")
+		{
+			return new ChromaException($"{message ?? httpResponseMessage.StatusCode.ToString()}: {httpRequestMessage.Method} {httpRequestMessage.RequestUri?.AbsolutePath}");
+		}
+		return new ChromaException(message ?? $"Unexpected status code: {httpResponseMessage.StatusCode}.");
 	}
 
 	private static string? ParseErrorMessageBody(string? errorMessageBody)
