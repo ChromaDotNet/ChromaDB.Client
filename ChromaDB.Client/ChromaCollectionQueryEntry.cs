@@ -3,7 +3,8 @@
 public class ChromaCollectionQueryEntry
 {
 	public string Id { get; }
-	public float Distance { get; init; }
+	// Null when the query did not include ChromaQueryInclude.Distances.
+	public float? Distance { get; init; }
 	public Dictionary<string, object>? Metadata { get; init; }
 	public ReadOnlyMemory<float>? Embeddings { get; init; }
 	public string? Document { get; init; }

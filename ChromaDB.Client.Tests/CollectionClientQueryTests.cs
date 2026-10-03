@@ -43,6 +43,16 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	}
 
 	[Test]
+	public async Task SimpleQuerySingleWithoutDistances()
+	{
+		var client = await Init();
+		var result = await client.Query(Embeddings1,
+			include: ChromaQueryInclude.Embeddings);
+		Assert.That(result, Has.Count.EqualTo(2));
+		Assert.That(result.Select(x => x.Distance), Has.All.Null);
+	}
+
+	[Test]
 	public async Task SimpleQueryMultiple()
 	{
 		var client = await Init();
