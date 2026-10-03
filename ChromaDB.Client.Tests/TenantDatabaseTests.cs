@@ -81,6 +81,90 @@ public class TenantDatabaseTests : ChromaTestsBase
 	}
 
 	[Test]
+	public async Task ListDatabases()
+	{
+		Assume.That(DatabaseListingSupported, Is.True, "Only the v2 API of Chroma 0.6.3 and later lists databases.");
+		var tenant = $"tenant{Random.Shared.Next()}";
+
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		await client.CreateTenant(tenant);
+		foreach (var name in new[] { "db_b", "db_a", "db_c" })
+		{
+			await client.CreateDatabase(name, tenant: tenant);
+		}
+		var result = await client.ListDatabases(tenant: tenant);
+		Assert.That(result.Select(x => x.Name), Is.EqualTo(new[] { "db_a", "db_b", "db_c" }));
+		Assert.That(result.Select(x => x.Tenant), Is.All.EqualTo(tenant));
+	}
+
+	[Test]
+	public async Task ListDatabasesInTenantOfOptions()
+	{
+		Assume.That(DatabaseListingSupported, Is.True, "Only the v2 API of Chroma 0.6.3 and later lists databases.");
+		var name = $"database{Random.Shared.Next()}";
+
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		await client.CreateDatabase(name);
+		var result = await client.ListDatabases();
+		Assert.That(result.Select(x => x.Name), Contains.Item(name));
+		Assert.That(result.Select(x => x.Tenant), Is.All.EqualTo(BaseConfigurationOptions.Tenant ?? "default_tenant"));
+	}
+
+	[Test]
+	public async Task ListDatabasesPage()
+	{
+		Assume.That(DatabaseListingSupported, Is.True, "Only the v2 API of Chroma 0.6.3 and later lists databases.");
+		var tenant = $"tenant{Random.Shared.Next()}";
+
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		await client.CreateTenant(tenant);
+		foreach (var name in new[] { "db_a", "db_b", "db_c" })
+		{
+			await client.CreateDatabase(name, tenant: tenant);
+		}
+		Assert.That((await client.ListDatabases(limit: 2, tenant: tenant)).Select(x => x.Name), Is.EqualTo(new[] { "db_a", "db_b" }));
+		Assert.That((await client.ListDatabases(limit: 2, offset: 2, tenant: tenant)).Select(x => x.Name), Is.EqualTo(new[] { "db_c" }));
+	}
+
+	[Test]
+	public async Task DeleteDatabase()
+	{
+		Assume.That(DatabaseListingSupported, Is.True, "Only the v2 API of Chroma 0.6.3 and later deletes databases.");
+		var tenant = $"tenant{Random.Shared.Next()}";
+
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		await client.CreateTenant(tenant);
+		await client.CreateDatabase("db_a", tenant: tenant);
+		await client.CreateDatabase("db_b", tenant: tenant);
+		await client.DeleteDatabase("db_a", tenant: tenant);
+		Assert.That((await client.ListDatabases(tenant: tenant)).Select(x => x.Name), Is.EqualTo(new[] { "db_b" }));
+		await Assert.ThatAsync(() => client.GetDatabase("db_a", tenant: tenant), Throws.InstanceOf<ChromaException>().With.Message.Contains("not found"));
+	}
+
+	[Test]
+	public async Task DeleteDatabaseNotExists()
+	{
+		Assume.That(DatabaseListingSupported, Is.True, "Only the v2 API of Chroma 0.6.3 and later deletes databases.");
+
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		await Assert.ThatAsync(() => client.DeleteDatabase($"database{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("not found"));
+	}
+
+	// The older servers answer 405 Method Not Allowed: the client reports it with a ChromaException.
+	[Test]
+	public async Task ListAndDeleteDatabasesNotSupported()
+	{
+		Assume.That(DatabaseListingSupported, Is.False, "This server lists and deletes databases.");
+		var name = $"database{Random.Shared.Next()}";
+
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		await client.CreateDatabase(name);
+		await Assert.ThatAsync(() => client.ListDatabases(), Throws.InstanceOf<ChromaException>().With.Message.StartsWith("Method Not Allowed: GET "));
+		await Assert.ThatAsync(() => client.DeleteDatabase(name), Throws.InstanceOf<ChromaException>().With.Message.StartsWith("Method Not Allowed: DELETE "));
+		Assert.That((await client.GetDatabase(name)).Name, Is.EqualTo(name));
+	}
+
+	[Test]
 	public async Task CollectionInTenantAndDatabase()
 	{
 		Assume.That(RecordsInOtherTenantsSupported, Is.True, "Chroma 0.4.15 does not add records to the collections of other tenants and databases.");

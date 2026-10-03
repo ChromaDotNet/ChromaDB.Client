@@ -170,4 +170,34 @@ public class ChromaClient
 			.Insert("{tenant}", tenant);
 		return await _httpClient.Get<ChromaDatabase>(_httpClient.Routes.Database, requestParams, cancellationToken);
 	}
+
+	public async Task<List<ChromaDatabase>> ListDatabases(string? tenant = null, CancellationToken cancellationToken = default)
+	{
+		tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
+		var requestParams = new RequestQueryParams()
+			.Insert("{tenant}", tenant);
+		return await _httpClient.Get<List<ChromaDatabase>>(_httpClient.Routes.Databases, requestParams, cancellationToken);
+	}
+
+	// One page of the databases, in the order of the server.
+	public async Task<List<ChromaDatabase>> ListDatabases(int limit, int offset = 0, string? tenant = null, CancellationToken cancellationToken = default)
+	{
+		tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
+		var requestParams = new RequestQueryParams()
+			.Insert("{tenant}", tenant)
+			.Insert("{limit}", limit.ToString(CultureInfo.InvariantCulture))
+			.Insert("{offset}", offset.ToString(CultureInfo.InvariantCulture));
+		var route = _httpClient.Routes.Databases;
+		route += (route.Contains("?") ? "&" : "?") + "limit={limit}&offset={offset}";
+		return await _httpClient.Get<List<ChromaDatabase>>(route, requestParams, cancellationToken);
+	}
+
+	public async Task DeleteDatabase(string name, string? tenant = null, CancellationToken cancellationToken = default)
+	{
+		tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
+		var requestParams = new RequestQueryParams()
+			.Insert("{database}", name)
+			.Insert("{tenant}", tenant);
+		await _httpClient.Delete(_httpClient.Routes.Database, requestParams, cancellationToken);
+	}
 }

@@ -28,6 +28,9 @@ public class ApiVersionTests
 		yield return Case("GetTenant", c => c.GetTenant("t"), "GET", "tenants/t", "tenants/t");
 		yield return Case("CreateDatabase", c => c.CreateDatabase("d"), "POST", "tenants/t/databases", "databases?tenant=t");
 		yield return Case("GetDatabase", c => c.GetDatabase("d"), "GET", "tenants/t/databases/d", "databases/d?tenant=t");
+		yield return Case("ListDatabases", c => c.ListDatabases(), "GET", "tenants/t/databases", "databases?tenant=t");
+		yield return Case("ListDatabasesPage", c => c.ListDatabases(limit: 2, offset: 1), "GET", "tenants/t/databases?limit=2&offset=1", "databases?tenant=t&limit=2&offset=1");
+		yield return Case("DeleteDatabase", c => c.DeleteDatabase("d"), "DELETE", "tenants/t/databases/d", "databases/d?tenant=t");
 		yield return Case("Get", c => c.Get(), "POST", $"tenants/t/databases/d/collections/{Id}/get", $"collections/{Id}/get");
 		yield return Case("Query", c => c.Query(Embedding), "POST", $"tenants/t/databases/d/collections/{Id}/query", $"collections/{Id}/query");
 		yield return Case("Add", c => c.Add(["a"], embeddings: [Embedding]), "POST", $"tenants/t/databases/d/collections/{Id}/add", $"collections/{Id}/add");

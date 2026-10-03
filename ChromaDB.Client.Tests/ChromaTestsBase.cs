@@ -93,6 +93,9 @@ public abstract class ChromaTestsBase
 	// Chroma 0.4.10 to 0.4.15 reject "uris" in include; 0.4.23 stores and returns the URIs of the records.
 	protected static bool UrisSupported => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 4, 23);
 
+	// Only the v2 API of Chroma 0.6.3 and later lists and deletes databases: 0.6.2 and earlier answer 405 Method Not Allowed.
+	protected static bool DatabaseListingSupported => ApiVersion == ChromaApiVersion.V2 && ChromaDBBuilder.ChromaDBVersion >= new Version(0, 6, 3);
+
 	// The servers before Chroma 0.5.1 configure their built-in authentication with other settings, and Chroma 1.0 removed it.
 	protected static bool BuiltInAuthenticationTested => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 5, 1) && !IsChroma1;
 

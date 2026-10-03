@@ -28,6 +28,9 @@ public class CancellationTests
 		yield return Case<ChromaClient>("GetTenant", (c, t) => c.GetTenant("tenant", t));
 		yield return Case<ChromaClient>("CreateDatabase", (c, t) => c.CreateDatabase("database", cancellationToken: t));
 		yield return Case<ChromaClient>("GetDatabase", (c, t) => c.GetDatabase("database", cancellationToken: t));
+		yield return Case<ChromaClient>("ListDatabases", (c, t) => c.ListDatabases(cancellationToken: t));
+		yield return Case<ChromaClient>("ListDatabasesPage", (c, t) => c.ListDatabases(limit: 2, cancellationToken: t));
+		yield return Case<ChromaClient>("DeleteDatabase", (c, t) => c.DeleteDatabase("database", cancellationToken: t));
 	}
 
 	static IEnumerable<TestCaseData> CollectionClientCalls()
