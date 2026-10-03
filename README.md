@@ -92,6 +92,14 @@ var options = new ChromaConfigurationOptions(uri: "http://localhost:8000", defau
 
 The collections created with these options belong to that tenant and database.
 
+```csharp
+var databases = await client.ListDatabases(tenant: "my_tenant");
+var page = await client.ListDatabases(limit: 10, offset: 20, tenant: "my_tenant");
+await client.DeleteDatabase("my_database", tenant: "my_tenant");
+```
+
+`ListDatabases` and `DeleteDatabase` need the v2 API of Chroma 0.6.3 or later: the older servers answer `405 Method Not Allowed`.
+
 ## Authentication
 
 ```csharp
