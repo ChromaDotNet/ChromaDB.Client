@@ -32,7 +32,7 @@ On these older servers collections and records work; some features are missing o
 | 0.4.15 | `CountCollections`; the `$not_contains` document filter; the tenant and database of the collections it returns; records in the collections of a tenant or database other than the default: the server answers that the collection does not exist; the `limit` and `offset` of `ListCollections`: the server returns all the collections; the URIs of the records: the server rejects `uris` in `include` |
 | 0.4.10, 0.4.12 – 0.4.14 | tenants and databases; `CountCollections`; the `$not_contains` document filter; the `limit` and `offset` of `ListCollections`: the server returns all the collections; the URIs of the records: the server rejects `uris` in `include` |
 
-A missing endpoint gives a message that names the request, like `Not Found: POST /api/v1/tenants`.
+A missing endpoint gives a message that names the request, like `Not Found: POST /api/v1/tenants`. The v1 API has no `auth/identity`, so `GetUserIdentity` needs the v2 API: Chroma 0.5.15, 0.5.16 and 0.6.3 answer it with `404 Not Found` in v1.
 
 The v1 API of Chroma 0.6.3 fails on most requests, and Chroma 1.5.9 answers it with `410 Gone`: use the v2 API there.
 

@@ -22,6 +22,16 @@ public class ClientTests : ChromaTestsBase
 	}
 
 	[Test]
+	public async Task GetUserIdentitySimple()
+	{
+		Assume.That(ApiVersion, Is.EqualTo(ChromaApiVersion.V2), "The v1 API has no auth/identity.");
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var result = await client.GetUserIdentity();
+		Assert.That(result.Tenant, Is.EqualTo("default_tenant"));
+		Assert.That(result.Databases, Contains.Item("default_database"));
+	}
+
+	[Test]
 	public async Task SharedHttpClientIsNotModified()
 	{
 		using var httpClient = new HttpClient();
