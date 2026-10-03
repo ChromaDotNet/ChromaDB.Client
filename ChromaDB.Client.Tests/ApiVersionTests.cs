@@ -21,6 +21,7 @@ public class ApiVersionTests
 		yield return Case("DeleteCollection", c => c.DeleteCollection("c"), "DELETE", "tenants/t/databases/d/collections/c", "collections/c?tenant=t&database=d");
 		yield return Case("GetVersion", c => c.GetVersion(), "GET", "version", "version");
 		yield return Case("GetUserIdentity", c => c.GetUserIdentity(), "GET", "auth/identity", "auth/identity");
+		yield return Case("GetPreFlightChecks", c => c.GetPreFlightChecks(), "GET", "pre-flight-checks", "pre-flight-checks");
 		yield return Case("Reset", c => c.Reset(), "POST", "reset", "reset");
 		yield return Case("CountCollections", c => c.CountCollections(), "GET", "tenants/t/databases/d/collections_count", "count_collections?tenant=t&database=d");
 		yield return Case("CreateTenant", c => c.CreateTenant("t"), "POST", "tenants", "tenants");

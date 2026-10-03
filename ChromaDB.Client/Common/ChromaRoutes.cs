@@ -9,6 +9,7 @@ internal sealed class ChromaRoutes
 		Version = "version",
 		Reset = "reset",
 		UserIdentity = "auth/identity",
+		PreFlightChecks = "pre-flight-checks",
 		Tenants = "tenants",
 		Tenant = "tenants/{tenant}",
 		Databases = "tenants/{tenant}/databases",
@@ -26,6 +27,7 @@ internal sealed class ChromaRoutes
 		Version = "version",
 		Reset = "reset",
 		UserIdentity = "auth/identity",
+		PreFlightChecks = "pre-flight-checks",
 		Tenants = "tenants",
 		Tenant = "tenants/{tenant}",
 		Databases = "databases?tenant={tenant}",
@@ -41,6 +43,7 @@ internal sealed class ChromaRoutes
 	public required string Reset { get; init; }
 	// Only the v2 API has it.
 	public required string UserIdentity { get; init; }
+	public required string PreFlightChecks { get; init; }
 	public required string Tenants { get; init; }
 	public required string Tenant { get; init; }
 	public required string Databases { get; init; }

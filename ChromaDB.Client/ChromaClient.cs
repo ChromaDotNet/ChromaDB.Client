@@ -114,6 +114,11 @@ public class ChromaClient
 		return await _httpClient.Get<ChromaUserIdentity>(_httpClient.Routes.UserIdentity, new RequestQueryParams(), cancellationToken);
 	}
 
+	public async Task<ChromaPreFlightChecks> GetPreFlightChecks(CancellationToken cancellationToken = default)
+	{
+		return await _httpClient.Get<ChromaPreFlightChecks>(_httpClient.Routes.PreFlightChecks, new RequestQueryParams(), cancellationToken);
+	}
+
 	public async Task<bool> Reset(CancellationToken cancellationToken = default)
 	{
 		return await _httpClient.Post<ResetRequest, bool>(_httpClient.Routes.Reset, null, new RequestQueryParams(), cancellationToken);

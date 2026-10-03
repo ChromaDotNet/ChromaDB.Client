@@ -84,6 +84,12 @@ public abstract class ChromaTestsBase
 	// Chroma 0.4.10 to 0.4.15 ignore the limit and the offset of the list of the collections; 0.4.23 applies them.
 	protected static bool ListCollectionsPagingSupported => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 4, 23);
 
+	// Chroma 0.4.10 has no pre-flight-checks; 0.4.12 has them (the 0.4.11 image does not start).
+	protected static bool PreFlightChecksSupported => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 4, 12);
+
+	// Chroma 1.0.12 and earlier do not send supports_base64_encoding in the pre-flight checks; 1.0.13 sends it.
+	protected static bool Base64EncodingReported => ChromaDBBuilder.ChromaDBVersion >= new Version(1, 0, 13);
+
 	// Chroma 0.4.10 to 0.4.15 reject "uris" in include; 0.4.23 stores and returns the URIs of the records.
 	protected static bool UrisSupported => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 4, 23);
 

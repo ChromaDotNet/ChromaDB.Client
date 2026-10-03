@@ -32,6 +32,16 @@ public class ClientTests : ChromaTestsBase
 	}
 
 	[Test]
+	public async Task GetPreFlightChecksSimple()
+	{
+		Assume.That(PreFlightChecksSupported, Is.True, "Chroma 0.4.10 has no pre-flight-checks.");
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var result = await client.GetPreFlightChecks();
+		Assert.That(result.MaxBatchSize, Is.GreaterThan(0));
+		Assert.That(result.SupportsBase64Encoding, Base64EncodingReported ? Is.Not.Null : Is.Null);
+	}
+
+	[Test]
 	public async Task SharedHttpClientIsNotModified()
 	{
 		using var httpClient = new HttpClient();
