@@ -51,6 +51,8 @@ public class ClientAuthTests
 			await Assert.ThatAsync(() => client.CreateCollection($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("Forbidden"));
 		}
 
+		protected override string? ServerToken => "random-ToKen";
+
 		protected override ChromaDBBuilder ConfigureContainer(ChromaDBBuilder builder)
 			=> builder
 				.WithEnvironment("CHROMA_SERVER_AUTHN_CREDENTIALS", "random-ToKen")

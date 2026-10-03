@@ -48,7 +48,7 @@ public class TenantDatabaseTests : ChromaTestsBase
 	}
 
 	[Test]
-	public async Task CreateDatabaseInDefaultTenant()
+	public async Task CreateDatabaseInTenantOfOptions()
 	{
 		var name = $"database{Random.Shared.Next()}";
 
@@ -56,7 +56,7 @@ public class TenantDatabaseTests : ChromaTestsBase
 		await client.CreateDatabase(name);
 		var result = await client.GetDatabase(name);
 		Assert.That(result.Name, Is.EqualTo(name));
-		Assert.That(result.Tenant, Is.EqualTo("default_tenant"));
+		Assert.That(result.Tenant, Is.EqualTo(BaseConfigurationOptions.Tenant ?? "default_tenant"));
 	}
 
 	[Test]

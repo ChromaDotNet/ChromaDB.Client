@@ -56,6 +56,12 @@ jobs:
     - name: Test
       run: dotnet test -c ${{ env.CONFIGURATION }} --no-build --verbosity normal --logger 'GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true'
 
+    - name: Test in a non-default tenant and database
+      run: dotnet test -c ${{ env.CONFIGURATION }} --no-build --verbosity normal --logger 'GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true'
+      env:
+        CHROMA_TEST_TENANT: test_tenant
+        CHROMA_TEST_DATABASE: test_database
+
     - name: Pack
       if: ${{ matrix.pack }}
       run: dotnet pack -c ${{ env.CONFIGURATION }} --no-build --version-suffix '${{ env.VERSION_SUFFIX }}'

@@ -7,6 +7,10 @@ public abstract class ChromaTestsBase
 {
 	protected static readonly HttpClient HttpClient = new();
 
+	// CHROMA_TEST_TENANT and CHROMA_TEST_DATABASE run the tests in that tenant and database, created for each fixture, instead of the default ones.
+	private static readonly string? TestTenant = Environment.GetEnvironmentVariable("CHROMA_TEST_TENANT") is { Length: > 0 } tenant ? tenant : null;
+	private static readonly string? TestDatabase = Environment.GetEnvironmentVariable("CHROMA_TEST_DATABASE") is { Length: > 0 } database ? database : null;
+
 	private ChromaDBContainer _container;
 	private ChromaConfigurationOptions? _baseConfigurationOptions;
 
@@ -16,6 +20,22 @@ public abstract class ChromaTestsBase
 		_container = ConfigureContainer(new ChromaDBBuilder()).Build();
 		await _container.StartAsync();
 		_baseConfigurationOptions = new ChromaConfigurationOptions(uri: $"http://{_container.IpAddress}:{_container.GetMappedPublicPort(ChromaDBBuilder.ChromaDBPort)}/api/v2/");
+		if (TestTenant is not null || TestDatabase is not null)
+		{
+			var client = new ChromaClient(ServerToken is not null ? _baseConfigurationOptions.WithChromaToken(ServerToken) : _baseConfigurationOptions, HttpClient);
+			if (TestTenant is not null)
+			{
+				await client.CreateTenant(TestTenant);
+				_baseConfigurationOptions = _baseConfigurationOptions.WithTenant(TestTenant);
+			}
+			// A new tenant has no databases: without CHROMA_TEST_DATABASE, the tests use a default_database created in it.
+			var database = TestDatabase ?? (TestTenant is not null ? "default_database" : null);
+			if (database is not null)
+			{
+				await client.CreateDatabase(database, tenant: TestTenant);
+				_baseConfigurationOptions = _baseConfigurationOptions.WithDatabase(database);
+			}
+		}
 	}
 
 	[OneTimeTearDown]
@@ -49,4 +69,7 @@ public abstract class ChromaTestsBase
 	}
 
 	protected virtual ChromaDBBuilder ConfigureContainer(ChromaDBBuilder builder) => builder;
+
+	// The token the server of the fixture requires, if any: the setup needs it to create the test tenant and database.
+	protected virtual string? ServerToken => null;
 }
