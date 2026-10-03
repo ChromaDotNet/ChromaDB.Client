@@ -4,9 +4,9 @@ namespace ChromaDB.Client.Models.Requests;
 
 internal class CollectionModifyRequest
 {
-	[JsonPropertyName("name")]
+	[JsonPropertyName("new_name")]
 	public string? Name { get; init; }
 
-	[JsonPropertyName("metadata")]
+	[JsonPropertyName("new_metadata")]
 	public Dictionary<string, object>? Metadata { get; init; }
 }

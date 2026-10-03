@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using ChromaDB.Client.Models;
+using NUnit.Framework;
 
 namespace ChromaDB.Client.Tests;
 
@@ -47,6 +48,8 @@ public class CollectionClientTests : ChromaTestsBase
 		var client = await Init();
 		await client.Modify(
 			name: $"{client.Collection.Name}_modified");
+		var result = await GetCollection($"{client.Collection.Name}_modified");
+		Assert.That(result.Id, Is.EqualTo(client.Collection.Id));
 	}
 
 	[Test]
@@ -61,6 +64,10 @@ public class CollectionClientTests : ChromaTestsBase
 		var client = await Init();
 		await client.Modify(
 			metadata: metadata);
+		var result = await GetCollection(client.Collection.Name);
+		Assert.That(result.Metadata, Is.Not.Null);
+		Assert.That(result.Metadata["test"], Is.EqualTo(metadata["test"]));
+		Assert.That(result.Metadata["test2"], Is.EqualTo(metadata["test2"]));
 	}
 
 	[Test]
@@ -76,6 +83,11 @@ public class CollectionClientTests : ChromaTestsBase
 		await client.Modify(
 			name: $"{client.Collection.Name}_modified",
 			metadata: metadata);
+		var result = await GetCollection($"{client.Collection.Name}_modified");
+		Assert.That(result.Id, Is.EqualTo(client.Collection.Id));
+		Assert.That(result.Metadata, Is.Not.Null);
+		Assert.That(result.Metadata["test"], Is.EqualTo(metadata["test"]));
+		Assert.That(result.Metadata["test3"], Is.EqualTo(metadata["test3"]));
 	}
 
 	async Task<ChromaCollectionClient> Init()
@@ -85,4 +97,7 @@ public class CollectionClientTests : ChromaTestsBase
 		var collection = await client.CreateCollection(name);
 		return new ChromaCollectionClient(collection, BaseConfigurationOptions, HttpClient);
 	}
+
+	Task<ChromaCollection> GetCollection(string name)
+		=> new ChromaClient(BaseConfigurationOptions, HttpClient).GetCollection(name);
 }
