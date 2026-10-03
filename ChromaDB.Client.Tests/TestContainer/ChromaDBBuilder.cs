@@ -6,7 +6,7 @@ namespace ChromaDB.Client.Tests.TestContainer;
 
 public class ChromaDBBuilder : ContainerBuilder<ChromaDBBuilder, ChromaDBContainer, ChromaDBConfiguration>
 {
-	public const string ChromaDBImage = "chromadb/chroma:latest";
+	public const string ChromaDBImage = "chromadb/chroma:0.6.3";
 	public const int ChromaDBPort = 8000;
 
 	protected override ChromaDBConfiguration DockerResourceConfiguration { get; }
