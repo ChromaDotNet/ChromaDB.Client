@@ -55,6 +55,17 @@ foreach (var item in queryData)
 }
 ```
 
+## Tenants and databases
+
+```csharp
+await client.CreateTenant("my_tenant");
+await client.CreateDatabase("my_database", tenant: "my_tenant");
+
+var options = new ChromaConfigurationOptions(uri: "http://localhost:8000", defaultTenant: "my_tenant", defaultDatabase: "my_database");
+```
+
+The collections created with these options belong to that tenant and database.
+
 ## Migrating from ChromaDB.Client 1.x
 
 - Use the `/api/v2/` URI, or just the address of the server. Chroma 1.x answers the v1 routes with `410 Gone`.

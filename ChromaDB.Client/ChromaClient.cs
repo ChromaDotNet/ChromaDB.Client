@@ -107,4 +107,41 @@ public class ChromaClient
 			.Insert("{database}", database);
 		return await _httpClient.Get<int>("tenants/{tenant}/databases/{database}/collections_count", requestParams, cancellationToken);
 	}
+
+	public async Task CreateTenant(string name, CancellationToken cancellationToken = default)
+	{
+		var request = new CreateTenantRequest()
+		{
+			Name = name,
+		};
+		await _httpClient.Post("tenants", request, new RequestQueryParams(), cancellationToken);
+	}
+
+	public async Task<ChromaTenant> GetTenant(string name, CancellationToken cancellationToken = default)
+	{
+		var requestParams = new RequestQueryParams()
+			.Insert("{tenant}", name);
+		return await _httpClient.Get<ChromaTenant>("tenants/{tenant}", requestParams, cancellationToken);
+	}
+
+	public async Task CreateDatabase(string name, string? tenant = null, CancellationToken cancellationToken = default)
+	{
+		tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
+		var requestParams = new RequestQueryParams()
+			.Insert("{tenant}", tenant);
+		var request = new CreateDatabaseRequest()
+		{
+			Name = name,
+		};
+		await _httpClient.Post("tenants/{tenant}/databases", request, requestParams, cancellationToken);
+	}
+
+	public async Task<ChromaDatabase> GetDatabase(string name, string? tenant = null, CancellationToken cancellationToken = default)
+	{
+		tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
+		var requestParams = new RequestQueryParams()
+			.Insert("{database}", name)
+			.Insert("{tenant}", tenant);
+		return await _httpClient.Get<ChromaDatabase>("tenants/{tenant}/databases/{database}", requestParams, cancellationToken);
+	}
 }

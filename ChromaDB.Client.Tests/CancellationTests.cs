@@ -21,6 +21,10 @@ public class CancellationTests
 		yield return Case<ChromaClient>("GetVersion", (c, t) => c.GetVersion(t));
 		yield return Case<ChromaClient>("Reset", (c, t) => c.Reset(t));
 		yield return Case<ChromaClient>("CountCollections", (c, t) => c.CountCollections(cancellationToken: t));
+		yield return Case<ChromaClient>("CreateTenant", (c, t) => c.CreateTenant("tenant", t));
+		yield return Case<ChromaClient>("GetTenant", (c, t) => c.GetTenant("tenant", t));
+		yield return Case<ChromaClient>("CreateDatabase", (c, t) => c.CreateDatabase("database", cancellationToken: t));
+		yield return Case<ChromaClient>("GetDatabase", (c, t) => c.GetDatabase("database", cancellationToken: t));
 	}
 
 	static IEnumerable<TestCaseData> CollectionClientCalls()
