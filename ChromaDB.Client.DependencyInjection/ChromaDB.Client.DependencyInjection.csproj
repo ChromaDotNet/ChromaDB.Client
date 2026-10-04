@@ -22,6 +22,7 @@
 		<PackageProjectUrl Condition="'$(GITHUB_REPOSITORY)' != ''">https://github.com/$(GITHUB_REPOSITORY)</PackageProjectUrl>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<PackageReleaseNotes>2.4.0: AddChromaClient and AddKeyedChromaClient register one ChromaClient singleton per key, so also singletons can take it; its HttpClient takes the current handler of IHttpClientFactory at each request, renewed after two minutes by default, on every target. 2.3.0: AddKeyedChromaClient registers a client and its options under a key. 2.0.0: AddChromaClient registers the options, which the client needs. Release notes of the client: $(PackageProjectUrl)/releases</PackageReleaseNotes>
 	</PropertyGroup>
 	<ItemGroup>
 		<None Include="..\README.md" Pack="true" PackagePath="\" />
