@@ -207,6 +207,12 @@ var basicOptions = options.WithBasicAuth("admin", "password");
 
 The client adds the credentials to each of its requests, without changing the `HttpClient` it is given. Chroma 1.x servers have no built-in authentication.
 
+## Trimming and NativeAOT
+
+The client serializes with metadata generated at build time, so it works in applications published with trimming or NativeAOT, where serialization by reflection is off; the packages are marked `IsAotCompatible`. The values of metadata and filters can be `string`, the numeric types, `bool`, `DateTime`, `DateTimeOffset`, `Guid`, `JsonElement`, and arrays and lists of strings, numbers and booleans, as well as `List<object>` and `object[]`. Other types work only where reflection is on, as without trimming.
+
+The CI publishes `Samples/ChromaDB.Client.TrimmingTest` with trimming and with NativeAOT, with every warning as an error, and runs it against Chroma 1.5.9.
+
 ## Migrating from ChromaDB.Client 1.x
 
 - Use the `/api/v2/` URI, or just the address of the server. Chroma 1.x answers the v1 routes with `410 Gone`.
