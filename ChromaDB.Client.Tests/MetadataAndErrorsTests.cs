@@ -46,6 +46,34 @@ public class MetadataAndErrorsTests
 		Assert.That(collection.Metadata["texts"], Is.EqualTo(new List<object> { "x" }));
 	}
 
+	// A ChromaClient from a container may read the default way: WithMetadataValues gives one that reads exactly.
+	[Test]
+	public async Task ClientWithMetadataValues()
+	{
+		using var httpClient = new HttpClient(Respond("""{"id":"11111111-2222-3333-4444-555555555555","name":"c","metadata":{"date":"2026-10-04"}}"""));
+		var inferred = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000", defaultTenant: "t"), httpClient);
+		var exact = inferred.WithMetadataValues(ChromaMetadataValues.Exact);
+		Assert.That((await exact.GetCollection("c")).Metadata!["date"], Is.EqualTo("2026-10-04"));
+		Assert.That((await inferred.GetCollection("c")).Metadata!["date"], Is.EqualTo(new DateTime(2026, 10, 4)));
+		Assert.That(exact.Options.MetadataValues, Is.EqualTo(ChromaMetadataValues.Exact));
+		Assert.That(exact.Options.Tenant, Is.EqualTo("t"));
+		Assert.That(inferred.Options.MetadataValues, Is.EqualTo(ChromaMetadataValues.Inferred));
+	}
+
+	// The two clients share what they learned about the server: the version is asked once.
+	[Test]
+	public async Task ClientWithMetadataValuesSharesTheVersion()
+	{
+		var handler = new VersionHandler();
+		handler.Release.SetResult(true);
+		var inferred = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
+		var exact = inferred.WithMetadataValues(ChromaMetadataValues.Exact);
+		var records = new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] };
+		await inferred.GetCollectionClient(Guid.NewGuid(), "a").Add(records);
+		await exact.GetCollectionClient(Guid.NewGuid(), "b").Add(records);
+		Assert.That(handler.VersionRequests, Is.EqualTo(1));
+	}
+
 	[Test]
 	public void OtherOptionsKeepTheMetadataValues()
 		=> Assert.That(new ChromaConfigurationOptions().WithMetadataValues(ChromaMetadataValues.Exact).WithTenant("t").WithApiVersion(ChromaApiVersion.V1).MetadataValues, Is.EqualTo(ChromaMetadataValues.Exact));

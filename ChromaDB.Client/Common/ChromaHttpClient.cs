@@ -16,12 +16,8 @@ internal sealed class ChromaHttpClient
 	private readonly string? _chromaToken;
 	private readonly AuthenticationHeaderValue? _authorization;
 
-	private string? _serverVersion;
-	private readonly SemaphoreSlim _serverVersionLock = new(1, 1);
-	private int? _maxBatchSize;
-	// Volatile: read outside the lock, it is written after _maxBatchSize, so whoever sees it true sees the limit too.
-	private volatile bool _maxBatchSizeKnown;
-	private readonly SemaphoreSlim _maxBatchSizeLock = new(1, 1);
+	// What the client learns about the server, shared by the ChromaHttpClient made from this one.
+	private readonly ServerFacts _server;
 
 	public ChromaRoutes Routes { get; }
 	public JsonSerializerOptions DeserializerOptions { get; }
@@ -30,6 +26,7 @@ internal sealed class ChromaHttpClient
 	public ChromaHttpClient(HttpClient httpClient, ChromaConfigurationOptions options)
 	{
 		_httpClient = httpClient;
+		_server = new ServerFacts();
 		_baseUri = CreateBaseUri(options.Uri, options.ApiVersion);
 		Routes = options.ApiVersion == ChromaApiVersion.V1 ? ChromaRoutes.V1 : ChromaRoutes.V2;
 		DeserializerOptions = HttpClientHelpers.DeserializerOptions(options.MetadataValues);
@@ -55,25 +52,40 @@ internal sealed class ChromaHttpClient
 		}
 	}
 
+	// The same server, HttpClient and credentials, reading metadata values another way.
+	private ChromaHttpClient(ChromaHttpClient other, ChromaMetadataValues metadataValues)
+	{
+		_httpClient = other._httpClient;
+		_baseUri = other._baseUri;
+		_chromaToken = other._chromaToken;
+		_authorization = other._authorization;
+		_server = other._server;
+		Routes = other.Routes;
+		BatchSplitting = other.BatchSplitting;
+		DeserializerOptions = HttpClientHelpers.DeserializerOptions(metadataValues);
+	}
+
+	public ChromaHttpClient WithMetadataValues(ChromaMetadataValues metadataValues) => new(this, metadataValues);
+
 	public Uri CreateUri(string endpoint) => new(_baseUri, endpoint);
 
 	// Asked once, when a request needs it, also by concurrent calls; a failed or canceled request is not kept, so the next call asks again.
 	// The 0.x servers send their own version; every Chroma 1.x answers "1.0.0", so the version tells only 0.x from 1.x apart.
 	public async Task<bool> IsChroma0(CancellationToken cancellationToken)
 	{
-		if (_serverVersion is null)
+		if (_server.Version is null)
 		{
-			await _serverVersionLock.WaitAsync(cancellationToken);
+			await _server.VersionLock.WaitAsync(cancellationToken);
 			try
 			{
-				_serverVersion ??= await this.Get<string>(Routes.Version, new RequestQueryParams(), cancellationToken);
+				_server.Version ??= await this.Get<string>(Routes.Version, new RequestQueryParams(), cancellationToken);
 			}
 			finally
 			{
-				_serverVersionLock.Release();
+				_server.VersionLock.Release();
 			}
 		}
-		return _serverVersion.StartsWith("0.", StringComparison.Ordinal);
+		return _server.Version.StartsWith("0.", StringComparison.Ordinal);
 	}
 
 	// The endpoints are relative to the base URI, so it needs the trailing slash: without it, new Uri(base, endpoint)
@@ -91,31 +103,31 @@ internal sealed class ChromaHttpClient
 	// From pre-flight-checks, asked once like the version. Null for Chroma 0.4.10, which has no pre-flight-checks.
 	public async Task<int?> GetMaxBatchSize(CancellationToken cancellationToken)
 	{
-		if (!_maxBatchSizeKnown)
+		if (!_server.MaxBatchSizeKnown)
 		{
-			await _maxBatchSizeLock.WaitAsync(cancellationToken);
+			await _server.MaxBatchSizeLock.WaitAsync(cancellationToken);
 			try
 			{
-				if (!_maxBatchSizeKnown)
+				if (!_server.MaxBatchSizeKnown)
 				{
 					try
 					{
 						var maxBatchSize = (await this.Get<ChromaPreFlightChecks>(Routes.PreFlightChecks, new RequestQueryParams(), cancellationToken)).MaxBatchSize;
-						_maxBatchSize = maxBatchSize > 0 ? maxBatchSize : null;
+						_server.MaxBatchSize = maxBatchSize > 0 ? maxBatchSize : null;
 					}
 					catch (ChromaException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
 					{
-						_maxBatchSize = null;
+						_server.MaxBatchSize = null;
 					}
-					_maxBatchSizeKnown = true;
+					_server.MaxBatchSizeKnown = true;
 				}
 			}
 			finally
 			{
-				_maxBatchSizeLock.Release();
+				_server.MaxBatchSizeLock.Release();
 			}
 		}
-		return _maxBatchSize;
+		return _server.MaxBatchSize;
 	}
 
 	public Task<HttpResponseMessage> SendAsync(HttpRequestMessage httpRequestMessage, CancellationToken cancellationToken)
@@ -129,5 +141,15 @@ internal sealed class ChromaHttpClient
 			httpRequestMessage.Headers.Authorization = _authorization;
 		}
 		return _httpClient.SendAsync(httpRequestMessage, cancellationToken);
+	}
+
+	private sealed class ServerFacts
+	{
+		public string? Version;
+		public readonly SemaphoreSlim VersionLock = new(1, 1);
+		public int? MaxBatchSize;
+		// Volatile: read outside the lock, it is written after MaxBatchSize, so whoever sees it true sees the limit too.
+		public volatile bool MaxBatchSizeKnown;
+		public readonly SemaphoreSlim MaxBatchSizeLock = new(1, 1);
 	}
 }

@@ -13,10 +13,17 @@ public class ChromaClient
 	private readonly ChromaTenant _currentTenant;
 	private readonly ChromaDatabase _currentDatabase;
 
+	// The options of this client, as it was created with them.
+	public ChromaConfigurationOptions Options => _options;
+
 	public ChromaClient(ChromaConfigurationOptions options, HttpClient httpClient)
+		: this(options, new ChromaHttpClient(httpClient, options))
+	{ }
+
+	private ChromaClient(ChromaConfigurationOptions options, ChromaHttpClient httpClient)
 	{
 		_options = options;
-		_httpClient = new ChromaHttpClient(httpClient, options);
+		_httpClient = httpClient;
 		_currentTenant = options.Tenant is not null and not []
 			? new ChromaTenant(options.Tenant)
 			: ClientConstants.DefaultTenant;
@@ -76,6 +83,11 @@ public class ChromaClient
 			return false;
 		}
 	}
+
+	// The same client, reading metadata values another way: same HttpClient and options, and what it learned about the server.
+	// No request is sent, and this client does not change.
+	public ChromaClient WithMetadataValues(ChromaMetadataValues metadataValues)
+		=> new(_options.WithMetadataValues(metadataValues), _httpClient.WithMetadataValues(metadataValues));
 
 	// A client for the records of the collection, with the options and the HttpClient of this client: no request is sent.
 	public ChromaCollectionClient GetCollectionClient(ChromaCollection collection)
