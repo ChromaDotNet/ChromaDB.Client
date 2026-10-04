@@ -227,10 +227,10 @@ await collectionClient.ModifyConfiguration(new() { Hnsw = new() { EfSearch = 200
 
 `ModifyConfiguration` changes the settings of the index that Chroma lets change after the creation: those of HNSW, like `EfSearch`, and those of the SPANN index of Chroma Cloud, `EfSearch` and `SearchNprobe`. Chroma 1.0.6 and later apply them. The earlier versions answer without applying them: the client tells them by the configuration they send with the collection, and throws a `ChromaException` without sending the request.
 
-The settings must be those of the index of the collection: `Hnsw` on a single Chroma server, `Spann` on Chroma Cloud. Chroma Cloud answers `500` to `Hnsw` settings, and a single server answers without applying `Spann` settings, so the client throws a `ChromaException` before sending either:
+The settings must be those of the index of the collection: `Hnsw` on a single Chroma server, `Spann` on Chroma Cloud. Chroma Cloud answers `500` to `Hnsw` settings, and a single server answers without applying `Spann` settings: for the settings of the other index the client throws a `ChromaException` without sending them. On Chroma Cloud:
 
 ```csharp
-await collectionClient.ModifyConfiguration(new() { Spann = new() { SearchNprobe = 32 } }); // on Chroma Cloud
+await collectionClient.ModifyConfiguration(new() { Spann = new() { SearchNprobe = 32 } });
 ```
 
 ## Health of the server
