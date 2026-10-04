@@ -223,7 +223,19 @@ The client adds the credentials to each of its requests, without changing the `H
 
 The client serializes with metadata generated at build time, so it works in applications published with trimming or NativeAOT, where serialization by reflection is off; the packages are marked `IsAotCompatible`. The values of metadata and filters can be `string`, the numeric types, `bool`, `DateTime`, `DateTimeOffset`, `Guid`, `JsonElement`, and arrays and lists of strings, numbers and booleans, as well as `List<object>` and `object[]`. Other types work only where reflection is on, as without trimming.
 
-The CI publishes `Samples/ChromaDB.Client.TrimmingTest` with trimming and with NativeAOT, with every warning as an error, and runs it against Chroma 1.5.9.
+The CI publishes `Samples/ChromaDB.Client.TrimmingTest` with trimming and with NativeAOT, with every warning as an error, and runs it against Chroma 1.5.9. With `CHROMA_HOST`, `CHROMA_API_KEY`, `CHROMA_TENANT` and `CHROMA_DATABASE` it runs against Chroma Cloud.
+
+## Tests
+
+`dotnet test` starts a Chroma container for each test fixture, `chromadb/chroma:0.6.3` unless `CHROMA_IMAGE` names another image; `CHROMA_TEST_API_VERSION=v1` runs the tests with the v1 API.
+
+With `CHROMA_TEST_URI` the tests run against a server already running, like Chroma Cloud, and take the server for the latest Chroma unless `CHROMA_IMAGE` says otherwise:
+
+- `CHROMA_TEST_TOKEN` goes in `X-Chroma-Token`;
+- `CHROMA_TEST_TENANT` and `CHROMA_TEST_DATABASE` are used as they are, not created;
+- `CHROMA_TEST_MAX_BATCH_SIZE` is a batch limit lower than the one the server declares, like 300 on Chroma Cloud.
+
+Each fixture deletes the collections it created. The tests that reset the server, create or look up other tenants and databases, or query an id that does not exist, are skipped.
 
 ## Migrating from ChromaDB.Client 1.x
 

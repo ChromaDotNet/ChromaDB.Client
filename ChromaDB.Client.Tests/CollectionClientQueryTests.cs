@@ -438,6 +438,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	[Test]
 	public async Task QueryWithMissingIdThrows()
 	{
+		Assume.That(RunningServer, Is.False, "On a server already running the answer may differ: Chroma Cloud leaves out the ids that do not exist.");
 		var client = await Init(withThird: true);
 		await Assert.ThatAsync(() => client.Query(new ChromaQuery([Embeddings1]) { Ids = [Id1, "missing"] }),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains(IdsInQuerySupported ? "Error finding id" : "outside the ids"));

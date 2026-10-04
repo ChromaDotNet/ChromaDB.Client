@@ -130,8 +130,9 @@ public abstract class ChromaTestsBase
 	// Chroma 1.0 removed the built-in authentication and reads its settings from a configuration file.
 	protected static bool IsChroma1 => ChromaImage.Version.Major >= 1;
 
-	// A server already running, like Chroma Cloud, may not let the tests create tenants: Chroma Cloud answers 403.
-	protected static bool TenantCreationTested => !RunningServer;
+	// A server already running, like Chroma Cloud, may not let the tests create or look up other tenants and databases:
+	// Chroma Cloud answers 403 "Permission denied." also for a tenant or a database that does not exist.
+	protected static bool OtherTenantsAndDatabasesTested => !RunningServer;
 
 	// Chroma 0.4.14 has no tenants and databases, 0.4.15 has them.
 	protected static bool TenantsSupported => ChromaImage.Version >= new Version(0, 4, 15);

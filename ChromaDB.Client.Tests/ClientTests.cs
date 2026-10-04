@@ -193,6 +193,7 @@ public class ClientTests : ChromaTestsBase
 	[Test]
 	public async Task GetCollectionByIdInAnotherDatabase()
 	{
+		Assume.That(OtherTenantsAndDatabasesTested, Is.True, "A server already running may not let the tests create or look up other tenants and databases.");
 		Assume.That(CollectionByIdSupported, Is.True, "Only the v2 API of Chroma 1.5.7 and later gets a collection by its id.");
 		var database = $"database{Random.Shared.Next()}";
 
@@ -233,6 +234,7 @@ public class ClientTests : ChromaTestsBase
 	[Test]
 	public async Task ListCollectionsPages()
 	{
+		Assume.That(OtherTenantsAndDatabasesTested, Is.True, "A server already running may not let the tests create or look up other tenants and databases.");
 		Assume.That(ListCollectionsPagingSupported, Is.True, "Chroma 0.4.15 and earlier ignore the limit and the offset of the list of the collections.");
 		var database = $"database{Random.Shared.Next()}";
 
