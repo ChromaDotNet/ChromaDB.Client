@@ -5,7 +5,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 // Runs the main calls of the client against the server at args[0], like http://localhost:8000.
 // Published with trimming, it fails if the client needs code that trimming removed.
-var options = new ChromaConfigurationOptions(uri: args.Length > 0 ? args[0] : "http://localhost:8000");
+// --lists: the server stores lists in metadata (Chroma 1.5.0 and later), so they must work.
+var options = new ChromaConfigurationOptions(uri: args.Length > 0 && !args[0].StartsWith("--") ? args[0] : "http://localhost:8000");
+var listsStored = args.Contains("--lists");
 using var httpClient = new HttpClient();
 var client = new ChromaClient(options, httpClient);
 var failures = 0;
@@ -54,6 +56,25 @@ await Check("Add", async () =>
 	});
 	return "2 records";
 });
+await Check("Every type of single value", async () =>
+{
+	var guid = Guid.NewGuid();
+	var values = new Dictionary<string, object>
+	{
+		["string"] = "s", ["int"] = 1, ["long"] = 2L, ["short"] = (short)3, ["byte"] = (byte)4, ["sbyte"] = (sbyte)5, ["ushort"] = (ushort)6,
+		["uint"] = 7u, ["ulong"] = 8ul, ["double"] = 1.5, ["float"] = 2.5f, ["decimal"] = 3.5m, ["bool"] = true,
+		["dateTime"] = new DateTime(2026, 10, 4, 12, 0, 0, DateTimeKind.Utc), ["dateTimeOffset"] = new DateTimeOffset(2026, 10, 4, 12, 0, 0, TimeSpan.FromHours(2)),
+		["guid"] = guid,
+	};
+	await collectionClient.Add(new ChromaRecords(["v"]) { Embeddings = [new([0f, 0f, 0.5f])], Metadatas = [values] });
+	var where = ChromaWhereOperator.Equal("short", (short)3) & ChromaWhereOperator.Equal("ulong", 8ul) & ChromaWhereOperator.Equal("decimal", 3.5m)
+		& ChromaWhereOperator.In("guid", guid.ToString()) & ChromaWhereOperator.Equal("sbyte", (sbyte)5);
+	var exact = client.WithMetadataValues(ChromaMetadataValues.Exact).GetCollectionClient(collectionClient.Collection);
+	var result = await exact.Get(where: where, include: ChromaGetInclude.Metadatas);
+	var metadata = result.FirstOrDefault()?.Metadata;
+	await collectionClient.Delete(["v"]);
+	return Expect($"{result.Count} record, {metadata?.Count} values, guid {metadata?["guid"]}", result.Count == 1 && metadata?.Count == values.Count && Equals(metadata["guid"], guid.ToString()), $"1 record, {values.Count} values");
+});
 await Check("Count", async () => Expect((await collectionClient.Count()).ToString(), await collectionClient.Count() == 2, "2"));
 await Check("Get with filters", async () =>
 {
@@ -75,17 +96,36 @@ await Check("Exact metadata", async () =>
 });
 await Check("Lists in metadata", async () =>
 {
-	var records = new ChromaRecords(["l"]) { Embeddings = [new([0.5f, 0.5f, 0f])], Metadatas = [new() { ["tags"] = new List<string> { "red", "blue" }, ["numbers"] = new[] { 1, 2 } }] };
-	try
+	// A list of each type the client knows without reflection.
+	var lists = new Dictionary<string, object>
 	{
-		await collectionClient.Add(records);
-	}
-	catch (ChromaException ex) when (version.StartsWith("0.") || ex.StatusCode == System.Net.HttpStatusCode.UnprocessableEntity)
+		["tags"] = new List<string> { "red", "blue" }, ["strings"] = new[] { "x" },
+		["ints"] = new[] { 1, 2 }, ["intList"] = new List<int> { 1 }, ["longs"] = new[] { 1L }, ["longList"] = new List<long> { 1L },
+		["shorts"] = new short[] { 1 }, ["shortList"] = new List<short> { 1 }, ["sbytes"] = new sbyte[] { 1 }, ["sbyteList"] = new List<sbyte> { 1 },
+		["ushorts"] = new ushort[] { 1 }, ["ushortList"] = new List<ushort> { 1 }, ["uints"] = new uint[] { 1 }, ["uintList"] = new List<uint> { 1 },
+		["ulongs"] = new ulong[] { 1 }, ["ulongList"] = new List<ulong> { 1 }, ["byteList"] = new List<byte> { 1 },
+		["doubles"] = new[] { 1.5 }, ["doubleList"] = new List<double> { 1.5 }, ["floats"] = new[] { 2.5f }, ["floatList"] = new List<float> { 2.5f },
+		["decimals"] = new[] { 3.5m }, ["decimalList"] = new List<decimal> { 3.5m },
+		["bools"] = new[] { true }, ["boolList"] = new List<bool> { false },
+		["objects"] = new List<object> { "a", "b" }, ["objectArray"] = new object[] { 1, 2 },
+	};
+	var records = new ChromaRecords(["l"]) { Embeddings = [new([0.5f, 0.5f, 0f])], Metadatas = [lists] };
+	if (!listsStored)
 	{
-		return $"rejected on Chroma {version}: {ex.Message}";
+		try
+		{
+			await collectionClient.Add(records);
+			return "stored";
+		}
+		catch (ChromaException ex)
+		{
+			return $"rejected on Chroma {version}: {ex.Message}";
+		}
 	}
+	await collectionClient.Add(records);
 	var result = await client.WithMetadataValues(ChromaMetadataValues.Exact).GetCollectionClient(collectionClient.Collection).Get(where: ChromaWhereOperator.Contains("tags", "red"), include: ChromaGetInclude.Metadatas);
-	return Expect($"{result.Count} {result.FirstOrDefault()?.Metadata?["tags"]?.GetType().Name}", result.Count == 1, "1");
+	var metadata = result.FirstOrDefault()?.Metadata;
+	return Expect($"{result.Count} records, {metadata?.Count} lists", result.Count == 1 && metadata?.Count == lists.Count && metadata.Values.All(x => x is List<object>), $"1 record, {lists.Count} lists");
 });
 await Check("Update and Delete", async () =>
 {

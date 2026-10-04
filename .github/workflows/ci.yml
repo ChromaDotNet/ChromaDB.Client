@@ -95,6 +95,7 @@ jobs:
   trimming:
     # The client published with trimming and with NativeAOT, where reflection-based serialization is off,
     # running real requests: Samples/ChromaDB.Client.TrimmingTest. Every trimming or AOT warning is an error.
+    # --lists: Chroma 1.5.9 stores lists in metadata, so a rejected list is a failure.
     runs-on: ubuntu-latest
     name: Trimming and NativeAOT
     services:
@@ -121,13 +122,13 @@ jobs:
       run: dotnet publish Samples/ChromaDB.Client.TrimmingTest -c ${{ env.CONFIGURATION }} -r linux-x64 -o trimmed -p:TreatWarningsAsErrors=true
 
     - name: Run with trimming
-      run: ./trimmed/ChromaDB.Client.TrimmingTest http://localhost:8000
+      run: ./trimmed/ChromaDB.Client.TrimmingTest http://localhost:8000 --lists
 
     - name: Publish with NativeAOT
       run: dotnet publish Samples/ChromaDB.Client.TrimmingTest -c ${{ env.CONFIGURATION }} -r linux-x64 -o aot -p:TrimmingTestAot=true -p:TreatWarningsAsErrors=true
 
     - name: Run with NativeAOT
-      run: ./aot/ChromaDB.Client.TrimmingTest http://localhost:8000
+      run: ./aot/ChromaDB.Client.TrimmingTest http://localhost:8000 --lists
 
   publish:
     needs: [ci, trimming]
