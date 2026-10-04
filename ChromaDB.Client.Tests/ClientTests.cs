@@ -22,6 +22,15 @@ public class ClientTests : ChromaTestsBase
 		Assert.That(result, Does.Match(@"\d+\.\d+"));
 	}
 
+	// The client with an HttpClient of its own.
+	[Test]
+	public async Task GetVersionWithoutAnHttpClient()
+	{
+		using var client = new ChromaClient(BaseConfigurationOptions);
+		var result = await client.GetVersion();
+		Assert.That(result, Does.Match(@"\d+\.\d+"));
+	}
+
 	[Test]
 	public async Task GetUserIdentitySimple()
 	{

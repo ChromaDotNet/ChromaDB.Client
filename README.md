@@ -31,6 +31,8 @@ dotnet add package ChromaDotNet.Client
 
 The URI can be just the address of the server, like `http://localhost:8000`: the client adds `/api/v2/`. A URI with a path, like `http://localhost:8000/api/v2`, is used as it is, with or without the trailing slash.
 
+Without an `HttpClient`, `new ChromaClient("http://localhost:8000")`, or `new ChromaClient(options)`, creates one of its own, which `Dispose` closes: `using var client = new ChromaClient("http://localhost:8000");`. The clients it returns, like the collection clients, use the same `HttpClient`. An `HttpClient` given to the constructor stays open.
+
 ```csharp
 using ChromaDB.Client;
 

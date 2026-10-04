@@ -10,6 +10,9 @@ ChromaDB.Client.ChromaBm25.K.get -> double
 ChromaDB.Client.ChromaBm25.Reference.get -> ChromaDB.Client.Models.ChromaEmbeddingFunctionReference!
 ChromaDB.Client.ChromaBm25.Stopwords.get -> System.Collections.Generic.IReadOnlyList<string!>?
 ChromaDB.Client.ChromaBm25.TokenMaxLength.get -> int
+ChromaDB.Client.ChromaClient.ChromaClient(ChromaDB.Client.ChromaConfigurationOptions! options) -> void
+ChromaDB.Client.ChromaClient.ChromaClient(string! uri) -> void
+ChromaDB.Client.ChromaClient.Dispose() -> void
 ChromaDB.Client.ChromaCollectionClient.Search(ChromaDB.Client.Models.ChromaSearch! search, ChromaDB.Client.ChromaReadLevel? readLevel = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<ChromaDB.Client.Models.ChromaSearchEntry!>!>!
 ChromaDB.Client.ChromaCollectionClient.Search(System.Collections.Generic.List<ChromaDB.Client.Models.ChromaSearch!>! searches, ChromaDB.Client.ChromaReadLevel? readLevel = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<System.Collections.Generic.List<ChromaDB.Client.Models.ChromaSearchEntry!>!>!>!
 ChromaDB.Client.ChromaRank
@@ -97,3 +100,4 @@ static ChromaDB.Client.ChromaSearchAggregate.MaxK(int k, params string![]! keys)
 static ChromaDB.Client.ChromaSearchAggregate.MinK(int k, params string![]! keys) -> ChromaDB.Client.ChromaSearchAggregate!
 static ChromaDB.Client.Models.ChromaEmbeddingFunctionReference.ChromaBm25(double k = 1.2, double b = 0.75, double avgDocLength = 256, int tokenMaxLength = 40, bool includeTokens = false) -> ChromaDB.Client.Models.ChromaEmbeddingFunctionReference!
 static ChromaDB.Client.Models.ChromaEmbeddingFunctionReference.Known(string! name, System.Collections.Generic.Dictionary<string!, object!>? config = null) -> ChromaDB.Client.Models.ChromaEmbeddingFunctionReference!
+virtual ChromaDB.Client.ChromaClient.Dispose(bool disposing) -> void

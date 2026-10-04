@@ -10,10 +10,11 @@ namespace ChromaDB.Client;
 /// The client of a Chroma server, for its tenants, databases and collections. The records of a collection go through the
 /// <c>ChromaCollectionClient</c> that <c>GetCollectionClient</c> returns.
 /// </summary>
-public class ChromaClient
+public class ChromaClient : IDisposable
 {
 	private readonly ChromaConfigurationOptions _options;
 	private readonly ChromaHttpClient _httpClient;
+	private readonly HttpClient? _ownHttpClient;
 	private readonly ChromaTenant _currentTenant;
 	private readonly ChromaDatabase _currentDatabase;
 
@@ -24,11 +25,63 @@ public class ChromaClient
 
 	/// <summary>
 	/// A client that sends its requests with the given <c>HttpClient</c>, to the server of the options. It adds the credentials
-	/// of the options to each of its requests, without changing the <c>HttpClient</c>.
+	/// of the options to each of its requests, without changing the <c>HttpClient</c>, and <c>Dispose</c> leaves it open.
 	/// </summary>
 	public ChromaClient(ChromaConfigurationOptions options, HttpClient httpClient)
-		: this(options, new ChromaHttpClient(httpClient, options))
+		: this(options, httpClient, ownsHttpClient: false)
 	{ }
+
+	/// <summary>
+	/// A client of the server at the URI, like <c>http://localhost:8000</c>, with an <c>HttpClient</c> of its own, which
+	/// <c>Dispose</c> closes.
+	/// </summary>
+	public ChromaClient(string uri)
+		: this(new ChromaConfigurationOptions(uri))
+	{ }
+
+	/// <summary>
+	/// A client of the server of the options, with an <c>HttpClient</c> of its own, which <c>Dispose</c> closes. On .NET 8 and later
+	/// its connections last two minutes, as with <c>AddChromaClient</c>, so a change of the address of the server in the DNS is seen.
+	/// The clients that <c>WithMetadataValues</c>, <c>WithTenantAndDatabaseFromIdentity</c> and <c>GetCollectionClient</c> return
+	/// share that <c>HttpClient</c>: they work until this client is disposed.
+	/// </summary>
+	public ChromaClient(ChromaConfigurationOptions options)
+		: this(options, CreateHttpClient(), ownsHttpClient: true)
+	{ }
+
+	private ChromaClient(ChromaConfigurationOptions options, HttpClient httpClient, bool ownsHttpClient)
+		: this(options, new ChromaHttpClient(httpClient, options))
+	{
+		_ownHttpClient = ownsHttpClient ? httpClient : null;
+	}
+
+	// As the handlers of IHttpClientFactory, renewed every two minutes by default; SocketsHttpHandler is not in .NET Standard 2.0.
+	private static HttpClient CreateHttpClient()
+#if NET
+		=> new(new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(2) });
+#else
+		=> new();
+#endif
+
+	/// <summary>
+	/// Closes the <c>HttpClient</c> the client created; one given to the constructor stays open.
+	/// </summary>
+	public void Dispose()
+	{
+		Dispose(true);
+		GC.SuppressFinalize(this);
+	}
+
+	/// <summary>
+	/// Closes the <c>HttpClient</c> the client created, when <c>disposing</c>.
+	/// </summary>
+	protected virtual void Dispose(bool disposing)
+	{
+		if (disposing)
+		{
+			_ownHttpClient?.Dispose();
+		}
+	}
 
 	private ChromaClient(ChromaConfigurationOptions options, ChromaHttpClient httpClient)
 	{
