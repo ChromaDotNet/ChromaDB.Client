@@ -24,7 +24,7 @@ The package targets .NET 8 and .NET Standard 2.0; the tests run against both bui
 dotnet add package ChromaDotNet.Client
 ```
 
-`ChromaDotNet.Client.DependencyInjection` adds the registration for `Microsoft.Extensions.DependencyInjection`: `AddChromaClient`, and `AddKeyedChromaClient` for more than one server, tenant or database under different keys. Both register the `ChromaClient` as a singleton, so also singletons can take it. Its `HttpClient` sends each request with the current handler of `IHttpClientFactory`, which the factory renews after its handler lifetime, two minutes by default, so a change of the address of the server in the DNS is seen on every target. What the client learns about the server, like its version, is asked again after two minutes. Every change merged into `main` is also published as a preview version, installed with `--prerelease`.
+`ChromaDotNet.Client.DependencyInjection` adds the registration for `Microsoft.Extensions.DependencyInjection`: `AddChromaClient`, and `AddKeyedChromaClient` for more than one server, tenant or database under different keys. Both register the `ChromaClient` as a singleton, so also singletons can take it. Its `HttpClient` sends each request with the current handler of `IHttpClientFactory`, which the factory renews after its handler lifetime, two minutes by default, so a change of the address of the server in the DNS is seen on every target. What the client learns about the server, like its version, is asked again after two minutes. An overload configures that `HttpClient`, like a resilience handler, a proxy or a timeout: `services.AddChromaClient(_ => options, builder => builder.AddStandardResilienceHandler())`. Every change merged into `main` is also published as a preview version, installed with `--prerelease`.
 
 ## Example
 
@@ -111,7 +111,7 @@ Console.WriteLine(exact.Options.MetadataValues); // Exact
 
 ## Errors
 
-A failed request throws a `ChromaException`. Its `StatusCode` is the status code of the answer of the server, or null when there was no answer, like on a timeout.
+A failed request throws a `ChromaException`. Its `StatusCode` is the status code of the answer of the server, or null when there was no answer, like on a timeout. Its `ErrorType` is the kind of error the server names: `NotFoundError` or `InvalidArgumentError` from Chroma 1.x, `InvalidCollection` from Chroma 0.5 and 0.6, `ValueError` from the v1 API of Chroma 0.4, null when it names none.
 
 ```csharp
 if (!await client.CollectionExists("my_collection"))
@@ -140,6 +140,18 @@ var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithB
 ```
 
 With `WithBatchSplitting`, `Add`, `Update`, `Upsert` and `Delete` send their records in batches of the `max_batch_size` of the server, one request after the other; the client asks `pre-flight-checks` once. If a batch fails, the earlier ones stay written. Without it, as by default, the records go in one request: up to Chroma 1.0.13 a request beyond the limit fails, later versions accept it. Chroma 0.4.10 has no `pre-flight-checks`, so its records always go in one request.
+
+`WithBatchSplitting(maxBatchSize)` uses the smaller of that limit and the one of the server, or that limit alone where the server declares none. Chroma Cloud declares 1000, but takes 300 records per write unless the quota is raised:
+
+```csharp
+var options = new ChromaConfigurationOptions(uri: "https://api.trychroma.com").WithChromaToken(apiKey)
+	.WithTenant(tenant).WithDatabase(database)
+	.WithBatchSplitting(maxBatchSize: 300);
+```
+
+## Embeddings in base64
+
+Where `pre-flight-checks` declares `supports_base64_encoding`, from Chroma 1.0.13, `Add`, `Update` and `Upsert` send the embeddings as base64 strings of their float32 values, about half the size of the numbers; the server stores the same values. Queries always send numbers, since the servers reject base64 there. Elsewhere, or when `pre-flight-checks` does not answer, the embeddings go as numbers.
 
 ## Tenants and databases
 

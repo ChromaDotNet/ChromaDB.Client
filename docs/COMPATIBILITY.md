@@ -43,6 +43,8 @@ A missing endpoint gives a message that names the request, like `Not Found: POST
 
 A collection created with `ChromaCollectionConfiguration.Space` uses that space on all the servers on this page, and `ChromaCollection.Space` reads it back: the client sends it as the `hnsw:space` metadata. The `configuration` field of the request is not used: Chroma 0.4.10 – 0.5.3 ignore it and keep `l2`, and 0.5.4 – 0.6.3 answer it with `500`.
 
+`pre-flight-checks` declares `supports_base64_encoding` from Chroma 1.0.13: there `Add`, `Update` and `Upsert` take the embeddings as base64 strings and store the same float32 values, and the client sends them so; queries take only numbers. Chroma 1.0.12 and earlier do not declare it, reject base64 embeddings with `422`, and get numbers.
+
 `CollectionExists` recognizes a missing collection on all the servers on this page: Chroma 1.x answers `404`, Chroma 0.5.6 – 0.6.3 `400`, and Chroma 0.4.10 – 0.5.5 `500`, always with "does not exist" in the message.
 
 The `max_batch_size` of `pre-flight-checks` is 41666 on Chroma 0.4.12 – 0.6.3 and 5461 on 1.x. A single request beyond it fails up to Chroma 1.0.13 (`400` or `500`); Chroma 1.0.15 – 1.5.9 accept it. With `WithBatchSplitting` the client sends batches within the limit, and writes beyond it work on all the servers that have `pre-flight-checks`: Chroma 0.4.10 has none, so its records go in one request.
@@ -50,6 +52,10 @@ The `max_batch_size` of `pre-flight-checks` is 41666 on Chroma 0.4.12 – 0.6.3 
 All the servers on this page reject `$in` and `$nin` without values (`400` or `500`), so `ChromaWhereOperator.In` and `NotIn` without values throw an `ArgumentException`.
 
 The v1 API of Chroma 0.6.3 fails on most requests, and Chroma 1.5.9 answers it with `410 Gone`: use the v2 API there.
+
+## Chroma Cloud
+
+Checked on 4 October 2026 against `api.trychroma.com`: the key goes in `X-Chroma-Token`, the default of `WithChromaToken`, since `Authorization: Bearer` gets `401`. `pre-flight-checks` declares a `max_batch_size` of 1000 and `supports_base64_encoding`, but a write of more than 300 records gets `422` with `Quota exceeded`, the default quota; `WithBatchSplitting(maxBatchSize: 300)` writes and deletes 301 records in two batches. Embeddings sent in base64 read back identical. A missing collection gets `404` with `NotFoundError`.
 
 ## Versions tested in the CI
 
