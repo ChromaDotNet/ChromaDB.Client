@@ -70,6 +70,7 @@ public class AuthenticationHeaderTests
 	{
 		var options = Options.WithBasicAuth("admin", "secret").WithChromaToken("token", ChromaTokenTransportHeader.Authorization);
 		Assert.That(() => new ChromaClient(options, new HttpClient()), Throws.ArgumentException);
+		Assert.That(() => new ChromaClient(options), Throws.ArgumentException);
 	}
 
 	static async Task<List<RecordedRequest>> Send(ChromaConfigurationOptions options)

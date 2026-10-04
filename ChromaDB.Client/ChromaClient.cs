@@ -28,7 +28,7 @@ public class ChromaClient : IDisposable
 	/// of the options to each of its requests, without changing the <c>HttpClient</c>, and <c>Dispose</c> leaves it open.
 	/// </summary>
 	public ChromaClient(ChromaConfigurationOptions options, HttpClient httpClient)
-		: this(options, httpClient, ownsHttpClient: false)
+		: this(options, new ChromaHttpClient(httpClient, options))
 	{ }
 
 	/// <summary>
@@ -46,17 +46,28 @@ public class ChromaClient : IDisposable
 	/// share that <c>HttpClient</c>: they work until this client is disposed.
 	/// </summary>
 	public ChromaClient(ChromaConfigurationOptions options)
-		: this(options, CreateHttpClient(), ownsHttpClient: true)
-	{ }
-
-	private ChromaClient(ChromaConfigurationOptions options, HttpClient httpClient, bool ownsHttpClient)
-		: this(options, new ChromaHttpClient(httpClient, options))
+		: this(options, CreateHttpClient(options, out var ownHttpClient))
 	{
-		_ownHttpClient = ownsHttpClient ? httpClient : null;
+		_ownHttpClient = ownHttpClient;
+	}
+
+	// An HttpClient of its own, closed when the options are rejected, like basic authentication with a token in the Authorization header.
+	private static ChromaHttpClient CreateHttpClient(ChromaConfigurationOptions options, out HttpClient httpClient)
+	{
+		httpClient = NewHttpClient();
+		try
+		{
+			return new ChromaHttpClient(httpClient, options);
+		}
+		catch
+		{
+			httpClient.Dispose();
+			throw;
+		}
 	}
 
 	// As the handlers of IHttpClientFactory, renewed every two minutes by default; SocketsHttpHandler is not in .NET Standard 2.0.
-	private static HttpClient CreateHttpClient()
+	private static HttpClient NewHttpClient()
 #if NET
 		=> new(new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(2) });
 #else
