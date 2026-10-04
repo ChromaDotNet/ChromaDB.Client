@@ -17,6 +17,7 @@ public class SparseVectorsAndSchemaTests
 	{
 		Assert.That(new ChromaSparseVector([1, 5], [0.5f, 0.7f]).ToString(), Is.EqualTo("""{"#type":"sparse_vector","indices":[1,5],"values":[0.5,0.7]}"""));
 		Assert.That(new ChromaSparseVector([2], [1f], ["apple"]).ToString(), Is.EqualTo("""{"#type":"sparse_vector","indices":[2],"values":[1],"tokens":["apple"]}"""));
+		Assert.That(new ChromaSparseVector([2147483648, uint.MaxValue], [1f, 2f]).ToString(), Is.EqualTo("""{"#type":"sparse_vector","indices":[2147483648,4294967295],"values":[1,2]}"""));
 	}
 
 	// The rules of Chroma and of its Python client: Chroma Cloud rejects indices out of order with 400.
@@ -24,7 +25,6 @@ public class SparseVectorsAndSchemaTests
 	public void SparseVectorThatChromaRejects()
 	{
 		Assert.That(() => new ChromaSparseVector([1, 2], [1f]), Throws.ArgumentException);
-		Assert.That(() => new ChromaSparseVector([-1], [1f]), Throws.ArgumentException);
 		Assert.That(() => new ChromaSparseVector([3, 1], [1f, 2f]), Throws.ArgumentException);
 		Assert.That(() => new ChromaSparseVector([1, 1], [1f, 2f]), Throws.ArgumentException);
 		Assert.That(() => new ChromaSparseVector([1], [1f], ["a", "b"]), Throws.ArgumentException);
@@ -35,7 +35,7 @@ public class SparseVectorsAndSchemaTests
 	public void SparseVectorIsReadOnly()
 	{
 		var vector = new ChromaSparseVector([1, 5], [0.5f, 0.7f], ["a", "b"]);
-		Assert.That(vector.Indices, Is.Not.InstanceOf<int[]>());
+		Assert.That(vector.Indices, Is.Not.InstanceOf<uint[]>());
 		Assert.That(vector.Values, Is.Not.InstanceOf<float[]>());
 		Assert.That(vector.Tokens, Is.Not.InstanceOf<string[]>());
 	}
@@ -81,13 +81,13 @@ public class SparseVectorsAndSchemaTests
 	[TestCase(ChromaMetadataValues.Inferred)]
 	public async Task ReadSparseVectorsInMetadata(ChromaMetadataValues metadataValues)
 	{
-		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"ids":["a"],"metadatas":[{"doc_bm25":{"#type":"sparse_vector","indices":[1,5],"values":[0.5,0.7],"tokens":null},"x":1}]}"""));
+		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"ids":["a"],"metadatas":[{"doc_bm25":{"#type":"sparse_vector","indices":[1,4294967295],"values":[0.5,0.7],"tokens":null},"x":1}]}"""));
 		var options = new ChromaConfigurationOptions("http://localhost:8000").WithMetadataValues(metadataValues);
 		var value = (await CollectionClient(server, options).Get("a", include: ChromaGetInclude.Metadatas))!.Metadata!["doc_bm25"];
 		if (metadataValues == ChromaMetadataValues.Exact)
 		{
 			var vector = (ChromaSparseVector)value;
-			Assert.That((vector.Indices, vector.Values, vector.Tokens), Is.EqualTo(((IReadOnlyList<int>)[1, 5], (IReadOnlyList<float>)[0.5f, 0.7f], (IReadOnlyList<string>?)null)));
+			Assert.That((vector.Indices, vector.Values, vector.Tokens), Is.EqualTo(((IReadOnlyList<uint>)[1, uint.MaxValue], (IReadOnlyList<float>)[0.5f, 0.7f], (IReadOnlyList<string>?)null)));
 		}
 		else
 		{

@@ -12,10 +12,10 @@ namespace ChromaDB.Client.Models;
 public sealed class ChromaSparseVector
 {
 	/// <summary>
-	/// The vector with the values of the dimensions in <c>indices</c>, which must be non-negative and in strictly ascending order, as
-	/// many as the values; the tokens, when given, too.
+	/// The vector with the values of the dimensions in <c>indices</c>, which must be in strictly ascending order, as many as the values;
+	/// the tokens, when given, too. The indices are unsigned 32-bit integers, as Chroma stores them.
 	/// </summary>
-	public ChromaSparseVector(IReadOnlyList<int> indices, IReadOnlyList<float> values, IReadOnlyList<string>? tokens = null)
+	public ChromaSparseVector(IReadOnlyList<uint> indices, IReadOnlyList<float> values, IReadOnlyList<string>? tokens = null)
 	{
 		if (indices.Count != values.Count)
 		{
@@ -27,10 +27,6 @@ public sealed class ChromaSparseVector
 		}
 		for (var i = 0; i < indices.Count; i++)
 		{
-			if (indices[i] < 0)
-			{
-				throw new ArgumentException($"The indices of a sparse vector cannot be negative: {indices[i]} at position {i}.", nameof(indices));
-			}
 			if (i > 0 && indices[i] <= indices[i - 1])
 			{
 				throw new ArgumentException($"The indices of a sparse vector must be in strictly ascending order: {indices[i]} after {indices[i - 1]} at position {i}.", nameof(indices));
@@ -45,7 +41,7 @@ public sealed class ChromaSparseVector
 	/// <summary>
 	/// The dimensions that have a value, in ascending order.
 	/// </summary>
-	public IReadOnlyList<int> Indices { get; }
+	public IReadOnlyList<uint> Indices { get; }
 
 	/// <summary>
 	/// The value of each dimension in <c>Indices</c>.

@@ -184,7 +184,7 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		var collectionClient = client.GetCollectionClient(collection);
 		await collectionClient.Add(records);
 		var stored = (ChromaSparseVector)(await collectionClient.Get("a", include: ChromaGetInclude.Metadatas))!.Metadata!["doc_bm25"];
-		Assert.That((stored.Indices, stored.Values), Is.EqualTo(((IReadOnlyList<int>)[1, 5], (IReadOnlyList<float>)[0.5f, 0.7f])));
+		Assert.That((stored.Indices, stored.Values), Is.EqualTo(((IReadOnlyList<uint>)[1, 5], (IReadOnlyList<float>)[0.5f, 0.7f])));
 		var found = await collectionClient.Search(new ChromaSearch { Rank = ChromaRank.SparseKnn(new ChromaSparseVector([1, 5], [1f, 1f]), "doc_bm25"), Limit = 1 });
 		Assert.That(found.Single().Id, Is.EqualTo("a"));
 	}

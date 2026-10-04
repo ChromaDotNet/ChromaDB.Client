@@ -8,18 +8,19 @@ namespace ChromaDB.Client.Tests;
 [TestFixture]
 public class ChromaBm25Tests
 {
-	[TestCase("The quick brown fox jumps over the lazy dog.", new int[] { 226376294, 741580288, 771291085, 1312749093, 1621867415, 1913189942 }, new double[] { 1.6652868125369606, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606 })]
-	[TestCase("Running runners ran; they're RUNNING again!!! Generously, generalizations.", new int[] { 243905464, 567658162, 946033505, 1026658409, 1068447005 }, new double[] { 1.8956580276001347, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606 })]
-	[TestCase("the and of a", new int[0], new double[0])]
-	[TestCase("", new int[0], new double[0])]
-	[TestCase("repeated repeated repeated word word unique", new int[] { 209724451, 641155872, 968174432 }, new double[] { 1.6652868125369606, 1.9872971065631617, 1.8956580276001347 })]
-	[TestCase("Hello, world \u2014 it's a beautiful day... e-mail foo_bar 3.14", new int[] { 74040069, 116628897, 264741300, 520205939, 613153351, 1572539931, 1701593959, 1749031367, 2006997753 }, new double[] { 1.6520973892637139, 1.6520973892637139, 1.6520973892637139, 1.6520973892637139, 1.6520973892637139, 1.6520973892637139, 1.6520973892637139, 1.6520973892637139, 1.6520973892637139 })]
-	[TestCase("\u039F\u0394\u039F\u03A3 \u03A3\u039F\u03A6\u039F\u03A3 \u03BB\u03CC\u03B3\u03BF\u03C2", new int[] { 17478605, 214956135, 1332225548 }, new double[] { 1.6786885245901642, 1.6786885245901642, 1.6786885245901642 })]
-	[TestCase("\u0130stanbul \u015E\u0130MD\u0130 caf\u00E9 na\u00EFve", new int[] { 605818632, 756638508, 1467803446, 1524208432 }, new double[] { 1.6741973840665876, 1.6741973840665876, 1.6741973840665876, 1.6741973840665876 })]
-	[TestCase("emoji \U0001F600 test \U0001F680\U0001F680 rocket", new int[] { 430021617, 515862427, 1167338989 }, new double[] { 1.6786885245901642, 1.6786885245901642, 1.6786885245901642 })]
-	[TestCase("supercalifragilisticexpialidocious xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", new int[] { 158684264 }, new double[] { 1.6877434821696136 })]
-	[TestCase("tab\u0009separated\u000Anew line \u001Cfile\u001Dgroup", new int[] { 422208903, 437367475, 515475255, 640477688, 892506137, 1021187622 }, new double[] { 1.6652868125369606, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606 })]
-	public void SameVectorsAsPython(string text, int[] indices, double[] values)
+	[TestCase("The quick brown fox jumps over the lazy dog.", new uint[] { 226376294, 741580288, 771291085, 1312749093, 1621867415, 1913189942 }, new double[] { 1.6652868125369606, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606 })]
+	[TestCase("Running runners ran; they're RUNNING again!!! Generously, generalizations.", new uint[] { 243905464, 567658162, 946033505, 1026658409, 1068447005 }, new double[] { 1.8956580276001347, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606 })]
+	[TestCase("the and of a", new uint[0], new double[0])]
+	[TestCase("", new uint[0], new double[0])]
+	[TestCase("repeated repeated repeated word word unique", new uint[] { 209724451, 641155872, 968174432 }, new double[] { 1.6652868125369606, 1.9872971065631617, 1.8956580276001347 })]
+	[TestCase("Hello, world \u2014 it's a beautiful day... e-mail foo_bar 3.14", new uint[] { 74040069, 116628897, 264741300, 520205939, 613153351, 1572539931, 1701593959, 1749031367, 2006997753 }, new double[] { 1.6520973892637139, 1.6520973892637139, 1.6520973892637139, 1.6520973892637139, 1.6520973892637139, 1.6520973892637139, 1.6520973892637139, 1.6520973892637139, 1.6520973892637139 })]
+	[TestCase("\u039F\u0394\u039F\u03A3 \u03A3\u039F\u03A6\u039F\u03A3 \u03BB\u03CC\u03B3\u03BF\u03C2", new uint[] { 17478605, 214956135, 1332225548 }, new double[] { 1.6786885245901642, 1.6786885245901642, 1.6786885245901642 })]
+	[TestCase("\u0130stanbul \u015E\u0130MD\u0130 caf\u00E9 na\u00EFve", new uint[] { 605818632, 756638508, 1467803446, 1524208432 }, new double[] { 1.6741973840665876, 1.6741973840665876, 1.6741973840665876, 1.6741973840665876 })]
+	[TestCase("emoji \U0001F600 test \U0001F680\U0001F680 rocket", new uint[] { 430021617, 515862427, 1167338989 }, new double[] { 1.6786885245901642, 1.6786885245901642, 1.6786885245901642 })]
+	[TestCase("supercalifragilisticexpialidocious xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", new uint[] { 158684264 }, new double[] { 1.6877434821696136 })]
+	[TestCase("tab\u0009separated\u000Anew line \u001Cfile\u001Dgroup", new uint[] { 422208903, 437367475, 515475255, 640477688, 892506137, 1021187622 }, new double[] { 1.6652868125369606, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606, 1.6652868125369606 })]
+	[TestCase("1872d942 apple", new uint[] { 1085451005, 2147483648 }, new double[] { 1.6832038254632398, 1.6832038254632398 })]
+	public void SameVectorsAsPython(string text, uint[] indices, double[] values)
 	{
 		var vector = new ChromaBm25().Embed(text);
 		Assert.That(vector.Indices, Is.EqualTo(indices));
@@ -32,7 +33,7 @@ public class ChromaBm25Tests
 	{
 		var bm25 = new ChromaBm25(k: 1.5, b: 0.6, avgDocLength: 100, tokenMaxLength: 10, stopwords: ["quick", "fox"], includeTokens: true);
 		var vector = bm25.Embed("The quick brown fox jumps over the lazy dog. Foxes!");
-		Assert.That(vector.Indices, Is.EqualTo(new int[] { 226376294, 741580288, 1132748958, 1312749093, 1621867415, 1656251611, 1913189942 }));
+		Assert.That(vector.Indices, Is.EqualTo(new uint[] { 226376294, 741580288, 1132748958, 1312749093, 1621867415, 1656251611, 1913189942 }));
 		Assert.That(vector.Values, Is.EqualTo(new double[] { 1.4952153110047846, 1.4952153110047846, 1.87125748502994, 1.4952153110047846, 1.4952153110047846, 1.4952153110047846, 1.4952153110047846 }.Select(x => (float)x)));
 		Assert.That(vector.Tokens, Is.EqualTo(new[] { "lazi", "brown", "the", "dog", "fox", "over", "jump" }));
 	}

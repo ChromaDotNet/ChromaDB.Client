@@ -56,8 +56,8 @@ ChromaDB.Client.Models.ChromaSearchEntry.Metadata.init -> void
 ChromaDB.Client.Models.ChromaSearchEntry.Score.get -> float?
 ChromaDB.Client.Models.ChromaSearchEntry.Score.init -> void
 ChromaDB.Client.Models.ChromaSparseVector
-ChromaDB.Client.Models.ChromaSparseVector.ChromaSparseVector(System.Collections.Generic.IReadOnlyList<int>! indices, System.Collections.Generic.IReadOnlyList<float>! values, System.Collections.Generic.IReadOnlyList<string!>? tokens = null) -> void
-ChromaDB.Client.Models.ChromaSparseVector.Indices.get -> System.Collections.Generic.IReadOnlyList<int>!
+ChromaDB.Client.Models.ChromaSparseVector.ChromaSparseVector(System.Collections.Generic.IReadOnlyList<uint>! indices, System.Collections.Generic.IReadOnlyList<float>! values, System.Collections.Generic.IReadOnlyList<string!>? tokens = null) -> void
+ChromaDB.Client.Models.ChromaSparseVector.Indices.get -> System.Collections.Generic.IReadOnlyList<uint>!
 ChromaDB.Client.Models.ChromaSparseVector.Tokens.get -> System.Collections.Generic.IReadOnlyList<string!>?
 ChromaDB.Client.Models.ChromaSparseVector.Values.get -> System.Collections.Generic.IReadOnlyList<float>!
 ChromaDB.Client.Models.ChromaSparseVectorIndex

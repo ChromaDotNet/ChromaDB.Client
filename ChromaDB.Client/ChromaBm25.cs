@@ -120,7 +120,7 @@ public sealed class ChromaBm25
 			var hash = Math.Abs((long)MurmurHash3.Hash32(token));
 			counts[hash] = counts.TryGetValue(hash, out var entry) ? (entry.Count + 1, entry.Token) : (1, token);
 		}
-		var indices = new List<int>(counts.Count);
+		var indices = new List<uint>(counts.Count);
 		var values = new List<float>(counts.Count);
 		var labels = IncludeTokens ? new List<string>(counts.Count) : null;
 		foreach (var pair in counts.OrderBy(x => x.Key))
@@ -129,8 +129,8 @@ public sealed class ChromaBm25
 			var tf = (double)pair.Value.Count;
 			var denominator = tf + K * (1 - B + (B * length) / AvgDocLength);
 			var score = tf * (K + 1) / denominator;
-			// The absolute value of the smallest 32-bit hash, 2^31, does not fit an int: it would need a token with exactly that hash.
-			indices.Add(checked((int)pair.Key));
+			// Up to 2^31, the absolute value of the smallest hash, which the token "1872d942" has.
+			indices.Add((uint)pair.Key);
 			values.Add((float)score);
 			labels?.Add(pair.Value.Token);
 		}
