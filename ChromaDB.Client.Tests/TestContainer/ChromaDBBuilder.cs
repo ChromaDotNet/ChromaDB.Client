@@ -47,7 +47,8 @@ public class ChromaDBBuilder : ContainerBuilder<ChromaDBBuilder, ChromaDBContain
 	{
 		return base.Init()
 			.WithImage(ChromaDBImage)
-			.WithPortBinding(ChromaDBPort)
+			// A random host port: the tests reach the container on its own address, so several runs can share a Docker host.
+			.WithPortBinding(ChromaDBPort, assignRandomHostPort: true)
 			.WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(ChromaDBPort));
 	}
 
