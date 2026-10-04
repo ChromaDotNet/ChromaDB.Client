@@ -22,7 +22,8 @@ public class ChromaCollectionDefinition
 	public ChromaCollectionConfiguration? Configuration { get; init; }
 
 	/// <summary>
-	/// The indexes of the keys of the collection, like a sparse vector index for BM25. Chroma 1.3.0 and later apply it.
+	/// The indexes of the keys of the collection, like a sparse vector index for BM25. Chroma 1.3.0 and later apply a schema, but
+	/// sparse vector indexes only on Chroma Cloud: a single server rejects them.
 	/// </summary>
 	public ChromaCollectionSchema? Schema { get; init; }
 
