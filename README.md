@@ -285,6 +285,40 @@ var collection = await client.GetCollectionByCrn("my_org:my_database:my_collecti
 
 `GetCollectionByCrn` is there as in the official JavaScript client of Chroma, but the operation is hidden in the OpenAPI description of Chroma and missing from its documentation. On Chroma Cloud, `GetCollectionByCrn` sent with an API key limited to one database, and with an API key for the whole tenant, got `403 Permission denied`, also for a collection of that tenant.
 
+## Search
+
+The Search API of Chroma, which only Chroma Cloud serves; a single Chroma server answers `501`.
+
+```csharp
+var results = await collectionClient.Search(new ChromaSearch
+{
+	Where = ChromaWhereOperator.GreaterThanOrEqual("year", 2021),
+	WhereDocument = ChromaWhereDocumentOperator.Contains("apple"),
+	Rank = ChromaRank.Knn(new([0.1f, 0.2f, 0.3f])),
+	Limit = 10,
+	Select = [ChromaSearchKeys.Document, ChromaSearchKeys.Score, "title"],
+});
+foreach (var result in results)
+{
+	Console.WriteLine($"{result.Id} {result.Score} {result.Document} {result.Metadata?["title"]}");
+}
+```
+
+`ChromaSearch` holds the filters, which combine with `$and`, the ids, the ranking, the page and the fields to return. Without `Select` a search returns only the ids. The records with the lowest score come first.
+
+`ChromaRank` builds the ranking:
+- `Knn` ranks by distance from a vector;
+- `Value`, `Sum`, `Multiply`, `Max`, `Min`, `Abs`, `Exp`, `Log` and the operators `+ - * /` combine rankings;
+- `Rrf` fuses several rankings, built as the Python client of Chroma builds it.
+
+```csharp
+var fused = ChromaRank.Rrf([ChromaRank.Knn(vector1, returnRank: true), ChromaRank.Knn(vector2, returnRank: true)]);
+var perCategory = new ChromaSearchGroupBy(ChromaSearchAggregate.MinK(3, ChromaSearchKeys.Score), "category");
+var many = await collectionClient.Search([new ChromaSearch { Rank = fused, Limit = 5 }, new ChromaSearch { GroupBy = perCategory, Rank = fused }]);
+```
+
+`ChromaSearchGroupBy` keeps, for each value of the metadata keys, the records the aggregate chooses. Several searches go in one request, and their results come in order. `ToString()` of a `ChromaRank` gives its JSON.
+
 ## Authentication
 
 ```csharp

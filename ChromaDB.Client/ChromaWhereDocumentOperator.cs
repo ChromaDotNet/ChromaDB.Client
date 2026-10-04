@@ -21,6 +21,9 @@ public abstract class ChromaWhereDocumentOperator
 
 	internal abstract Dictionary<string, object> ToWhereDocument();
 
+	// The same filter in the where clause of the Search API, on the #document key: {"#document": {"$contains": "..."}}.
+	internal abstract Dictionary<string, object> ToSearchWhere();
+
 	/// <summary>
 	/// The JSON of the filter, as the client sends it in <c>where_document</c>.
 	/// </summary>
@@ -101,6 +104,12 @@ internal class ChromaWhereDocumentLogicalOperator : ChromaWhereDocumentOperator
 		{
 			{ Operator, new object[] { Lhs.ToWhereDocument(), Rhs.ToWhereDocument() } }
 		};
+
+	internal override Dictionary<string, object> ToSearchWhere()
+		=> new()
+		{
+			{ Operator, new object[] { Lhs.ToSearchWhere(), Rhs.ToSearchWhere() } }
+		};
 }
 
 internal class ChromaWhereDocumentStringOperator : ChromaWhereDocumentOperator
@@ -117,5 +126,11 @@ internal class ChromaWhereDocumentStringOperator : ChromaWhereDocumentOperator
 		=> new()
 		{
 			{ Operator, String }
+		};
+
+	internal override Dictionary<string, object> ToSearchWhere()
+		=> new()
+		{
+			{ ChromaSearchKeys.Document, new Dictionary<string, object> { { Operator, String } } }
 		};
 }

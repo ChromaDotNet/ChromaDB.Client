@@ -1,1 +1,61 @@
 #nullable enable
+ChromaDB.Client.ChromaCollectionClient.Search(ChromaDB.Client.Models.ChromaSearch! search, ChromaDB.Client.ChromaReadLevel? readLevel = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<ChromaDB.Client.Models.ChromaSearchEntry!>!>!
+ChromaDB.Client.ChromaCollectionClient.Search(System.Collections.Generic.List<ChromaDB.Client.Models.ChromaSearch!>! searches, ChromaDB.Client.ChromaReadLevel? readLevel = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<System.Collections.Generic.List<ChromaDB.Client.Models.ChromaSearchEntry!>!>!>!
+ChromaDB.Client.ChromaRank
+ChromaDB.Client.ChromaSearchAggregate
+ChromaDB.Client.ChromaSearchGroupBy
+ChromaDB.Client.ChromaSearchGroupBy.ChromaSearchGroupBy(ChromaDB.Client.ChromaSearchAggregate! aggregate, params string![]! keys) -> void
+ChromaDB.Client.ChromaSearchKeys
+ChromaDB.Client.Models.ChromaSearch
+ChromaDB.Client.Models.ChromaSearch.ChromaSearch() -> void
+ChromaDB.Client.Models.ChromaSearch.GroupBy.get -> ChromaDB.Client.ChromaSearchGroupBy?
+ChromaDB.Client.Models.ChromaSearch.GroupBy.init -> void
+ChromaDB.Client.Models.ChromaSearch.Ids.get -> System.Collections.Generic.List<string!>?
+ChromaDB.Client.Models.ChromaSearch.Ids.init -> void
+ChromaDB.Client.Models.ChromaSearch.Limit.get -> int?
+ChromaDB.Client.Models.ChromaSearch.Limit.init -> void
+ChromaDB.Client.Models.ChromaSearch.Offset.get -> int
+ChromaDB.Client.Models.ChromaSearch.Offset.init -> void
+ChromaDB.Client.Models.ChromaSearch.Rank.get -> ChromaDB.Client.ChromaRank?
+ChromaDB.Client.Models.ChromaSearch.Rank.init -> void
+ChromaDB.Client.Models.ChromaSearch.Select.get -> System.Collections.Generic.List<string!>?
+ChromaDB.Client.Models.ChromaSearch.Select.init -> void
+ChromaDB.Client.Models.ChromaSearch.Where.get -> ChromaDB.Client.ChromaWhereOperator?
+ChromaDB.Client.Models.ChromaSearch.Where.init -> void
+ChromaDB.Client.Models.ChromaSearch.WhereDocument.get -> ChromaDB.Client.ChromaWhereDocumentOperator?
+ChromaDB.Client.Models.ChromaSearch.WhereDocument.init -> void
+ChromaDB.Client.Models.ChromaSearchEntry
+ChromaDB.Client.Models.ChromaSearchEntry.ChromaSearchEntry(string! id) -> void
+ChromaDB.Client.Models.ChromaSearchEntry.Document.get -> string?
+ChromaDB.Client.Models.ChromaSearchEntry.Document.init -> void
+ChromaDB.Client.Models.ChromaSearchEntry.Embedding.get -> System.ReadOnlyMemory<float>?
+ChromaDB.Client.Models.ChromaSearchEntry.Embedding.init -> void
+ChromaDB.Client.Models.ChromaSearchEntry.Id.get -> string!
+ChromaDB.Client.Models.ChromaSearchEntry.Metadata.get -> System.Collections.Generic.Dictionary<string!, object!>?
+ChromaDB.Client.Models.ChromaSearchEntry.Metadata.init -> void
+ChromaDB.Client.Models.ChromaSearchEntry.Score.get -> float?
+ChromaDB.Client.Models.ChromaSearchEntry.Score.init -> void
+const ChromaDB.Client.ChromaSearchKeys.Document = "#document" -> string!
+const ChromaDB.Client.ChromaSearchKeys.Embedding = "#embedding" -> string!
+const ChromaDB.Client.ChromaSearchKeys.Id = "#id" -> string!
+const ChromaDB.Client.ChromaSearchKeys.Metadata = "#metadata" -> string!
+const ChromaDB.Client.ChromaSearchKeys.Score = "#score" -> string!
+override ChromaDB.Client.ChromaRank.ToString() -> string!
+static ChromaDB.Client.ChromaRank.Abs(ChromaDB.Client.ChromaRank! rank) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaRank.Exp(ChromaDB.Client.ChromaRank! rank) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaRank.implicit operator ChromaDB.Client.ChromaRank!(double value) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaRank.Knn(System.ReadOnlyMemory<float> query, string! key = "#embedding", int limit = 16, double? defaultScore = null, bool returnRank = false) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaRank.Log(ChromaDB.Client.ChromaRank! rank) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaRank.Max(params ChromaDB.Client.ChromaRank![]! ranks) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaRank.Min(params ChromaDB.Client.ChromaRank![]! ranks) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaRank.Multiply(params ChromaDB.Client.ChromaRank![]! ranks) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaRank.operator *(ChromaDB.Client.ChromaRank! left, ChromaDB.Client.ChromaRank! right) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaRank.operator +(ChromaDB.Client.ChromaRank! left, ChromaDB.Client.ChromaRank! right) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaRank.operator -(ChromaDB.Client.ChromaRank! left, ChromaDB.Client.ChromaRank! right) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaRank.operator -(ChromaDB.Client.ChromaRank! rank) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaRank.operator /(ChromaDB.Client.ChromaRank! left, ChromaDB.Client.ChromaRank! right) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaRank.Rrf(System.Collections.Generic.IReadOnlyList<ChromaDB.Client.ChromaRank!>! ranks, double k = 60, System.Collections.Generic.IReadOnlyList<double>? weights = null, bool normalize = false) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaRank.Sum(params ChromaDB.Client.ChromaRank![]! ranks) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaRank.Value(double value) -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaSearchAggregate.MaxK(int k, params string![]! keys) -> ChromaDB.Client.ChromaSearchAggregate!
+static ChromaDB.Client.ChromaSearchAggregate.MinK(int k, params string![]! keys) -> ChromaDB.Client.ChromaSearchAggregate!

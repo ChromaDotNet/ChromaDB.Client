@@ -120,6 +120,38 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		Assert.That(await client.ListCollections(), Is.Not.Null);
 	}
 
+	// The Search API exists only on Chroma Cloud: a single server answers with an error (501 from Chroma 1.x).
+	[Test]
+	public async Task Search()
+	{
+		var collection = await Init();
+		var search = new ChromaSearch
+		{
+			WhereDocument = ChromaWhereDocumentOperator.Contains("apple"),
+			Rank = ChromaRank.Knn(new([1f, 0f])),
+			Limit = 3,
+			Select = [ChromaSearchKeys.Document, ChromaSearchKeys.Score],
+		};
+		if (!ChromaCloud)
+		{
+			await Assert.ThatAsync(() => collection.Search(search), Throws.InstanceOf<ChromaException>());
+			return;
+		}
+		var apples = await collection.Search(search);
+		Assert.That(apples.Select(x => (x.Id, x.Document, x.Score)), Is.EqualTo(new[] { ("a", "apple pie", (float?)0f), ("d", "apple juice", (float?)0.5f) }));
+		var rrf = await collection.Search(new ChromaSearch
+		{
+			Rank = ChromaRank.Rrf([ChromaRank.Knn(new([1f, 0f]), returnRank: true), ChromaRank.Knn(new([0f, 1f]), returnRank: true)]),
+			Limit = 4,
+			Select = [ChromaSearchKeys.Score],
+		});
+		Assert.That(rrf.Select(x => x.Score), Is.Ordered.Ascending);
+		Assert.That(rrf, Has.Count.EqualTo(4));
+		var two = await collection.Search([new ChromaSearch { Ids = ["b", "c"], Select = [ChromaSearchKeys.Document] }, new ChromaSearch { Rank = ChromaRank.Knn(new([0f, 1f])), Limit = 1 }]);
+		Assert.That(two[0].Select(x => x.Document), Is.EquivalentTo(new[] { "banana split", "cherry tart" }));
+		Assert.That(two[1].Single().Id, Is.EqualTo("b"));
+	}
+
 	async Task<ChromaCollectionClient> Init()
 	{
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);

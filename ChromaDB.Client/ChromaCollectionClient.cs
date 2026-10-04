@@ -378,6 +378,88 @@ public class ChromaCollectionClient
 		return await _httpClient.Get<int>(_httpClient.Routes.Collection + "/count?read_level={read_level}", requestParams, cancellationToken);
 	}
 
+	/// <summary>
+	/// Runs one search with the Search API of Chroma, which only Chroma Cloud serves: a single server answers <c>501</c>.
+	/// </summary>
+	public async Task<List<ChromaSearchEntry>> Search(ChromaSearch search, ChromaReadLevel? readLevel = null, CancellationToken cancellationToken = default)
+		=> (await Search([search], readLevel, cancellationToken)).Single();
+
+	/// <summary>
+	/// Runs several searches in one request with the Search API of Chroma, which only Chroma Cloud serves: a single server answers
+	/// <c>501</c>. The results come in the order of the searches. With <c>ChromaReadLevel.IndexOnly</c> the records not indexed yet are
+	/// left out.
+	/// </summary>
+	public async Task<List<List<ChromaSearchEntry>>> Search(List<ChromaSearch> searches, ChromaReadLevel? readLevel = null, CancellationToken cancellationToken = default)
+	{
+		if (searches is not { Count: > 0 })
+		{
+			throw new ArgumentException("At least one search is needed.", nameof(searches));
+		}
+		foreach (var search in searches)
+		{
+			if (search.Offset < 0 || search.Limit is <= 0)
+			{
+				throw new ArgumentOutOfRangeException(nameof(searches), "The offset of a search cannot be negative, and its limit must be positive.");
+			}
+			if (search.Ids is [])
+			{
+				throw new ArgumentException("The ids of a search cannot be empty: leave them null to search all the records.", nameof(searches));
+			}
+		}
+		var requestParams = new RequestQueryParams()
+			.Insert("{tenant}", _tenant)
+			.Insert("{database}", _database)
+			.Insert("{collection_id}", _collection.Id);
+		var request = new CollectionSearchRequest()
+		{
+			Searches = searches.Select(search => new CollectionSearchPayload()
+			{
+				Filter = SearchFilter(search),
+				Rank = search.Rank?.ToRank(),
+				GroupBy = search.GroupBy?.ToGroupBy() ?? [],
+				Limit = new CollectionSearchLimit() { Offset = search.Offset, Limit = search.Limit },
+				Select = new CollectionSearchSelect() { Keys = search.Select?.Distinct().ToList() ?? [] },
+			}).ToList(),
+			ReadLevel = readLevel is { } level ? ReadLevelName(level) : null,
+		};
+		var response = await _httpClient.Post<CollectionSearchRequest, CollectionSearchResponse>(_httpClient.Routes.Collection + "/search", request, requestParams, cancellationToken);
+		return response.Ids
+			.Select((ids, i) => ids
+				.Select((id, j) => new ChromaSearchEntry(id)
+				{
+					Document = response.Documents?[i]?[j],
+					Embedding = response.Embeddings?[i]?[j],
+					Metadata = response.Metadatas?[i]?[j],
+					Score = response.Scores?[i]?[j],
+				})
+				.ToList())
+			.ToList();
+	}
+
+	// The where clause of the Search API holds the metadata, the documents (#document) and the ids (#id); several filters go in $and.
+	private static Dictionary<string, object>? SearchFilter(ChromaSearch search)
+	{
+		var filters = new List<Dictionary<string, object>>();
+		if (search.Where is { } where)
+		{
+			filters.Add(where.ToWhere());
+		}
+		if (search.WhereDocument is { } whereDocument)
+		{
+			filters.Add(whereDocument.ToSearchWhere());
+		}
+		if (search.Ids is { } ids)
+		{
+			filters.Add(ChromaWhereOperator.In(ChromaSearchKeys.Id, ids.ToArray<object>()).ToWhere());
+		}
+		return filters switch
+		{
+			[] => null,
+			[var single] => single,
+			_ => new() { ["$and"] = filters.Cast<object>().ToArray() },
+		};
+	}
+
 	private static string ReadLevelName(ChromaReadLevel readLevel) => readLevel switch
 	{
 		ChromaReadLevel.IndexAndWal => "index_and_wal",
