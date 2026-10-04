@@ -120,8 +120,8 @@ public class ChromaClient
 	}
 
 	// A collection by its Chroma Resource Name, "<tenant resource name>:<database>:<collection>": Chroma Cloud only, as in the
-	// JavaScript client of Chroma. The operation is hidden in the OpenAPI description, and Chroma Cloud answered 403 to the API
-	// keys tried, of a database and of a whole tenant.
+	// JavaScript client of Chroma. The operation is hidden in the OpenAPI description. On Chroma Cloud this request, sent with an API
+	// key limited to one database and with an API key for the whole tenant, got 403, also for a collection of that tenant.
 	public async Task<ChromaCollection> GetCollectionByCrn(string crn, CancellationToken cancellationToken = default)
 	{
 		var requestParams = new RequestQueryParams()

@@ -263,7 +263,7 @@ var collection = await client.GetCollectionByCrn("my_org:my_database:my_collecti
 
 `UpdateTenant` sets the resource name of a tenant, which `GetTenant` returns as `ResourceName`, and `GetCollectionByCrn` gets a collection by its Chroma Resource Name. A single Chroma server from 1.0.17 accepts `UpdateTenant` but does not keep the name.
 
-`GetCollectionByCrn` is there as in the official JavaScript client of Chroma, but the operation is hidden in the OpenAPI description of Chroma and missing from its documentation. Chroma Cloud answered `403 Permission denied` to an API key of a database and to one of the whole tenant, also for a collection of that tenant.
+`GetCollectionByCrn` is there as in the official JavaScript client of Chroma, but the operation is hidden in the OpenAPI description of Chroma and missing from its documentation. On Chroma Cloud, `GetCollectionByCrn` sent with an API key limited to one database, and with an API key for the whole tenant, got `403 Permission denied`, also for a collection of that tenant.
 
 ## Authentication
 
