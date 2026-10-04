@@ -180,6 +180,18 @@ public class SparseVectorsAndSchemaTests
 		}
 	}
 
+	// The reference keeps a copy of the settings: changing them afterwards does not change the schema.
+	[Test]
+	public async Task EmbeddingFunctionSettingsAreCopied()
+	{
+		var config = new Dictionary<string, object> { ["k"] = 1 };
+		var schema = new ChromaCollectionSchema().WithSparseVectorIndex("v", embeddingFunction: ChromaEmbeddingFunctionReference.Known("f", config));
+		config["k"] = 2;
+		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"id":"11111111-2222-3333-4444-555555555555","name":"c","schema":{"defaults":{},"keys":{}}}"""));
+		await Client(server).CreateCollection(new ChromaCollectionDefinition("c") { Schema = schema });
+		Assert.That(server.Requests.Single().Body.GetProperty("schema").GetProperty("keys").GetProperty("v").GetRawText(), Does.Contain("""{"k":1}"""));
+	}
+
 	static ChromaClient Client(HttpMessageHandler handler)
 		=> new(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
 

@@ -19,7 +19,7 @@ public sealed class ChromaEmbeddingFunctionReference
 	/// A function known to the clients of Chroma by its name, with its settings.
 	/// </summary>
 	public static ChromaEmbeddingFunctionReference Known(string name, Dictionary<string, object>? config = null)
-		=> new(name, config ?? []);
+		=> new(name, config is null ? [] : new Dictionary<string, object>(config)); // a copy: later changes to config do not reach the schemas
 
 	/// <summary>
 	/// The BM25 function of Chroma, <c>chroma_bm25</c>, with the settings the Python client of Chroma 1.5.9 uses by default:
