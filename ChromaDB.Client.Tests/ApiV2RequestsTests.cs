@@ -77,7 +77,7 @@ public class ApiV2RequestsTests
 	public async Task DeleteWithLimitOnAServerThatIgnoresIt(HttpStatusCode status, string description)
 	{
 		var server = new FakeServer(r => r.Path == "/openapi.json" ? (status, description) : (HttpStatusCode.OK, "{}"));
-		await Assert.ThatAsync(() => CollectionClient(server).Delete(new ChromaDelete { Ids = ["a"], Limit = 1 }),
+		await Assert.ThatAsync(() => CollectionClient(server).Delete(new ChromaDelete { Ids = ["a"], WhereDocument = ChromaWhereDocumentOperator.Contains("x"), Limit = 1 }),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains("Chroma 1.5.3"));
 		Assert.That(server.Requests.Any(x => x.Path.EndsWith("/delete")), Is.False);
 	}
@@ -93,7 +93,7 @@ public class ApiV2RequestsTests
 			_ => (HttpStatusCode.OK, $$"""{"deleted":{{Math.Min(r.Body.GetProperty("ids").GetArrayLength(), r.Body.GetProperty("limit").GetInt32())}}}"""),
 		});
 		var client = CollectionClient(server, new ChromaConfigurationOptions("http://localhost:8000").WithBatchSplitting());
-		var deleted = await client.Delete(new ChromaDelete { Ids = ["a", "b", "c", "d", "e"], Limit = 3 });
+		var deleted = await client.Delete(new ChromaDelete { Ids = ["a", "b", "c", "d", "e"], WhereDocument = ChromaWhereDocumentOperator.Contains("x"), Limit = 3 });
 		Assert.That(deleted, Is.EqualTo(3));
 		var limits = server.Requests.Where(x => x.Path.EndsWith("/delete")).Select(x => x.Body.GetProperty("limit").GetInt32());
 		Assert.That(limits, Is.EqualTo(new[] { 3, 1 }));
@@ -109,12 +109,28 @@ public class ApiV2RequestsTests
 		Assert.That(await CollectionClient(server).Delete(new ChromaDelete { Ids = ["a"] }), Is.Null);
 	}
 
+	// What Chroma or its Python client reject: nothing is sent, not even the request for the OpenAPI description.
 	[Test]
-	public void DeleteWithoutIdsOrFilters()
+	public async Task DeleteThatChromaRejects()
 	{
-		var server = new FakeServer(_ => (HttpStatusCode.OK, "{}"));
-		Assert.That(() => CollectionClient(server).Delete(new ChromaDelete()), Throws.ArgumentException);
+		var server = new FakeServer(_ => (HttpStatusCode.OK, OpenApiWithDeleteLimit));
+		var client = CollectionClient(server);
+		var filter = ChromaWhereDocumentOperator.Contains("x");
+		await Assert.ThatAsync(() => client.Delete(new ChromaDelete()), Throws.ArgumentException);
+		await Assert.ThatAsync(() => client.Delete(new ChromaDelete { Ids = [] }), Throws.ArgumentException);
+		await Assert.ThatAsync(() => client.Delete(new ChromaDelete { Ids = [], WhereDocument = filter }), Throws.ArgumentException);
+		await Assert.ThatAsync(() => client.Delete(new ChromaDelete { Ids = ["a"], Limit = 1 }), Throws.ArgumentException);
+		await Assert.ThatAsync(() => client.Delete(new ChromaDelete { WhereDocument = filter, Limit = -1 }), Throws.InstanceOf<ArgumentOutOfRangeException>());
 		Assert.That(server.Requests, Is.Empty);
+	}
+
+	// Chroma answers {"deleted":0} to a limit of 0.
+	[Test]
+	public async Task DeleteWithLimitZero()
+	{
+		var server = new FakeServer(r => r.Path == "/openapi.json" ? (HttpStatusCode.OK, OpenApiWithDeleteLimit) : (HttpStatusCode.OK, """{"deleted":0}"""));
+		Assert.That(await CollectionClient(server).Delete(new ChromaDelete { WhereDocument = ChromaWhereDocumentOperator.Contains("x"), Limit = 0 }), Is.EqualTo(0));
+		Assert.That(server.Requests.Single(x => x.Path.EndsWith("/delete")).Body.GetProperty("limit").GetInt32(), Is.EqualTo(0));
 	}
 
 	[TestCase(ChromaReadLevel.IndexAndWal, "index_and_wal")]

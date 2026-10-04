@@ -161,7 +161,7 @@ var options = new ChromaConfigurationOptions(uri: "https://api.trychroma.com").W
 var deleted = await collectionClient.Delete(new ChromaDelete { WhereDocument = ChromaWhereDocumentOperator.Contains("draft"), Limit = 100 });
 ```
 
-`ChromaDelete` holds the ids, the filters and the limit of a delete. Without ids it deletes by the filters only; without ids and filters it throws an `ArgumentException`, since it would select every record. Chroma 1.5.3 and later apply `Limit` and answer how many records they deleted, which `Delete` returns; on the earlier servers it returns null. Those servers ignore the limit and would delete every matching record: before a delete with a limit the client reads the OpenAPI description of the server, once, and throws a `ChromaException` without sending the delete if it does not declare the limit.
+`ChromaDelete` holds the ids, the filters and the limit of a delete. Without ids it deletes by the filters only; without ids and filters it throws an `ArgumentException`, since it would select every record. As in Chroma and its Python client, the ids cannot be an empty list, and the limit needs a `where` or `where_document` filter and cannot be negative. Chroma 1.5.3 and later apply `Limit` and answer how many records they deleted, which `Delete` returns; on the earlier servers it returns null. Those servers ignore the limit and would delete every matching record: before a delete with a limit the client reads the OpenAPI description of the server, once, and throws a `ChromaException` without sending the delete if it does not declare the limit.
 
 ## Embeddings in base64
 

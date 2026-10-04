@@ -233,9 +233,22 @@ public class ChromaCollectionClient
 	// were deleted when the server says it, from Chroma 1.5.3; null otherwise.
 	public async Task<int?> Delete(ChromaDelete delete, CancellationToken cancellationToken = default)
 	{
+		// The rules of Chroma and of its Python client, checked before any request.
 		if (delete.Ids is null && delete.Where is null && delete.WhereDocument is null)
 		{
 			throw new ArgumentException("A delete needs ids, a where filter or a where document filter: without them it would select every record.", nameof(delete));
+		}
+		if (delete.Ids is [])
+		{
+			throw new ArgumentException("The ids of a delete cannot be empty: leave them null to delete by the filters only.", nameof(delete));
+		}
+		if (delete.Limit is < 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(delete), "The limit of a delete cannot be negative.");
+		}
+		if (delete.Limit is not null && delete.Where is null && delete.WhereDocument is null)
+		{
+			throw new ArgumentException("The limit of a delete needs a where or where document filter: Chroma rejects it with the ids alone.", nameof(delete));
 		}
 		if (delete.Limit is not null && !await _httpClient.SupportsDeleteLimit(cancellationToken))
 		{
@@ -250,10 +263,6 @@ public class ChromaCollectionClient
 		var remaining = delete.Limit;
 		foreach (var ids in batches)
 		{
-			if (remaining is <= 0)
-			{
-				break;
-			}
 			var request = new CollectionDeleteRequest()
 			{
 				Ids = ids,
@@ -268,6 +277,11 @@ public class ChromaCollectionClient
 			{
 				deleted = (deleted ?? 0) + count.GetInt32();
 				remaining -= count.GetInt32();
+			}
+			// The limit is used up: the next batches would delete nothing.
+			if (remaining is <= 0)
+			{
+				break;
 			}
 		}
 		return deleted;
