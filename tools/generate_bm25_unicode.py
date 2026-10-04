@@ -30,19 +30,19 @@ def space(c):  # \s of re in Unicode, and str.isspace()
     return chr(c).isspace()
 
 
-# The Final_Sigma context of str.lower(), read from the behavior of Python itself, for the word characters, the only ones left
-# around a sigma once the tokenizer has replaced the others with spaces: "X" + sigma ends with a final sigma when X is cased and not
+# The Final_Sigma context of str.lower(), read from the behavior of Python itself, for every character: the text has only word
+# characters and spaces, but the stopwords are lowercased as they are. "X" + sigma ends with a final sigma when X is cased and not
 # case-ignorable; "A" + X + sigma ends with one when X is case-ignorable or cased.
 def final(text):
     return text.lower().endswith("ς")
 
 
 def cased(c):
-    return word(c) and final(chr(c) + "Σ")
+    return final(chr(c) + "Σ")
 
 
 def case_ignorable(c):
-    return word(c) and not final(chr(c) + "Σ") and final("A" + chr(c) + "Σ")
+    return not final(chr(c) + "Σ") and final("A" + chr(c) + "Σ")
 
 
 def array(name, items):
@@ -75,9 +75,9 @@ out.write("\t// \\w: str.isalnum() or \"_\".\n")
 out.write(array("WordRanges", flat(ranges(word))))
 out.write("\n\t// \\s: str.isspace().\n")
 out.write(array("SpaceRanges", flat(ranges(space))))
-out.write("\n\t// The word characters that are cased and not case-ignorable, for the final sigma.\n")
+out.write("\n\t// The characters that are cased and not case-ignorable, for the final sigma.\n")
 out.write(array("CasedRanges", flat(ranges(cased))))
-out.write("\n\t// The word characters that are case-ignorable, for the final sigma.\n")
+out.write("\n\t// The characters that are case-ignorable, for the final sigma.\n")
 out.write(array("CaseIgnorableRanges", flat(ranges(case_ignorable))))
 out.write("\n\t// str.lower() of the characters that change, without the context of the final sigma: pairs of code point and lowercase.\n")
 out.write(array("Lowercase", flat(single)))

@@ -38,6 +38,13 @@ public class ChromaBm25Tests
 		Assert.That(vector.Tokens, Is.EqualTo(new[] { "lazi", "brown", "the", "dog", "fox", "over", "jump" }));
 	}
 
+	// Python lowercases both the stopword and the text to "i\u0307\u03C2": the final sigma skips the combining dot, which is not a word character.
+	[Test]
+	public void StopwordsLowercasedAsPython()
+	{
+		Assert.That(new ChromaBm25(stopwords: ["i\u0307\u03A3"]).Embed("\u0130\u03A3").Indices, Is.Empty);
+	}
+
 	// The configuration of chroma_bm25 as the Python client writes it in a schema: the stopwords only when they are not the default ones.
 	[Test]
 	public async Task Reference()
