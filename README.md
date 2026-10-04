@@ -200,7 +200,7 @@ var collection = await client.CreateCollection(new ChromaCollectionDefinition("m
 Console.WriteLine(collection.Space);
 ```
 
-`ChromaSpace` is `L2` (the default of Chroma), `Cosine` or `InnerProduct`. The client sends it as the `hnsw:space` metadata, which every tested Chroma applies; `GetOrCreateCollection` takes a `ChromaCollectionDefinition` too. `ChromaCollection.Space` reads it back from that metadata, or from the configuration that Chroma 1.0.6 and later send; it is null for a collection created without a space on the older servers, which do not report it reliably. `ChromaCollection.ConfigurationJson` holds the configuration as the server sends it.
+`ChromaSpace` is `L2` (the default of Chroma), `Cosine` or `InnerProduct`. The client sends it as the `hnsw:space` metadata, which every tested Chroma applies; `GetOrCreateCollection` takes a `ChromaCollectionDefinition` too. `ChromaCollection.Space` reads it back from that metadata, or from the configuration that Chroma 1.0.6 and later and Chroma Cloud send; it is null for a collection created without a space on the older servers, which do not report it reliably. `ChromaCollection.ConfigurationJson` holds the configuration as the server sends it.
 
 ## Authentication
 

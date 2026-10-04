@@ -71,6 +71,8 @@ public class CollectionConfigurationTests
 
 	[TestCase("""{"id":"11111111-2222-3333-4444-555555555555","name":"c","metadata":{"hnsw:space":"cosine"},"configuration_json":{"hnsw":{"space":"l2"}}}""", ChromaSpace.Cosine)]
 	[TestCase("""{"id":"11111111-2222-3333-4444-555555555555","name":"c","metadata":null,"configuration_json":{"hnsw":{"space":"ip"},"spann":null}}""", ChromaSpace.InnerProduct)]
+	// Chroma Cloud.
+	[TestCase("""{"id":"11111111-2222-3333-4444-555555555555","name":"c","metadata":null,"configuration_json":{"hnsw":null,"spann":{"space":"cosine"}}}""", ChromaSpace.Cosine)]
 	[TestCase("""{"id":"11111111-2222-3333-4444-555555555555","name":"c","metadata":null,"configuration_json":{"_type":"CollectionConfigurationInternal","hnsw_configuration":{"space":"l2"}}}""", null)]
 	[TestCase("""{"id":"11111111-2222-3333-4444-555555555555","name":"c","metadata":null}""", null)]
 	public async Task SpaceOfTheCollection(string response, ChromaSpace? expected)
