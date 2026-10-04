@@ -7,7 +7,7 @@
 		<IsPackable>true</IsPackable>
 		<!-- The analyzers of trimming and NativeAOT run on the target that has them. -->
 		<IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">true</IsAotCompatible>
-		<VersionPrefix>2.5.1</VersionPrefix>
+		<VersionPrefix>2.6.0</VersionPrefix>
 		<PackageId>ChromaDB.Client.DependencyInjection</PackageId>
 		<!-- -p:PackageIdPrefix=Name publishes the package as Name.Client.DependencyInjection. -->
 		<PackageId Condition="'$(PackageIdPrefix)' != ''">$(PackageIdPrefix).Client.DependencyInjection</PackageId>
@@ -24,7 +24,7 @@
 		<PackageProjectUrl Condition="'$(GITHUB_REPOSITORY)' != ''">https://github.com/$(GITHUB_REPOSITORY)</PackageProjectUrl>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
-		<PackageReleaseNotes>2.5.0: AddChromaClient and AddKeyedChromaClient with an action that configures the IHttpClientBuilder, for a resilience handler, a proxy or a timeout; the singleton client applies the settings of its HttpClient, like ConfigureHttpClient, which were lost. 2.4.1: works in applications published with trimming or NativeAOT, with IsAotCompatible. 2.4.0: AddChromaClient and AddKeyedChromaClient register one ChromaClient singleton per key, so also singletons can take it; its HttpClient takes the current handler of IHttpClientFactory at each request, renewed after two minutes by default, on every target. 2.3.0: AddKeyedChromaClient registers a client and its options under a key. 2.0.0: AddChromaClient registers the options, which the client needs. Release notes of the client: $(PackageProjectUrl)/releases</PackageReleaseNotes>
+		<PackageReleaseNotes>2.6.0: with ChromaDotNet.Client 2.6.0, no change of its own. 2.5.0: AddChromaClient and AddKeyedChromaClient with an action that configures the IHttpClientBuilder, for a resilience handler, a proxy or a timeout; the singleton client applies the settings of its HttpClient, like ConfigureHttpClient, which were lost. 2.4.1: works in applications published with trimming or NativeAOT, with IsAotCompatible. 2.4.0: AddChromaClient and AddKeyedChromaClient register one ChromaClient singleton per key, so also singletons can take it; its HttpClient takes the current handler of IHttpClientFactory at each request, renewed after two minutes by default, on every target. 2.3.0: AddKeyedChromaClient registers a client and its options under a key. 2.0.0: AddChromaClient registers the options, which the client needs. Release notes of the client: $(PackageProjectUrl)/releases</PackageReleaseNotes>
 	</PropertyGroup>
 	<ItemGroup>
 		<None Include="..\README.md" Pack="true" PackagePath="\" />
