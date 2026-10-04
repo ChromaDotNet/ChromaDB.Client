@@ -35,7 +35,7 @@ public abstract class ChromaTestsBase
 		}
 		_container = ConfigureContainer(new ChromaDBBuilder()).Build();
 		await _container.StartAsync();
-		_baseConfigurationOptions = new ChromaConfigurationOptions(uri: $"http://{_container.IpAddress}:{ChromaDBBuilder.ChromaDBPort}/api/{(ApiVersion == ChromaApiVersion.V1 ? "v1" : "v2")}/")
+		_baseConfigurationOptions = new ChromaConfigurationOptions(uri: $"http://{_container.Hostname}:{_container.GetMappedPublicPort(ChromaDBBuilder.ChromaDBPort)}/api/{(ApiVersion == ChromaApiVersion.V1 ? "v1" : "v2")}/")
 			.WithApiVersion(ApiVersion);
 		if (TestTenant is not null || TestDatabase is not null)
 		{
