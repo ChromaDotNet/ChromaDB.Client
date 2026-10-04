@@ -35,6 +35,14 @@ public abstract class ChromaWhereOperator
 	public static ChromaWhereOperator NotEqual(string key, object value)
 		=> new ChromaWhereValueOperator(key, "$ne", value);
 
+	// The records whose list in the metadata contains the value: Chroma 1.5.0 and later.
+	public static ChromaWhereOperator Contains(string key, object value)
+		=> new ChromaWhereValueOperator(key, "$contains", value);
+
+	// The records whose list in the metadata does not contain the value: Chroma 1.5.0 and later.
+	public static ChromaWhereOperator NotContains(string key, object value)
+		=> new ChromaWhereValueOperator(key, "$not_contains", value);
+
 	public static bool operator true(ChromaWhereOperator _)
 		=> false;
 	public static bool operator false(ChromaWhereOperator _)

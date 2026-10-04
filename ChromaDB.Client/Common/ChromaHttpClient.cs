@@ -1,5 +1,7 @@
 ﻿using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
+using ChromaDB.Client.Models.Requests;
 
 namespace ChromaDB.Client.Common;
 
@@ -12,13 +14,17 @@ internal sealed class ChromaHttpClient
 	private readonly string? _chromaToken;
 	private readonly AuthenticationHeaderValue? _authorization;
 
+	private string? _serverVersion;
+
 	public ChromaRoutes Routes { get; }
+	public JsonSerializerOptions DeserializerOptions { get; }
 
 	public ChromaHttpClient(HttpClient httpClient, ChromaConfigurationOptions options)
 	{
 		_httpClient = httpClient;
 		_baseUri = CreateBaseUri(options.Uri, options.ApiVersion);
 		Routes = options.ApiVersion == ChromaApiVersion.V1 ? ChromaRoutes.V1 : ChromaRoutes.V2;
+		DeserializerOptions = HttpClientHelpers.DeserializerOptions(options.MetadataValues);
 		if (options.ChromaToken is not null and not [])
 		{
 			if (options.ChromaTokenTransportHeader == ChromaTokenTransportHeader.Authorization)
@@ -41,6 +47,14 @@ internal sealed class ChromaHttpClient
 	}
 
 	public Uri CreateUri(string endpoint) => new(_baseUri, endpoint);
+
+	// Asked once, when a request needs it. The 0.x servers send their own version; every Chroma 1.x answers "1.0.0",
+	// so the version tells only 0.x from 1.x apart.
+	public async Task<bool> IsChroma0(CancellationToken cancellationToken)
+	{
+		_serverVersion ??= await this.Get<string>(Routes.Version, new RequestQueryParams(), cancellationToken);
+		return _serverVersion.StartsWith("0.", StringComparison.Ordinal);
+	}
 
 	// The endpoints are relative to the base URI, so it needs the trailing slash: without it, new Uri(base, endpoint)
 	// replaces the last segment ("api/v2" becomes "api/"). A URI with just the server address gets the path of the API version.

@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Net;
 using ChromaDB.Client.Common;
 using ChromaDB.Client.Models;
 using ChromaDB.Client.Models.Requests;
@@ -56,6 +57,21 @@ public class ChromaClient
 			.Insert("{tenant}", tenant)
 			.Insert("{database}", database);
 		return await _httpClient.Get<ChromaCollection>(_httpClient.Routes.CollectionByName, requestParams, cancellationToken);
+	}
+
+	// A missing collection: 404 from Chroma 1.x; 400 or 500 with "does not exist" in the message from the 0.x servers.
+	public async Task<bool> CollectionExists(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	{
+		try
+		{
+			await GetCollection(name, tenant, database, cancellationToken);
+			return true;
+		}
+		catch (ChromaException ex) when (ex.StatusCode == HttpStatusCode.NotFound
+			|| ex.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError && ex.Message.Contains("does not exist"))
+		{
+			return false;
+		}
 	}
 
 	public async Task<ChromaCollection> GetCollectionById(Guid id, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)

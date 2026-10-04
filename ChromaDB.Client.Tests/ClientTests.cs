@@ -95,6 +95,19 @@ public class ClientTests : ChromaTestsBase
 	}
 
 	[Test]
+	public async Task CollectionExists()
+	{
+		var name = $"collection{Random.Shared.Next()}";
+
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		Assert.That(await client.CollectionExists(name), Is.False);
+		await client.CreateCollection(name);
+		Assert.That(await client.CollectionExists(name), Is.True);
+		await client.DeleteCollection(name);
+		Assert.That(await client.CollectionExists(name), Is.False);
+	}
+
+	[Test]
 	public async Task GetCollectionById()
 	{
 		Assume.That(CollectionByIdSupported, Is.True, "Only the v2 API of Chroma 1.5.7 and later gets a collection by its id.");

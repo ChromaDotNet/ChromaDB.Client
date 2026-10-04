@@ -12,6 +12,7 @@ public class ChromaConfigurationOptions
 	public string? BasicAuthUsername { get; init; }
 	public string? BasicAuthPassword { get; init; }
 	public ChromaApiVersion ApiVersion { get; init; }
+	public ChromaMetadataValues MetadataValues { get; init; }
 
 	public ChromaConfigurationOptions(Uri uri, string? defaultTenant = null, string? defaultDatabase = null, string? chromaToken = null)
 	{
@@ -36,6 +37,7 @@ public class ChromaConfigurationOptions
 		BasicAuthUsername = options.BasicAuthUsername;
 		BasicAuthPassword = options.BasicAuthPassword;
 		ApiVersion = options.ApiVersion;
+		MetadataValues = options.MetadataValues;
 	}
 
 	public ChromaConfigurationOptions WithUri(Uri uri)
@@ -61,4 +63,7 @@ public class ChromaConfigurationOptions
 
 	public ChromaConfigurationOptions WithApiVersion(ChromaApiVersion apiVersion)
 		=> new(this) { ApiVersion = apiVersion };
+
+	public ChromaConfigurationOptions WithMetadataValues(ChromaMetadataValues metadataValues)
+		=> new(this) { MetadataValues = metadataValues };
 }

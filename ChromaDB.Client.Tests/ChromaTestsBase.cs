@@ -102,6 +102,10 @@ public abstract class ChromaTestsBase
 	// Chroma 0.6.3 and earlier ignore the ids of a query and search all the records; 1.0.0 searches only those.
 	protected static bool IdsInQuerySupported => ApiVersion == ChromaApiVersion.V2 && IsChroma1;
 
+	// Chroma 0.x accepts lists in metadata but drops them; 1.0.0 to 1.4.1 reject them with 422; 1.5.0 stores them and filters them with $contains.
+	protected static bool MetadataListsSupported => IsChroma1 && ChromaDBBuilder.ChromaDBVersion >= new Version(1, 5, 0);
+	protected static bool IsChroma0 => !IsChroma1;
+
 	// The servers before Chroma 0.5.1 configure their built-in authentication with other settings, and Chroma 1.0 removed it.
 	protected static bool BuiltInAuthenticationTested => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 5, 1) && !IsChroma1;
 

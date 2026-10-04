@@ -25,6 +25,17 @@ internal static partial class HttpClientHelpers
 		},
 	};
 
+	private static readonly JsonSerializerOptions ExactDeserializerJsonSerializerOptions = new()
+	{
+		Converters =
+		{
+			new ObjectToExactTypesJsonConverter(),
+		},
+	};
+
+	public static JsonSerializerOptions DeserializerOptions(ChromaMetadataValues metadataValues)
+		=> metadataValues == ChromaMetadataValues.Exact ? ExactDeserializerJsonSerializerOptions : DeserializerJsonSerializerOptions;
+
 	public static async Task<TResponse> Get<TResponse>(this ChromaHttpClient httpClient, string endpoint, RequestQueryParams queryParams, CancellationToken cancellationToken)
 	{
 		using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Get, requestUri: httpClient.CreateUri(ValidateAndPrepareEndpoint(endpoint, queryParams)));
@@ -96,7 +107,7 @@ internal static partial class HttpClientHelpers
 			using var httpResponseMessage = await httpClient.SendAsync(httpRequestMessage, cancellationToken);
 			return (int)httpResponseMessage.StatusCode switch
 			{
-				>= 200 and <= 299 => JsonSerializer.Deserialize<TResponse>(await httpResponseMessage.Content.ReadAsStringAsync(), DeserializerJsonSerializerOptions)!,
+				>= 200 and <= 299 => JsonSerializer.Deserialize<TResponse>(await httpResponseMessage.Content.ReadAsStringAsync(), httpClient.DeserializerOptions)!,
 				_ => throw await HandleErrorStatusCode(httpRequestMessage, httpResponseMessage),
 			};
 		}
@@ -131,9 +142,9 @@ internal static partial class HttpClientHelpers
 		// A bare 404 or 405 usually means that this version of Chroma does not have the endpoint: name the request.
 		if ((int)httpResponseMessage.StatusCode is 404 or 405 && message is null or "Not Found" or "Method Not Allowed")
 		{
-			return new ChromaException($"{message ?? httpResponseMessage.StatusCode.ToString()}: {httpRequestMessage.Method} {httpRequestMessage.RequestUri?.AbsolutePath}");
+			return new ChromaException($"{message ?? httpResponseMessage.StatusCode.ToString()}: {httpRequestMessage.Method} {httpRequestMessage.RequestUri?.AbsolutePath}") { StatusCode = httpResponseMessage.StatusCode };
 		}
-		return new ChromaException(message ?? $"Unexpected status code: {httpResponseMessage.StatusCode}.");
+		return new ChromaException(message ?? $"Unexpected status code: {httpResponseMessage.StatusCode}.") { StatusCode = httpResponseMessage.StatusCode };
 	}
 
 	private static string? ParseErrorMessageBody(string? errorMessageBody)
