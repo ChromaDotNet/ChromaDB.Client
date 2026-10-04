@@ -165,26 +165,22 @@ internal static partial class HttpClientHelpers
 		try
 		{
 			var deserialized = JsonSerializer.Deserialize(errorMessageBody, DeserializerJsonSerializerOptions.TypeInfo<GeneralError>())!;
-			// v2 API: {"error": "NotFoundError", "message": "..."}. Errors of the 0.x servers outside the API, like a 500: {"detail": "..."}.
-			if (deserialized?.Message is { Length: > 0 } message)
-			{
-				return (message, deserialized.Error is { Length: > 0 } error ? error : null);
-			}
-			if (deserialized?.Detail is { Length: > 0 } detail)
-			{
-				return (detail, null);
-			}
-
-			// v1 API: {"error": "ValueError('...')"}.
+			// v1 API: {"error": "ValueError('...')"}: the kind and the message in one string.
 #if NETSTANDARD2_0
 			var match = ParseErrorMessageBodyRegex.Match(deserialized?.Error ?? string.Empty);
 #else
 			var match = ParseErrorMessageBodyRegex().Match(deserialized?.Error ?? string.Empty);
 #endif
-
-			return match.Success
-				? (match.Groups["errorMessage"]?.Value, match.Groups["errorType"].Value is { Length: > 0 } type ? type : null)
-				: ($"Couldn't identify the error message: {errorMessageBody}", null);
+			// v2 API: {"error": "NotFoundError", "message": "..."}; the kind also without a message.
+			var errorType = match.Success
+				? (match.Groups["errorType"].Value is { Length: > 0 } type ? type : null)
+				: (deserialized?.Error is { Length: > 0 } error ? error : null);
+			// Errors of the 0.x servers outside the API, like a 500: {"detail": "..."}.
+			var message = deserialized?.Message is { Length: > 0 } text ? text
+				: deserialized?.Detail is { Length: > 0 } detail ? detail
+				: match.Success ? match.Groups["errorMessage"]?.Value
+				: $"Couldn't identify the error message: {errorMessageBody}";
+			return (message, errorType);
 		}
 		catch
 		{

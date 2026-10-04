@@ -28,7 +28,9 @@ public class Base64AndLimitsTests
 		foreach (var body in handler.Bodies)
 		{
 			var base64 = body.GetProperty("embeddings")[0].GetString()!;
-			Assert.That(MemoryMarshal.Cast<byte, float>(Convert.FromBase64String(base64)).ToArray(), Is.EqualTo(Embedding.ToArray()));
+			// Little-endian float32 values, whatever the order of the bytes of the machine.
+			var bytes = Convert.FromBase64String(base64);
+			Assert.That(Enumerable.Range(0, bytes.Length / 4).Select(i => System.Buffers.Binary.BinaryPrimitives.ReadSingleLittleEndian(bytes.AsSpan(i * 4))), Is.EqualTo(Embedding.ToArray()));
 		}
 	}
 
@@ -77,6 +79,7 @@ public class Base64AndLimitsTests
 	public void MaxBatchSizeOption()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => Options.WithBatchSplitting(0));
+		Assert.Throws<ArgumentOutOfRangeException>(() => _ = new ChromaConfigurationOptions { BatchSplitting = true, MaxBatchSize = 0 });
 		var options = Options.WithBatchSplitting(300).WithTenant("t");
 		Assert.That(options.BatchSplitting, Is.True);
 		Assert.That(options.MaxBatchSize, Is.EqualTo(300));
@@ -87,6 +90,8 @@ public class Base64AndLimitsTests
 	[TestCase(HttpStatusCode.BadRequest, """{"error":"InvalidCollection","message":"Collection c does not exist."}""", "InvalidCollection", "Collection c does not exist.")]
 	[TestCase(HttpStatusCode.InternalServerError, """{"error":"ValueError('Collection c does not exist.')"}""", "ValueError", "Collection c does not exist.")]
 	[TestCase(HttpStatusCode.InternalServerError, """{"detail":"Internal Server Error"}""", null, "Internal Server Error")]
+	[TestCase(HttpStatusCode.NotFound, """{"error":"NotFoundError","detail":"Not found"}""", "NotFoundError", "Not found")]
+	[TestCase(HttpStatusCode.NotFound, """{"error":"NotFoundError"}""", "NotFoundError", "Couldn't identify the error message: {\"error\":\"NotFoundError\"}")]
 	[TestCase(HttpStatusCode.NotFound, "", null, "NotFound: GET /api/v2/tenants/default_tenant/databases/default_database/collections/c")]
 	public async Task ErrorTypeOfTheServer(HttpStatusCode statusCode, string body, string? errorType, string message)
 	{

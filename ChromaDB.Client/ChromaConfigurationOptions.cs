@@ -14,7 +14,14 @@ public class ChromaConfigurationOptions
 	public ChromaApiVersion ApiVersion { get; init; }
 	public ChromaMetadataValues MetadataValues { get; init; }
 	public bool BatchSplitting { get; init; }
-	public int? MaxBatchSize { get; init; }
+	private readonly int? _maxBatchSize;
+
+	// At least one record, also when set directly.
+	public int? MaxBatchSize
+	{
+		get => _maxBatchSize;
+		init => _maxBatchSize = value is null or > 0 ? value : throw new ArgumentOutOfRangeException(nameof(MaxBatchSize), value, "The batches need at least one record.");
+	}
 
 	public ChromaConfigurationOptions(Uri uri, string? defaultTenant = null, string? defaultDatabase = null, string? chromaToken = null)
 	{
