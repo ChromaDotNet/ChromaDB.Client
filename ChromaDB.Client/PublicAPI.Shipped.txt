@@ -1,0 +1,285 @@
+#nullable enable
+ChromaDB.Client.ChromaApiVersion
+ChromaDB.Client.ChromaApiVersion.V1 = 1 -> ChromaDB.Client.ChromaApiVersion
+ChromaDB.Client.ChromaApiVersion.V2 = 0 -> ChromaDB.Client.ChromaApiVersion
+ChromaDB.Client.ChromaClient
+ChromaDB.Client.ChromaClient.ChromaClient(ChromaDB.Client.ChromaConfigurationOptions! options, System.Net.Http.HttpClient! httpClient) -> void
+ChromaDB.Client.ChromaClient.CollectionExists(string! name, string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ChromaDB.Client.ChromaClient.CountCollections(string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+ChromaDB.Client.ChromaClient.CreateCollection(ChromaDB.Client.Models.ChromaCollectionDefinition! definition, string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaCollection!>!
+ChromaDB.Client.ChromaClient.CreateCollection(string! name, System.Collections.Generic.Dictionary<string!, object!>? metadata = null, string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaCollection!>!
+ChromaDB.Client.ChromaClient.CreateDatabase(string! name, string? tenant = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ChromaDB.Client.ChromaClient.CreateTenant(string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ChromaDB.Client.ChromaClient.DeleteCollection(string! name, string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ChromaDB.Client.ChromaClient.DeleteDatabase(string! name, string? tenant = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ChromaDB.Client.ChromaClient.GetCollection(string! name, string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaCollection!>!
+ChromaDB.Client.ChromaClient.GetCollectionById(System.Guid id, string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaCollection!>!
+ChromaDB.Client.ChromaClient.GetCollectionClient(ChromaDB.Client.Models.ChromaCollection! collection) -> ChromaDB.Client.ChromaCollectionClient!
+ChromaDB.Client.ChromaClient.GetCollectionClient(System.Guid collectionId, string! collectionName) -> ChromaDB.Client.ChromaCollectionClient!
+ChromaDB.Client.ChromaClient.GetDatabase(string! name, string? tenant = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaDatabase!>!
+ChromaDB.Client.ChromaClient.GetOrCreateCollection(ChromaDB.Client.Models.ChromaCollectionDefinition! definition, string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaCollection!>!
+ChromaDB.Client.ChromaClient.GetOrCreateCollection(string! name, System.Collections.Generic.Dictionary<string!, object!>? metadata = null, string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaCollection!>!
+ChromaDB.Client.ChromaClient.GetPreFlightChecks(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaPreFlightChecks!>!
+ChromaDB.Client.ChromaClient.GetTenant(string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaTenant!>!
+ChromaDB.Client.ChromaClient.GetUserIdentity(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaUserIdentity!>!
+ChromaDB.Client.ChromaClient.GetVersion(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ChromaDB.Client.ChromaClient.Heartbeat(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaHeartbeat!>!
+ChromaDB.Client.ChromaClient.ListCollections(int limit, int offset = 0, string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<ChromaDB.Client.Models.ChromaCollection!>!>!
+ChromaDB.Client.ChromaClient.ListCollections(string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<ChromaDB.Client.Models.ChromaCollection!>!>!
+ChromaDB.Client.ChromaClient.ListDatabases(int limit, int offset = 0, string? tenant = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<ChromaDB.Client.Models.ChromaDatabase!>!>!
+ChromaDB.Client.ChromaClient.ListDatabases(string? tenant = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<ChromaDB.Client.Models.ChromaDatabase!>!>!
+ChromaDB.Client.ChromaClient.Options.get -> ChromaDB.Client.ChromaConfigurationOptions!
+ChromaDB.Client.ChromaClient.Reset(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ChromaDB.Client.ChromaClient.WithMetadataValues(ChromaDB.Client.ChromaMetadataValues metadataValues) -> ChromaDB.Client.ChromaClient!
+ChromaDB.Client.ChromaCollectionClient
+ChromaDB.Client.ChromaCollectionClient.Add(ChromaDB.Client.Models.ChromaRecords! records, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ChromaDB.Client.ChromaCollectionClient.Add(System.Collections.Generic.List<string!>! ids, System.Collections.Generic.List<System.ReadOnlyMemory<float>>? embeddings = null, System.Collections.Generic.List<System.Collections.Generic.Dictionary<string!, object!>!>? metadatas = null, System.Collections.Generic.List<string!>? documents = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ChromaDB.Client.ChromaCollectionClient.ChromaCollectionClient(ChromaDB.Client.Models.ChromaCollection! collection, ChromaDB.Client.ChromaConfigurationOptions! options, System.Net.Http.HttpClient! httpClient) -> void
+ChromaDB.Client.ChromaCollectionClient.ChromaCollectionClient(System.Guid collectionId, string! collectionName, ChromaDB.Client.ChromaConfigurationOptions! options, System.Net.Http.HttpClient! httpClient) -> void
+ChromaDB.Client.ChromaCollectionClient.Collection.get -> ChromaDB.Client.Models.ChromaCollection!
+ChromaDB.Client.ChromaCollectionClient.Count(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+ChromaDB.Client.ChromaCollectionClient.Delete(System.Collections.Generic.List<string!>! ids, ChromaDB.Client.ChromaWhereOperator? where = null, ChromaDB.Client.ChromaWhereDocumentOperator? whereDocument = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ChromaDB.Client.ChromaCollectionClient.Get(string! id, ChromaDB.Client.ChromaWhereOperator? where = null, ChromaDB.Client.ChromaWhereDocumentOperator? whereDocument = null, ChromaDB.Client.ChromaGetInclude? include = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaCollectionEntry?>!
+ChromaDB.Client.ChromaCollectionClient.Get(System.Collections.Generic.List<string!>? ids = null, ChromaDB.Client.ChromaWhereOperator? where = null, ChromaDB.Client.ChromaWhereDocumentOperator? whereDocument = null, int? limit = null, int? offset = null, ChromaDB.Client.ChromaGetInclude? include = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<ChromaDB.Client.Models.ChromaCollectionEntry!>!>!
+ChromaDB.Client.ChromaCollectionClient.Modify(string? name = null, System.Collections.Generic.Dictionary<string!, object!>? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ChromaDB.Client.ChromaCollectionClient.Peek(int limit = 10, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<ChromaDB.Client.Models.ChromaCollectionEntry!>!>!
+ChromaDB.Client.ChromaCollectionClient.Query(ChromaDB.Client.Models.ChromaQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<System.Collections.Generic.List<ChromaDB.Client.Models.ChromaCollectionQueryEntry!>!>!>!
+ChromaDB.Client.ChromaCollectionClient.Query(System.Collections.Generic.List<System.ReadOnlyMemory<float>>! queryEmbeddings, int nResults = 10, ChromaDB.Client.ChromaWhereOperator? where = null, ChromaDB.Client.ChromaWhereDocumentOperator? whereDocument = null, ChromaDB.Client.ChromaQueryInclude? include = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<System.Collections.Generic.List<ChromaDB.Client.Models.ChromaCollectionQueryEntry!>!>!>!
+ChromaDB.Client.ChromaCollectionClient.Query(System.ReadOnlyMemory<float> queryEmbeddings, int nResults = 10, ChromaDB.Client.ChromaWhereOperator? where = null, ChromaDB.Client.ChromaWhereDocumentOperator? whereDocument = null, ChromaDB.Client.ChromaQueryInclude? include = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<ChromaDB.Client.Models.ChromaCollectionQueryEntry!>!>!
+ChromaDB.Client.ChromaCollectionClient.Update(ChromaDB.Client.Models.ChromaRecords! records, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ChromaDB.Client.ChromaCollectionClient.Update(System.Collections.Generic.List<string!>! ids, System.Collections.Generic.List<System.ReadOnlyMemory<float>>? embeddings = null, System.Collections.Generic.List<System.Collections.Generic.Dictionary<string!, object!>!>? metadatas = null, System.Collections.Generic.List<string!>? documents = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ChromaDB.Client.ChromaCollectionClient.Upsert(ChromaDB.Client.Models.ChromaRecords! records, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ChromaDB.Client.ChromaCollectionClient.Upsert(System.Collections.Generic.List<string!>! ids, System.Collections.Generic.List<System.ReadOnlyMemory<float>>? embeddings = null, System.Collections.Generic.List<System.Collections.Generic.Dictionary<string!, object!>!>? metadatas = null, System.Collections.Generic.List<string!>? documents = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ChromaDB.Client.ChromaConfigurationOptions
+ChromaDB.Client.ChromaConfigurationOptions.ApiVersion.get -> ChromaDB.Client.ChromaApiVersion
+ChromaDB.Client.ChromaConfigurationOptions.ApiVersion.init -> void
+ChromaDB.Client.ChromaConfigurationOptions.BasicAuthPassword.get -> string?
+ChromaDB.Client.ChromaConfigurationOptions.BasicAuthPassword.init -> void
+ChromaDB.Client.ChromaConfigurationOptions.BasicAuthUsername.get -> string?
+ChromaDB.Client.ChromaConfigurationOptions.BasicAuthUsername.init -> void
+ChromaDB.Client.ChromaConfigurationOptions.BatchSplitting.get -> bool
+ChromaDB.Client.ChromaConfigurationOptions.BatchSplitting.init -> void
+ChromaDB.Client.ChromaConfigurationOptions.ChromaConfigurationOptions() -> void
+ChromaDB.Client.ChromaConfigurationOptions.ChromaConfigurationOptions(string! uri, string? defaultTenant = null, string? defaultDatabase = null, string? chromaToken = null) -> void
+ChromaDB.Client.ChromaConfigurationOptions.ChromaConfigurationOptions(System.Uri! uri, string? defaultTenant = null, string? defaultDatabase = null, string? chromaToken = null) -> void
+ChromaDB.Client.ChromaConfigurationOptions.ChromaToken.get -> string?
+ChromaDB.Client.ChromaConfigurationOptions.ChromaToken.init -> void
+ChromaDB.Client.ChromaConfigurationOptions.ChromaTokenTransportHeader.get -> ChromaDB.Client.ChromaTokenTransportHeader
+ChromaDB.Client.ChromaConfigurationOptions.ChromaTokenTransportHeader.init -> void
+ChromaDB.Client.ChromaConfigurationOptions.Database.get -> string?
+ChromaDB.Client.ChromaConfigurationOptions.Database.init -> void
+ChromaDB.Client.ChromaConfigurationOptions.MaxBatchSize.get -> int?
+ChromaDB.Client.ChromaConfigurationOptions.MaxBatchSize.init -> void
+ChromaDB.Client.ChromaConfigurationOptions.MetadataValues.get -> ChromaDB.Client.ChromaMetadataValues
+ChromaDB.Client.ChromaConfigurationOptions.MetadataValues.init -> void
+ChromaDB.Client.ChromaConfigurationOptions.Tenant.get -> string?
+ChromaDB.Client.ChromaConfigurationOptions.Tenant.init -> void
+ChromaDB.Client.ChromaConfigurationOptions.Uri.get -> System.Uri!
+ChromaDB.Client.ChromaConfigurationOptions.Uri.init -> void
+ChromaDB.Client.ChromaConfigurationOptions.WithApiVersion(ChromaDB.Client.ChromaApiVersion apiVersion) -> ChromaDB.Client.ChromaConfigurationOptions!
+ChromaDB.Client.ChromaConfigurationOptions.WithBasicAuth(string! username, string! password) -> ChromaDB.Client.ChromaConfigurationOptions!
+ChromaDB.Client.ChromaConfigurationOptions.WithBatchSplitting(bool batchSplitting = true) -> ChromaDB.Client.ChromaConfigurationOptions!
+ChromaDB.Client.ChromaConfigurationOptions.WithBatchSplitting(int maxBatchSize) -> ChromaDB.Client.ChromaConfigurationOptions!
+ChromaDB.Client.ChromaConfigurationOptions.WithChromaToken(string! chromaToken) -> ChromaDB.Client.ChromaConfigurationOptions!
+ChromaDB.Client.ChromaConfigurationOptions.WithChromaToken(string! chromaToken, ChromaDB.Client.ChromaTokenTransportHeader transportHeader) -> ChromaDB.Client.ChromaConfigurationOptions!
+ChromaDB.Client.ChromaConfigurationOptions.WithDatabase(string! database) -> ChromaDB.Client.ChromaConfigurationOptions!
+ChromaDB.Client.ChromaConfigurationOptions.WithMetadataValues(ChromaDB.Client.ChromaMetadataValues metadataValues) -> ChromaDB.Client.ChromaConfigurationOptions!
+ChromaDB.Client.ChromaConfigurationOptions.WithTenant(string! tenant) -> ChromaDB.Client.ChromaConfigurationOptions!
+ChromaDB.Client.ChromaConfigurationOptions.WithUri(string! uri) -> ChromaDB.Client.ChromaConfigurationOptions!
+ChromaDB.Client.ChromaConfigurationOptions.WithUri(System.Uri! uri) -> ChromaDB.Client.ChromaConfigurationOptions!
+ChromaDB.Client.ChromaException
+ChromaDB.Client.ChromaException.ChromaException() -> void
+ChromaDB.Client.ChromaException.ChromaException(string? message) -> void
+ChromaDB.Client.ChromaException.ChromaException(string? message, System.Exception? inner) -> void
+ChromaDB.Client.ChromaException.ErrorType.get -> string?
+ChromaDB.Client.ChromaException.ErrorType.init -> void
+ChromaDB.Client.ChromaException.StatusCode.get -> System.Net.HttpStatusCode?
+ChromaDB.Client.ChromaException.StatusCode.init -> void
+ChromaDB.Client.ChromaGetInclude
+ChromaDB.Client.ChromaGetInclude.Documents = 4 -> ChromaDB.Client.ChromaGetInclude
+ChromaDB.Client.ChromaGetInclude.Embeddings = 1 -> ChromaDB.Client.ChromaGetInclude
+ChromaDB.Client.ChromaGetInclude.Metadatas = 2 -> ChromaDB.Client.ChromaGetInclude
+ChromaDB.Client.ChromaGetInclude.None = 0 -> ChromaDB.Client.ChromaGetInclude
+ChromaDB.Client.ChromaGetInclude.Uris = 8 -> ChromaDB.Client.ChromaGetInclude
+ChromaDB.Client.ChromaMetadataValues
+ChromaDB.Client.ChromaMetadataValues.Exact = 1 -> ChromaDB.Client.ChromaMetadataValues
+ChromaDB.Client.ChromaMetadataValues.Inferred = 0 -> ChromaDB.Client.ChromaMetadataValues
+ChromaDB.Client.ChromaQueryInclude
+ChromaDB.Client.ChromaQueryInclude.Distances = 8 -> ChromaDB.Client.ChromaQueryInclude
+ChromaDB.Client.ChromaQueryInclude.Documents = 4 -> ChromaDB.Client.ChromaQueryInclude
+ChromaDB.Client.ChromaQueryInclude.Embeddings = 1 -> ChromaDB.Client.ChromaQueryInclude
+ChromaDB.Client.ChromaQueryInclude.Metadatas = 2 -> ChromaDB.Client.ChromaQueryInclude
+ChromaDB.Client.ChromaQueryInclude.None = 0 -> ChromaDB.Client.ChromaQueryInclude
+ChromaDB.Client.ChromaQueryInclude.Uris = 16 -> ChromaDB.Client.ChromaQueryInclude
+ChromaDB.Client.ChromaSpace
+ChromaDB.Client.ChromaSpace.Cosine = 1 -> ChromaDB.Client.ChromaSpace
+ChromaDB.Client.ChromaSpace.InnerProduct = 2 -> ChromaDB.Client.ChromaSpace
+ChromaDB.Client.ChromaSpace.L2 = 0 -> ChromaDB.Client.ChromaSpace
+ChromaDB.Client.ChromaTokenTransportHeader
+ChromaDB.Client.ChromaTokenTransportHeader.Authorization = 1 -> ChromaDB.Client.ChromaTokenTransportHeader
+ChromaDB.Client.ChromaTokenTransportHeader.XChromaToken = 0 -> ChromaDB.Client.ChromaTokenTransportHeader
+ChromaDB.Client.ChromaWhere
+ChromaDB.Client.ChromaWhere.ChromaWhere(string! operator) -> void
+ChromaDB.Client.ChromaWhere.Operator.get -> string!
+ChromaDB.Client.ChromaWhereDocument
+ChromaDB.Client.ChromaWhereDocument.ChromaWhereDocument(string! operator) -> void
+ChromaDB.Client.ChromaWhereDocument.Operator.get -> string!
+ChromaDB.Client.ChromaWhereDocumentOperator
+ChromaDB.Client.ChromaWhereDocumentOperator.ChromaWhereDocumentOperator(string! operator) -> void
+ChromaDB.Client.ChromaWhereDocumentOperator.Operator.get -> string!
+ChromaDB.Client.ChromaWhereOperator
+ChromaDB.Client.ChromaWhereOperator.ChromaWhereOperator(string! operator) -> void
+ChromaDB.Client.ChromaWhereOperator.Operator.get -> string!
+ChromaDB.Client.Models.ChromaCollection
+ChromaDB.Client.Models.ChromaCollection.ChromaCollection(string! name) -> void
+ChromaDB.Client.Models.ChromaCollection.ConfigurationJson.get -> System.Text.Json.JsonElement?
+ChromaDB.Client.Models.ChromaCollection.ConfigurationJson.init -> void
+ChromaDB.Client.Models.ChromaCollection.Database.get -> string?
+ChromaDB.Client.Models.ChromaCollection.Database.init -> void
+ChromaDB.Client.Models.ChromaCollection.Id.get -> System.Guid
+ChromaDB.Client.Models.ChromaCollection.Id.init -> void
+ChromaDB.Client.Models.ChromaCollection.Metadata.get -> System.Collections.Generic.Dictionary<string!, object!>?
+ChromaDB.Client.Models.ChromaCollection.Metadata.init -> void
+ChromaDB.Client.Models.ChromaCollection.Name.get -> string!
+ChromaDB.Client.Models.ChromaCollection.Space.get -> ChromaDB.Client.ChromaSpace?
+ChromaDB.Client.Models.ChromaCollection.Tenant.get -> string?
+ChromaDB.Client.Models.ChromaCollection.Tenant.init -> void
+ChromaDB.Client.Models.ChromaCollectionConfiguration
+ChromaDB.Client.Models.ChromaCollectionConfiguration.ChromaCollectionConfiguration() -> void
+ChromaDB.Client.Models.ChromaCollectionConfiguration.Space.get -> ChromaDB.Client.ChromaSpace?
+ChromaDB.Client.Models.ChromaCollectionConfiguration.Space.init -> void
+ChromaDB.Client.Models.ChromaCollectionDefinition
+ChromaDB.Client.Models.ChromaCollectionDefinition.ChromaCollectionDefinition(string! name) -> void
+ChromaDB.Client.Models.ChromaCollectionDefinition.Configuration.get -> ChromaDB.Client.Models.ChromaCollectionConfiguration?
+ChromaDB.Client.Models.ChromaCollectionDefinition.Configuration.init -> void
+ChromaDB.Client.Models.ChromaCollectionDefinition.Metadata.get -> System.Collections.Generic.Dictionary<string!, object!>?
+ChromaDB.Client.Models.ChromaCollectionDefinition.Metadata.init -> void
+ChromaDB.Client.Models.ChromaCollectionDefinition.Name.get -> string!
+ChromaDB.Client.Models.ChromaCollectionEntry
+ChromaDB.Client.Models.ChromaCollectionEntry.ChromaCollectionEntry(string! id) -> void
+ChromaDB.Client.Models.ChromaCollectionEntry.Data.get -> dynamic?
+ChromaDB.Client.Models.ChromaCollectionEntry.Data.init -> void
+ChromaDB.Client.Models.ChromaCollectionEntry.Document.get -> string?
+ChromaDB.Client.Models.ChromaCollectionEntry.Document.init -> void
+ChromaDB.Client.Models.ChromaCollectionEntry.Embeddings.get -> System.ReadOnlyMemory<float>?
+ChromaDB.Client.Models.ChromaCollectionEntry.Embeddings.init -> void
+ChromaDB.Client.Models.ChromaCollectionEntry.Id.get -> string!
+ChromaDB.Client.Models.ChromaCollectionEntry.Metadata.get -> System.Collections.Generic.Dictionary<string!, object!>?
+ChromaDB.Client.Models.ChromaCollectionEntry.Metadata.init -> void
+ChromaDB.Client.Models.ChromaCollectionEntry.Uri.get -> string?
+ChromaDB.Client.Models.ChromaCollectionEntry.Uri.init -> void
+ChromaDB.Client.Models.ChromaCollectionEntry.Uris.get -> System.Collections.Generic.List<string?>?
+ChromaDB.Client.Models.ChromaCollectionEntry.Uris.init -> void
+ChromaDB.Client.Models.ChromaCollectionQueryEntry
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.ChromaCollectionQueryEntry(string! id) -> void
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Data.get -> dynamic?
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Data.init -> void
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Distance.get -> float?
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Distance.init -> void
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Document.get -> string?
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Document.init -> void
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Embeddings.get -> System.ReadOnlyMemory<float>?
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Embeddings.init -> void
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Id.get -> string!
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Metadata.get -> System.Collections.Generic.Dictionary<string!, object!>?
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Metadata.init -> void
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Uri.get -> string?
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Uri.init -> void
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Uris.get -> System.Collections.Generic.List<string?>?
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Uris.init -> void
+ChromaDB.Client.Models.ChromaDatabase
+ChromaDB.Client.Models.ChromaDatabase.ChromaDatabase(string! name) -> void
+ChromaDB.Client.Models.ChromaDatabase.Id.get -> System.Guid
+ChromaDB.Client.Models.ChromaDatabase.Id.init -> void
+ChromaDB.Client.Models.ChromaDatabase.Name.get -> string!
+ChromaDB.Client.Models.ChromaDatabase.Tenant.get -> string?
+ChromaDB.Client.Models.ChromaDatabase.Tenant.init -> void
+ChromaDB.Client.Models.ChromaHeartbeat
+ChromaDB.Client.Models.ChromaHeartbeat.ChromaHeartbeat() -> void
+ChromaDB.Client.Models.ChromaHeartbeat.NanosecondHeartbeat.get -> long
+ChromaDB.Client.Models.ChromaHeartbeat.NanosecondHeartbeat.set -> void
+ChromaDB.Client.Models.ChromaPreFlightChecks
+ChromaDB.Client.Models.ChromaPreFlightChecks.ChromaPreFlightChecks() -> void
+ChromaDB.Client.Models.ChromaPreFlightChecks.MaxBatchSize.get -> int
+ChromaDB.Client.Models.ChromaPreFlightChecks.MaxBatchSize.init -> void
+ChromaDB.Client.Models.ChromaPreFlightChecks.SupportsBase64Encoding.get -> bool?
+ChromaDB.Client.Models.ChromaPreFlightChecks.SupportsBase64Encoding.init -> void
+ChromaDB.Client.Models.ChromaQuery
+ChromaDB.Client.Models.ChromaQuery.ChromaQuery(System.Collections.Generic.List<System.ReadOnlyMemory<float>>! queryEmbeddings) -> void
+ChromaDB.Client.Models.ChromaQuery.Ids.get -> System.Collections.Generic.List<string!>?
+ChromaDB.Client.Models.ChromaQuery.Ids.init -> void
+ChromaDB.Client.Models.ChromaQuery.Include.get -> ChromaDB.Client.ChromaQueryInclude?
+ChromaDB.Client.Models.ChromaQuery.Include.init -> void
+ChromaDB.Client.Models.ChromaQuery.NResults.get -> int
+ChromaDB.Client.Models.ChromaQuery.NResults.init -> void
+ChromaDB.Client.Models.ChromaQuery.QueryEmbeddings.get -> System.Collections.Generic.List<System.ReadOnlyMemory<float>>!
+ChromaDB.Client.Models.ChromaQuery.Where.get -> ChromaDB.Client.ChromaWhereOperator?
+ChromaDB.Client.Models.ChromaQuery.Where.init -> void
+ChromaDB.Client.Models.ChromaQuery.WhereDocument.get -> ChromaDB.Client.ChromaWhereDocumentOperator?
+ChromaDB.Client.Models.ChromaQuery.WhereDocument.init -> void
+ChromaDB.Client.Models.ChromaRecords
+ChromaDB.Client.Models.ChromaRecords.ChromaRecords(System.Collections.Generic.List<string!>! ids) -> void
+ChromaDB.Client.Models.ChromaRecords.Documents.get -> System.Collections.Generic.List<string!>?
+ChromaDB.Client.Models.ChromaRecords.Documents.init -> void
+ChromaDB.Client.Models.ChromaRecords.Embeddings.get -> System.Collections.Generic.List<System.ReadOnlyMemory<float>>?
+ChromaDB.Client.Models.ChromaRecords.Embeddings.init -> void
+ChromaDB.Client.Models.ChromaRecords.Ids.get -> System.Collections.Generic.List<string!>!
+ChromaDB.Client.Models.ChromaRecords.Metadatas.get -> System.Collections.Generic.List<System.Collections.Generic.Dictionary<string!, object!>!>?
+ChromaDB.Client.Models.ChromaRecords.Metadatas.init -> void
+ChromaDB.Client.Models.ChromaRecords.Uris.get -> System.Collections.Generic.List<string?>?
+ChromaDB.Client.Models.ChromaRecords.Uris.init -> void
+ChromaDB.Client.Models.ChromaTenant
+ChromaDB.Client.Models.ChromaTenant.ChromaTenant(string! name) -> void
+ChromaDB.Client.Models.ChromaTenant.Name.get -> string!
+ChromaDB.Client.Models.ChromaUserIdentity
+ChromaDB.Client.Models.ChromaUserIdentity.ChromaUserIdentity() -> void
+ChromaDB.Client.Models.ChromaUserIdentity.Databases.get -> System.Collections.Generic.List<string!>?
+ChromaDB.Client.Models.ChromaUserIdentity.Databases.init -> void
+ChromaDB.Client.Models.ChromaUserIdentity.Tenant.get -> string?
+ChromaDB.Client.Models.ChromaUserIdentity.Tenant.init -> void
+ChromaDB.Client.Models.ChromaUserIdentity.UserId.get -> string?
+ChromaDB.Client.Models.ChromaUserIdentity.UserId.init -> void
+override ChromaDB.Client.ChromaWhereDocumentOperator.ToString() -> string!
+override ChromaDB.Client.ChromaWhereOperator.ToString() -> string!
+static ChromaDB.Client.ChromaWhere.Equal(string! field, object! value) -> ChromaDB.Client.ChromaWhere!
+static ChromaDB.Client.ChromaWhere.GreaterThan(string! field, object! value) -> ChromaDB.Client.ChromaWhere!
+static ChromaDB.Client.ChromaWhere.GreaterThanOrEqual(string! field, object! value) -> ChromaDB.Client.ChromaWhere!
+static ChromaDB.Client.ChromaWhere.In(string! field, params object![]! values) -> ChromaDB.Client.ChromaWhere!
+static ChromaDB.Client.ChromaWhere.LessThan(string! field, object! value) -> ChromaDB.Client.ChromaWhere!
+static ChromaDB.Client.ChromaWhere.LessThanOrEqual(string! field, object! value) -> ChromaDB.Client.ChromaWhere!
+static ChromaDB.Client.ChromaWhere.NotEqual(string! field, object! value) -> ChromaDB.Client.ChromaWhere!
+static ChromaDB.Client.ChromaWhere.NotIn(string! field, params object![]! values) -> ChromaDB.Client.ChromaWhere!
+static ChromaDB.Client.ChromaWhere.operator &(ChromaDB.Client.ChromaWhere! lhs, ChromaDB.Client.ChromaWhere! rhs) -> ChromaDB.Client.ChromaWhere!
+static ChromaDB.Client.ChromaWhere.operator false(ChromaDB.Client.ChromaWhere! _) -> bool
+static ChromaDB.Client.ChromaWhere.operator true(ChromaDB.Client.ChromaWhere! _) -> bool
+static ChromaDB.Client.ChromaWhere.operator |(ChromaDB.Client.ChromaWhere! lhs, ChromaDB.Client.ChromaWhere! rhs) -> ChromaDB.Client.ChromaWhere!
+static ChromaDB.Client.ChromaWhereDocument.Contains(char ch) -> ChromaDB.Client.ChromaWhereDocument!
+static ChromaDB.Client.ChromaWhereDocument.Contains(string! str) -> ChromaDB.Client.ChromaWhereDocument!
+static ChromaDB.Client.ChromaWhereDocument.NotContains(char ch) -> ChromaDB.Client.ChromaWhereDocument!
+static ChromaDB.Client.ChromaWhereDocument.NotContains(string! str) -> ChromaDB.Client.ChromaWhereDocument!
+static ChromaDB.Client.ChromaWhereDocument.operator &(ChromaDB.Client.ChromaWhereDocument! lhs, ChromaDB.Client.ChromaWhereDocument! rhs) -> ChromaDB.Client.ChromaWhereDocument!
+static ChromaDB.Client.ChromaWhereDocument.operator false(ChromaDB.Client.ChromaWhereDocument! _) -> bool
+static ChromaDB.Client.ChromaWhereDocument.operator true(ChromaDB.Client.ChromaWhereDocument! _) -> bool
+static ChromaDB.Client.ChromaWhereDocument.operator |(ChromaDB.Client.ChromaWhereDocument! lhs, ChromaDB.Client.ChromaWhereDocument! rhs) -> ChromaDB.Client.ChromaWhereDocument!
+static ChromaDB.Client.ChromaWhereDocumentOperator.Contains(char value) -> ChromaDB.Client.ChromaWhereDocumentOperator!
+static ChromaDB.Client.ChromaWhereDocumentOperator.Contains(string! value) -> ChromaDB.Client.ChromaWhereDocumentOperator!
+static ChromaDB.Client.ChromaWhereDocumentOperator.NotContains(char value) -> ChromaDB.Client.ChromaWhereDocumentOperator!
+static ChromaDB.Client.ChromaWhereDocumentOperator.NotContains(string! value) -> ChromaDB.Client.ChromaWhereDocumentOperator!
+static ChromaDB.Client.ChromaWhereDocumentOperator.operator &(ChromaDB.Client.ChromaWhereDocumentOperator! lhs, ChromaDB.Client.ChromaWhereDocumentOperator! rhs) -> ChromaDB.Client.ChromaWhereDocumentOperator!
+static ChromaDB.Client.ChromaWhereDocumentOperator.operator false(ChromaDB.Client.ChromaWhereDocumentOperator! _) -> bool
+static ChromaDB.Client.ChromaWhereDocumentOperator.operator true(ChromaDB.Client.ChromaWhereDocumentOperator! _) -> bool
+static ChromaDB.Client.ChromaWhereDocumentOperator.operator |(ChromaDB.Client.ChromaWhereDocumentOperator! lhs, ChromaDB.Client.ChromaWhereDocumentOperator! rhs) -> ChromaDB.Client.ChromaWhereDocumentOperator!
+static ChromaDB.Client.ChromaWhereOperator.Contains(string! key, object! value) -> ChromaDB.Client.ChromaWhereOperator!
+static ChromaDB.Client.ChromaWhereOperator.Equal(string! key, object! value) -> ChromaDB.Client.ChromaWhereOperator!
+static ChromaDB.Client.ChromaWhereOperator.GreaterThan(string! key, object! value) -> ChromaDB.Client.ChromaWhereOperator!
+static ChromaDB.Client.ChromaWhereOperator.GreaterThanOrEqual(string! key, object! value) -> ChromaDB.Client.ChromaWhereOperator!
+static ChromaDB.Client.ChromaWhereOperator.In(string! key, params object![]! values) -> ChromaDB.Client.ChromaWhereOperator!
+static ChromaDB.Client.ChromaWhereOperator.LessThan(string! key, object! value) -> ChromaDB.Client.ChromaWhereOperator!
+static ChromaDB.Client.ChromaWhereOperator.LessThanOrEqual(string! key, object! value) -> ChromaDB.Client.ChromaWhereOperator!
+static ChromaDB.Client.ChromaWhereOperator.NotContains(string! key, object! value) -> ChromaDB.Client.ChromaWhereOperator!
+static ChromaDB.Client.ChromaWhereOperator.NotEqual(string! key, object! value) -> ChromaDB.Client.ChromaWhereOperator!
+static ChromaDB.Client.ChromaWhereOperator.NotIn(string! key, params object![]! values) -> ChromaDB.Client.ChromaWhereOperator!
+static ChromaDB.Client.ChromaWhereOperator.operator &(ChromaDB.Client.ChromaWhereOperator! lhs, ChromaDB.Client.ChromaWhereOperator! rhs) -> ChromaDB.Client.ChromaWhereOperator!
+static ChromaDB.Client.ChromaWhereOperator.operator false(ChromaDB.Client.ChromaWhereOperator! _) -> bool
+static ChromaDB.Client.ChromaWhereOperator.operator true(ChromaDB.Client.ChromaWhereOperator! _) -> bool
+static ChromaDB.Client.ChromaWhereOperator.operator |(ChromaDB.Client.ChromaWhereOperator! lhs, ChromaDB.Client.ChromaWhereOperator! rhs) -> ChromaDB.Client.ChromaWhereOperator!

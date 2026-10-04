@@ -23,9 +23,17 @@
 		<RepositoryUrl Condition="'$(GITHUB_REPOSITORY)' != ''">https://github.com/$(GITHUB_REPOSITORY)</RepositoryUrl>
 		<PackageProjectUrl Condition="'$(GITHUB_REPOSITORY)' != ''">https://github.com/$(GITHUB_REPOSITORY)</PackageProjectUrl>
 		<IncludeSymbols>true</IncludeSymbols>
+		<!-- The XML documentation of the public API goes in the package, for IntelliSense. -->
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<NoWarn>$(NoWarn);RS0026;RS0027</NoWarn>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
-		<PackageReleaseNotes>2.6.0: with ChromaDotNet.Client 2.6.0, no change of its own. 2.5.0: AddChromaClient and AddKeyedChromaClient with an action that configures the IHttpClientBuilder, for a resilience handler, a proxy or a timeout; the singleton client applies the settings of its HttpClient, like ConfigureHttpClient, which were lost. 2.4.1: works in applications published with trimming or NativeAOT, with IsAotCompatible. 2.4.0: AddChromaClient and AddKeyedChromaClient register one ChromaClient singleton per key, so also singletons can take it; its HttpClient takes the current handler of IHttpClientFactory at each request, renewed after two minutes by default, on every target. 2.3.0: AddKeyedChromaClient registers a client and its options under a key. 2.0.0: AddChromaClient registers the options, which the client needs. Release notes of the client: $(PackageProjectUrl)/releases</PackageReleaseNotes>
+		<PackageReleaseNotes>2.6.0: with ChromaDotNet.Client 2.6.0, no change of its own. 2.5.0: AddChromaClient and AddKeyedChromaClient with an action that configures the IHttpClientBuilder, for a resilience handler, a proxy or a timeout; the singleton client applies the settings of its HttpClient, like ConfigureHttpClient, which were lost. 2.4.1: works in applications published with trimming or NativeAOT, with IsAotCompatible. All the releases: $(PackageProjectUrl)/releases.</PackageReleaseNotes>
 	</PropertyGroup>
+	<ItemGroup>
+		<!-- The public API, checked at build: PublicAPI.Shipped.txt is the API of the last release, PublicAPI.Unshipped.txt what was
+		     added since. RS0026 and RS0027 are about overloads with optional parameters, the design the API already has. -->
+		<PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" PrivateAssets="all" />
+	</ItemGroup>
 	<ItemGroup>
 		<None Include="..\README.md" Pack="true" PackagePath="\" />
 		<None Include="..\LICENSE" Pack="true" PackagePath="\" />
