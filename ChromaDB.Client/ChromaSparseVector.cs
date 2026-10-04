@@ -6,7 +6,7 @@ namespace ChromaDB.Client.Models;
 /// <summary>
 /// A sparse vector: the values of some dimensions only, like the BM25 or SPLADE embedding of a text. It is a metadata value of a record,
 /// written as <c>{"#type": "sparse_vector", "indices": [...], "values": [...]}</c> as the Python client of Chroma writes it, and the query
-/// of <c>ChromaRank.Knn</c> on a key with a sparse vector index, which only Chroma Cloud searches.
+/// of <c>ChromaRank.SparseKnn</c> on a key with a sparse vector index, which only Chroma Cloud searches.
 /// </summary>
 [JsonConverter(typeof(ChromaSparseVectorConverter))]
 public sealed class ChromaSparseVector

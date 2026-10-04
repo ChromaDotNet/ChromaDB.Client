@@ -51,12 +51,17 @@ public class SparseVectorsAndSchemaTests
 		Assert.That(add.Body.GetProperty("metadatas")[0].GetRawText(), Is.EqualTo("""{"doc_bm25":{"#type":"sparse_vector","indices":[1],"values":[0.5]},"x":1}"""));
 	}
 
-	// Chroma 0.6.3 accepts sparse vectors in metadata and stores the metadata as null: nothing is sent.
-	[Test]
-	public async Task SparseVectorsInMetadataOnChroma0()
+	// Chroma 0.6.3 accepts sparse vectors in metadata and stores the metadata as null: nothing is sent, also for a sparse vector read
+	// with the default metadata values, which is a JsonElement.
+	[TestCase(false)]
+	[TestCase(true)]
+	public async Task SparseVectorsInMetadataOnChroma0(bool asJsonElement)
 	{
 		var server = new FakeServer(r => r.Path.EndsWith("/version") ? (HttpStatusCode.OK, "\"0.6.3\"") : (HttpStatusCode.OK, "true"));
-		await Assert.ThatAsync(() => CollectionClient(server).Add(new ChromaRecords(["a"]) { Embeddings = [new([1f])], Metadatas = [new() { ["v"] = new ChromaSparseVector([1], [0.5f]) }] }),
+		object vector = asJsonElement
+			? JsonDocument.Parse("""{"#type":"sparse_vector","indices":[1],"values":[0.5],"tokens":null}""").RootElement.Clone()
+			: new ChromaSparseVector([1], [0.5f]);
+		await Assert.ThatAsync(() => CollectionClient(server).Add(new ChromaRecords(["a"]) { Embeddings = [new([1f])], Metadatas = [new() { ["v"] = vector }] }),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains("sparse vectors"));
 		Assert.That(server.Requests.Any(x => x.Path.EndsWith("/add")), Is.False);
 	}

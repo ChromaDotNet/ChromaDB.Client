@@ -328,6 +328,7 @@ var collection = await client.CreateCollection(new ChromaCollectionDefinition("a
 {
 	Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, ChromaEmbeddingFunctionReference.ChromaBm25()),
 });
+var collectionClient = client.GetCollectionClient(collection);
 await collectionClient.Add(new ChromaRecords(["a"])
 {
 	Embeddings = [embedding],

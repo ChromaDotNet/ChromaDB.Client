@@ -264,12 +264,17 @@ public class ChromaCollectionClient
 		{
 			throw new ChromaException("Chroma 0.x drops the lists in metadata without an error: they need Chroma 1.5.0 or later.");
 		}
-		if (records.Metadatas?.Any(metadata => metadata?.Values.Any(value => value is ChromaSparseVector) == true) == true
+		if (records.Metadatas?.Any(metadata => metadata?.Values.Any(IsSparseVector) == true) == true
 			&& await _httpClient.IsChroma0(cancellationToken))
 		{
 			throw new ChromaException("Chroma 0.x drops the sparse vectors in metadata without an error: only Chroma Cloud stores them.");
 		}
 	}
+
+	// A tagged JsonElement object is what the client returns for a sparse vector read with ChromaMetadataValues.Inferred.
+	private static bool IsSparseVector(object? value)
+		=> value is ChromaSparseVector
+			|| value is System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Object } element && ChromaSparseVectorConverter.FromTaggedJson(element) is not null;
 
 	// A JsonElement array is what the client returns for a list read with ChromaMetadataValues.Inferred.
 	private static bool IsList(object? value)
