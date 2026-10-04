@@ -120,6 +120,8 @@ if (!await client.CollectionExists("my_collection"))
 }
 ```
 
+When the 0.x servers reject a request with validation errors, the message lists them, like `body.n_results: Input should be a valid integer`.
+
 `CollectionExists` tells a missing collection from the other errors on every tested server: Chroma 1.x answers `404`, the 0.x servers `400` or `500`, always with "does not exist" in the message. Any other error, like a bare `404` from a wrong address, throws.
 
 ## Filters

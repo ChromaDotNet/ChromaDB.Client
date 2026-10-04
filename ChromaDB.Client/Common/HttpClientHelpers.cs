@@ -189,7 +189,7 @@ internal static partial class HttpClientHelpers
 				: (deserialized?.Error is { Length: > 0 } error ? error : null);
 			// Errors of the 0.x servers outside the API, like a 500: {"detail": "..."}.
 			var message = deserialized?.Message is { Length: > 0 } text ? text
-				: deserialized?.Detail is { Length: > 0 } detail ? detail
+				: DetailMessage(deserialized?.Detail) is { Length: > 0 } detail ? detail
 				: match.Success ? match.Groups["errorMessage"]?.Value
 				: $"Couldn't identify the error message: {errorMessageBody}";
 			return (message, errorType);
@@ -198,6 +198,25 @@ internal static partial class HttpClientHelpers
 		{
 			return ($"Couldn't parse the incoming error message body: {errorMessageBody}", null);
 		}
+	}
+
+	// The detail of an error of the 0.x servers: a string, or the validation errors of FastAPI, each as "body.n_results: Input should be ...".
+	private static string? DetailMessage(JsonElement? detail) => detail switch
+	{
+		{ ValueKind: JsonValueKind.String } text => text.GetString(),
+		{ ValueKind: JsonValueKind.Array } errors => string.Join("; ", errors.EnumerateArray().Select(ValidationErrorMessage)),
+		_ => null,
+	};
+
+	private static string ValidationErrorMessage(JsonElement error)
+	{
+		if (error.ValueKind != JsonValueKind.Object || !error.TryGetProperty("msg", out var msg) || msg.ValueKind != JsonValueKind.String)
+		{
+			return error.GetRawText();
+		}
+		return error.TryGetProperty("loc", out var loc) && loc.ValueKind == JsonValueKind.Array
+			? $"{string.Join(".", loc.EnumerateArray().Select(x => x.ValueKind == JsonValueKind.String ? x.GetString() : x.GetRawText()))}: {msg.GetString()}"
+			: msg.GetString()!;
 	}
 
 	private static List<string> PrepareQueryParams(string input)

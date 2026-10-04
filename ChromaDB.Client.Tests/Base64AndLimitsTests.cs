@@ -91,6 +91,10 @@ public class Base64AndLimitsTests
 	[TestCase(HttpStatusCode.InternalServerError, """{"error":"ValueError('Collection c does not exist.')"}""", "ValueError", "Collection c does not exist.")]
 	[TestCase(HttpStatusCode.InternalServerError, """{"detail":"Internal Server Error"}""", null, "Internal Server Error")]
 	[TestCase(HttpStatusCode.NotFound, """{"error":"NotFoundError","detail":"Not found"}""", "NotFoundError", "Not found")]
+	// The validation errors of FastAPI, from the 0.x servers.
+	[TestCase((HttpStatusCode)422, """{"detail":[{"type":"int_parsing","loc":["body","n_results"],"msg":"Input should be a valid integer","input":"x"}]}""", null, "body.n_results: Input should be a valid integer")]
+	[TestCase((HttpStatusCode)422, """{"detail":[{"loc":["body","include",0],"msg":"Input should be 'documents'"},{"loc":["body","include",0],"msg":"Input should be 'embeddings'"}]}""", null, "body.include.0: Input should be 'documents'; body.include.0: Input should be 'embeddings'")]
+	[TestCase((HttpStatusCode)422, """{"detail":[{"msg":"Field required"}]}""", null, "Field required")]
 	[TestCase(HttpStatusCode.NotFound, """{"error":"NotFoundError"}""", "NotFoundError", "Couldn't identify the error message: {\"error\":\"NotFoundError\"}")]
 	[TestCase(HttpStatusCode.NotFound, "", null, "NotFound: GET /api/v2/tenants/default_tenant/databases/default_database/collections/c")]
 	public async Task ErrorTypeOfTheServer(HttpStatusCode statusCode, string body, string? errorType, string message)

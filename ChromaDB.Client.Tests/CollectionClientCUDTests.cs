@@ -265,6 +265,16 @@ public class CollectionClientCUDTests : ChromaTestsBase
 		Assert.That(nearest.Select(x => x.Uri), Is.EquivalentTo(new[] { "file://a", "file://b2", "file://c" }));
 	}
 
+	// Chroma 0.4.10 to 0.4.15 reject "uris" in include with the validation errors of FastAPI: the message is theirs.
+	[Test]
+	public async Task UrisOnAServerWithoutThem()
+	{
+		Assume.That(UrisSupported, Is.False, "This server returns the URIs of the records.");
+		var client = await Init();
+		await Assert.ThatAsync(() => client.Get(include: ChromaGetInclude.Uris),
+			Throws.InstanceOf<ChromaException>().With.Message.StartsWith("body.include.0").And.Message.Contains("documents"));
+	}
+
 	async Task<ChromaCollectionClient> Init()
 	{
 		var name = $"collection{Random.Shared.Next()}";
