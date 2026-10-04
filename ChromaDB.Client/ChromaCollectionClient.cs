@@ -101,6 +101,7 @@ public class ChromaCollectionClient
 	public async Task Add(ChromaRecords records, CancellationToken cancellationToken = default)
 	{
 		await CheckListsInMetadata(records, cancellationToken);
+		var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
 		var requestParams = new RequestQueryParams()
 			.Insert("{tenant}", _tenant)
 			.Insert("{database}", _database)
@@ -110,7 +111,7 @@ public class ChromaCollectionClient
 			var request = new CollectionAddRequest()
 			{
 				Ids = batch.Ids,
-				Embeddings = batch.Embeddings,
+				Embeddings = batch.Embeddings is { } embeddings ? new ChromaEmbeddings(embeddings, base64) : null,
 				Metadatas = batch.Metadatas,
 				Documents = batch.Documents,
 				Uris = batch.Uris,
@@ -125,6 +126,7 @@ public class ChromaCollectionClient
 	public async Task Update(ChromaRecords records, CancellationToken cancellationToken = default)
 	{
 		await CheckListsInMetadata(records, cancellationToken);
+		var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
 		var requestParams = new RequestQueryParams()
 			.Insert("{tenant}", _tenant)
 			.Insert("{database}", _database)
@@ -134,7 +136,7 @@ public class ChromaCollectionClient
 			var request = new CollectionUpdateRequest()
 			{
 				Ids = batch.Ids,
-				Embeddings = batch.Embeddings,
+				Embeddings = batch.Embeddings is { } embeddings ? new ChromaEmbeddings(embeddings, base64) : null,
 				Metadatas = batch.Metadatas,
 				Documents = batch.Documents,
 				Uris = batch.Uris,
@@ -149,6 +151,7 @@ public class ChromaCollectionClient
 	public async Task Upsert(ChromaRecords records, CancellationToken cancellationToken = default)
 	{
 		await CheckListsInMetadata(records, cancellationToken);
+		var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
 		var requestParams = new RequestQueryParams()
 			.Insert("{tenant}", _tenant)
 			.Insert("{database}", _database)
@@ -158,7 +161,7 @@ public class ChromaCollectionClient
 			var request = new CollectionUpsertRequest()
 			{
 				Ids = batch.Ids,
-				Embeddings = batch.Embeddings,
+				Embeddings = batch.Embeddings is { } embeddings ? new ChromaEmbeddings(embeddings, base64) : null,
 				Metadatas = batch.Metadatas,
 				Documents = batch.Documents,
 				Uris = batch.Uris,
@@ -171,7 +174,7 @@ public class ChromaCollectionClient
 	// Up to Chroma 1.0.13 a request beyond it fails; later versions accept it, but still declare the limit.
 	private async Task<List<ChromaRecords>> Batches(ChromaRecords records, CancellationToken cancellationToken)
 	{
-		if (!_httpClient.BatchSplitting || await _httpClient.GetMaxBatchSize(cancellationToken) is not { } size || records.Ids.Count <= size)
+		if (!_httpClient.BatchSplitting || await BatchSize(cancellationToken) is not { } size || records.Ids.Count <= size)
 		{
 			return [records];
 		}
@@ -184,6 +187,13 @@ public class ChromaCollectionClient
 				Uris = records.Uris?.Skip(i * size).Take(size).ToList(),
 			})
 			.ToList();
+	}
+
+	// The smaller of the limit of the caller and the max_batch_size of the server, either one when the other is missing.
+	private async Task<int?> BatchSize(CancellationToken cancellationToken)
+	{
+		var server = await _httpClient.GetMaxBatchSize(cancellationToken);
+		return _httpClient.MaxBatchSize is { } caller && server is { } declared ? Math.Min(caller, declared) : _httpClient.MaxBatchSize ?? server;
 	}
 
 	// The 0.x servers accept lists in metadata but drop them without an error; Chroma 1.0 to 1.4 reject them, 1.5.0 stores them.

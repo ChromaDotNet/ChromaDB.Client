@@ -78,7 +78,7 @@ public class ChromaClient
 			return true;
 		}
 		catch (ChromaException ex) when (ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError
-			&& ex.Message.Contains("does not exist"))
+			&& (ex.Message.Contains("does not exist") || ex.ErrorType == "NotFoundError" && ex.Message.StartsWith("Collection", StringComparison.Ordinal)))
 		{
 			return false;
 		}

@@ -22,6 +22,7 @@ internal sealed class ChromaHttpClient
 	public ChromaRoutes Routes { get; }
 	public JsonSerializerOptions DeserializerOptions { get; }
 	public bool BatchSplitting { get; }
+	public int? MaxBatchSize { get; }
 
 	public ChromaHttpClient(HttpClient httpClient, ChromaConfigurationOptions options)
 	{
@@ -31,6 +32,7 @@ internal sealed class ChromaHttpClient
 		Routes = options.ApiVersion == ChromaApiVersion.V1 ? ChromaRoutes.V1 : ChromaRoutes.V2;
 		DeserializerOptions = HttpClientHelpers.DeserializerOptions(options.MetadataValues);
 		BatchSplitting = options.BatchSplitting;
+		MaxBatchSize = options.MaxBatchSize;
 		if (options.ChromaToken is not null and not [])
 		{
 			if (options.ChromaTokenTransportHeader == ChromaTokenTransportHeader.Authorization)
@@ -62,6 +64,7 @@ internal sealed class ChromaHttpClient
 		_server = other._server;
 		Routes = other.Routes;
 		BatchSplitting = other.BatchSplitting;
+		MaxBatchSize = other.MaxBatchSize;
 		DeserializerOptions = HttpClientHelpers.DeserializerOptions(metadataValues);
 	}
 
@@ -109,36 +112,52 @@ internal sealed class ChromaHttpClient
 
 	// From pre-flight-checks, asked like the version. Null for Chroma 0.4.10, which has no pre-flight-checks.
 	public async Task<int?> GetMaxBatchSize(CancellationToken cancellationToken)
+		=> (await GetPreFlightChecks(cancellationToken))?.MaxBatchSize is > 0 and var limit ? limit : null;
+
+	// Chroma 1.0.13 and later declare that add, update and upsert take embeddings as base64 strings; the earlier ones reject them.
+	// Base64 only makes requests smaller: when the server cannot tell, the embeddings go as numbers, which every server takes.
+	public async Task<bool> SupportsBase64Embeddings(CancellationToken cancellationToken)
 	{
-		var maxBatchSize = _server.MaxBatchSize;
-		if (maxBatchSize is not { IsCurrent: true })
+		try
 		{
-			await _server.MaxBatchSizeLock.WaitAsync(cancellationToken);
+			return (await GetPreFlightChecks(cancellationToken))?.SupportsBase64Encoding == true;
+		}
+		catch (ChromaException)
+		{
+			return false;
+		}
+	}
+
+	private async Task<ChromaPreFlightChecks?> GetPreFlightChecks(CancellationToken cancellationToken)
+	{
+		var checks = _server.PreFlightChecks;
+		if (checks is not { IsCurrent: true })
+		{
+			await _server.PreFlightChecksLock.WaitAsync(cancellationToken);
 			try
 			{
-				maxBatchSize = _server.MaxBatchSize;
-				if (maxBatchSize is not { IsCurrent: true })
+				checks = _server.PreFlightChecks;
+				if (checks is not { IsCurrent: true })
 				{
-					int? value;
+					ChromaPreFlightChecks? value;
 					try
 					{
-						var limit = (await this.Get<ChromaPreFlightChecks>(Routes.PreFlightChecks, new RequestQueryParams(), cancellationToken)).MaxBatchSize;
-						value = limit > 0 ? limit : null;
+						value = await this.Get<ChromaPreFlightChecks>(Routes.PreFlightChecks, new RequestQueryParams(), cancellationToken);
 					}
 					catch (ChromaException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
 					{
 						value = null;
 					}
-					maxBatchSize = new Fact<int?>(value);
-					_server.MaxBatchSize = maxBatchSize;
+					checks = new Fact<ChromaPreFlightChecks?>(value);
+					_server.PreFlightChecks = checks;
 				}
 			}
 			finally
 			{
-				_server.MaxBatchSizeLock.Release();
+				_server.PreFlightChecksLock.Release();
 			}
 		}
-		return maxBatchSize.Value;
+		return checks.Value;
 	}
 
 	public Task<HttpResponseMessage> SendAsync(HttpRequestMessage httpRequestMessage, CancellationToken cancellationToken)
@@ -162,8 +181,8 @@ internal sealed class ChromaHttpClient
 
 		public volatile Fact<string>? Version;
 		public readonly SemaphoreSlim VersionLock = new(1, 1);
-		public volatile Fact<int?>? MaxBatchSize;
-		public readonly SemaphoreSlim MaxBatchSizeLock = new(1, 1);
+		public volatile Fact<ChromaPreFlightChecks?>? PreFlightChecks;
+		public readonly SemaphoreSlim PreFlightChecksLock = new(1, 1);
 	}
 
 	internal sealed class Fact<T>(T value)

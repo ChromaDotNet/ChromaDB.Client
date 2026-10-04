@@ -217,8 +217,8 @@ public class MetadataAndErrorsTests
 		var handler = Respond("\"1.0.0\"");
 		var client = CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), handler);
 		await client.Add(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] });
-		Assert.That(handler.Paths, Has.Count.EqualTo(2));
-		Assert.That(handler.Paths[0], Is.EqualTo("/api/v2/version"));
+		// pre-flight-checks aside, asked for the base64 of the embeddings.
+		Assert.That(handler.Paths.Where(x => !x.EndsWith("/pre-flight-checks")), Is.EqualTo(new[] { "/api/v2/version", $"/api/v2/tenants/default_tenant/databases/default_database/collections/{client.Collection.Id}/add" }));
 		Assert.That(handler.Bodies.Last().GetProperty("metadatas")[0].GetProperty("tags").GetRawText(), Is.EqualTo("""["x"]"""));
 	}
 
@@ -229,8 +229,8 @@ public class MetadataAndErrorsTests
 		var handler = Respond("true");
 		var client = CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), handler);
 		await client.Add(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["text"] = "x", ["int"] = 1 }] });
-		Assert.That(handler.Paths, Has.Count.EqualTo(1));
-		Assert.That(handler.Paths[0], Does.EndWith("/add"));
+		Assert.That(handler.Paths, Has.None.EndsWith("/version"));
+		Assert.That(handler.Paths.Last(), Does.EndWith("/add"));
 	}
 
 	static ChromaCollectionClient CollectionClient(ChromaConfigurationOptions options, HttpMessageHandler handler)

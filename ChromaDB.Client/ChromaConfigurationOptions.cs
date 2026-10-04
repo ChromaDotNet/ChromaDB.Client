@@ -14,6 +14,7 @@ public class ChromaConfigurationOptions
 	public ChromaApiVersion ApiVersion { get; init; }
 	public ChromaMetadataValues MetadataValues { get; init; }
 	public bool BatchSplitting { get; init; }
+	public int? MaxBatchSize { get; init; }
 
 	public ChromaConfigurationOptions(Uri uri, string? defaultTenant = null, string? defaultDatabase = null, string? chromaToken = null)
 	{
@@ -40,6 +41,7 @@ public class ChromaConfigurationOptions
 		ApiVersion = options.ApiVersion;
 		MetadataValues = options.MetadataValues;
 		BatchSplitting = options.BatchSplitting;
+		MaxBatchSize = options.MaxBatchSize;
 	}
 
 	public ChromaConfigurationOptions WithUri(Uri uri)
@@ -73,4 +75,11 @@ public class ChromaConfigurationOptions
 	// the other. If a batch fails, the earlier ones stay written.
 	public ChromaConfigurationOptions WithBatchSplitting(bool batchSplitting = true)
 		=> new(this) { BatchSplitting = batchSplitting };
+
+	// Batches of at most maxBatchSize records, or of the max_batch_size of the server if smaller. For a server whose limit
+	// differs from the one it declares, like Chroma Cloud, which declares 1000 but takes 300 records per write by default.
+	public ChromaConfigurationOptions WithBatchSplitting(int maxBatchSize)
+		=> maxBatchSize > 0
+			? new(this) { BatchSplitting = true, MaxBatchSize = maxBatchSize }
+			: throw new ArgumentOutOfRangeException(nameof(maxBatchSize), maxBatchSize, "The batches need at least one record.");
 }

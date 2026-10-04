@@ -146,20 +146,20 @@ internal static partial class HttpClientHelpers
 	private static async Task<ChromaException> HandleErrorStatusCode(HttpRequestMessage httpRequestMessage, HttpResponseMessage httpResponseMessage)
 	{
 		var errorMessageBody = await httpResponseMessage.Content.ReadAsStringAsync();
-		var message = ParseErrorMessageBody(errorMessageBody);
+		var (message, errorType) = ParseErrorMessageBody(errorMessageBody);
 		// A bare 404 or 405 usually means that this version of Chroma does not have the endpoint: name the request.
 		if ((int)httpResponseMessage.StatusCode is 404 or 405 && message is null or "Not Found" or "Method Not Allowed")
 		{
-			return new ChromaException($"{message ?? httpResponseMessage.StatusCode.ToString()}: {httpRequestMessage.Method} {httpRequestMessage.RequestUri?.AbsolutePath}") { StatusCode = httpResponseMessage.StatusCode };
+			return new ChromaException($"{message ?? httpResponseMessage.StatusCode.ToString()}: {httpRequestMessage.Method} {httpRequestMessage.RequestUri?.AbsolutePath}") { StatusCode = httpResponseMessage.StatusCode, ErrorType = errorType };
 		}
-		return new ChromaException(message ?? $"Unexpected status code: {httpResponseMessage.StatusCode}.") { StatusCode = httpResponseMessage.StatusCode };
+		return new ChromaException(message ?? $"Unexpected status code: {httpResponseMessage.StatusCode}.") { StatusCode = httpResponseMessage.StatusCode, ErrorType = errorType };
 	}
 
-	private static string? ParseErrorMessageBody(string? errorMessageBody)
+	private static (string? Message, string? ErrorType) ParseErrorMessageBody(string? errorMessageBody)
 	{
 		if (errorMessageBody is null or [])
 		{
-			return null;
+			return (null, null);
 		}
 
 		try
@@ -168,11 +168,11 @@ internal static partial class HttpClientHelpers
 			// v2 API: {"error": "NotFoundError", "message": "..."}. Errors of the 0.x servers outside the API, like a 500: {"detail": "..."}.
 			if (deserialized?.Message is { Length: > 0 } message)
 			{
-				return message;
+				return (message, deserialized.Error is { Length: > 0 } error ? error : null);
 			}
 			if (deserialized?.Detail is { Length: > 0 } detail)
 			{
-				return detail;
+				return (detail, null);
 			}
 
 			// v1 API: {"error": "ValueError('...')"}.
@@ -183,12 +183,12 @@ internal static partial class HttpClientHelpers
 #endif
 
 			return match.Success
-				? match.Groups["errorMessage"]?.Value
-				: $"Couldn't identify the error message: {errorMessageBody}";
+				? (match.Groups["errorMessage"]?.Value, match.Groups["errorType"].Value is { Length: > 0 } type ? type : null)
+				: ($"Couldn't identify the error message: {errorMessageBody}", null);
 		}
 		catch
 		{
-			return $"Couldn't parse the incoming error message body: {errorMessageBody}";
+			return ($"Couldn't parse the incoming error message body: {errorMessageBody}", null);
 		}
 	}
 
@@ -207,9 +207,9 @@ internal static partial class HttpClientHelpers
 	}
 
 #if NETSTANDARD2_0
-	private static readonly Regex ParseErrorMessageBodyRegex = new(@"\('(?<errorMessage>.*)'\)", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+	private static readonly Regex ParseErrorMessageBodyRegex = new(@"^(?<errorType>\w*)\('(?<errorMessage>.*)'\)", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 #else
-	[GeneratedRegex(@"\('(?<errorMessage>.*)'\)", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant)]
+	[GeneratedRegex(@"^(?<errorType>\w*)\('(?<errorMessage>.*)'\)", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant)]
 	private static partial Regex ParseErrorMessageBodyRegex();
 #endif
 

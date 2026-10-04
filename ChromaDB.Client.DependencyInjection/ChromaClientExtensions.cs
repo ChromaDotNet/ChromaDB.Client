@@ -1,10 +1,16 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http;
+using Microsoft.Extensions.Options;
 
 namespace ChromaDB.Client.DependencyInjection;
 
 public static class ChromaClientExtensions
 {
 	public static void AddChromaClient(this IServiceCollection services, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions = null)
+		=> AddChromaClient(services, configurationOptions, _ => { });
+
+	// configureHttpClient configures the HttpClient of the client, like a resilience handler, a proxy or a timeout.
+	public static void AddChromaClient(this IServiceCollection services, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions, Action<IHttpClientBuilder> configureHttpClient)
 	{
 		configurationOptions ??= DefaultConfigurationOptions;
 
@@ -12,12 +18,15 @@ public static class ChromaClientExtensions
 		options = configurationOptions(options);
 
 		services.AddSingleton(options);
-		services.AddHttpClient(nameof(ChromaClient));
+		configureHttpClient(services.AddHttpClient(nameof(ChromaClient)));
 		services.AddSingleton(serviceProvider => new ChromaClient(options, CreateHttpClient(serviceProvider, nameof(ChromaClient))));
 	}
 
 	// A client and its options under a key, for an application that talks to more than one server, tenant or database.
 	public static void AddKeyedChromaClient(this IServiceCollection services, object? serviceKey, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions = null)
+		=> AddKeyedChromaClient(services, serviceKey, configurationOptions, _ => { });
+
+	public static void AddKeyedChromaClient(this IServiceCollection services, object? serviceKey, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions, Action<IHttpClientBuilder> configureHttpClient)
 	{
 		configurationOptions ??= DefaultConfigurationOptions;
 
@@ -26,15 +35,22 @@ public static class ChromaClientExtensions
 
 		var httpClientName = $"{nameof(ChromaClient)}:{serviceKey}";
 		services.AddKeyedSingleton(serviceKey, options);
-		services.AddHttpClient(httpClientName);
+		configureHttpClient(services.AddHttpClient(httpClientName));
 		services.AddKeyedSingleton(serviceKey, (serviceProvider, _) => new ChromaClient(options, CreateHttpClient(serviceProvider, httpClientName)));
 	}
 
 	// The client is a singleton and keeps its HttpClient, which sends each request with the current handler of the factory:
 	// the factory renews it after its handler lifetime, two minutes by default, so a change of the server in the DNS is seen
-	// on every target, also .NET Framework.
+	// on every target, also .NET Framework. The settings of the HttpClient itself, like ConfigureHttpClient, are applied here.
 	private static HttpClient CreateHttpClient(IServiceProvider serviceProvider, string name)
-		=> new(new CurrentHandler(serviceProvider.GetRequiredService<IHttpMessageHandlerFactory>(), name));
+	{
+		var httpClient = new HttpClient(new CurrentHandler(serviceProvider.GetRequiredService<IHttpMessageHandlerFactory>(), name));
+		foreach (var action in serviceProvider.GetRequiredService<IOptionsMonitor<HttpClientFactoryOptions>>().Get(name).HttpClientActions)
+		{
+			action(httpClient);
+		}
+		return httpClient;
+	}
 
 	private sealed class CurrentHandler(IHttpMessageHandlerFactory factory, string name) : HttpMessageHandler
 	{

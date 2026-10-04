@@ -19,13 +19,13 @@ public class BatchesAndFiltersTests
 		Uris = ["u1", null, "u3", null, "u5"],
 	};
 
-	// Without the option the records go in one request, as before, and pre-flight-checks is not asked.
+	// Without the option the records go in one request, as before; pre-flight-checks is asked only for the base64 of the embeddings.
 	[Test]
 	public async Task OneRequestByDefault()
 	{
 		var handler = new Handler("""{"max_batch_size":2}""");
 		await Client(Options, handler).Add(FiveRecords());
-		Assert.That(handler.Paths.Select(Last), Is.EqualTo(new[] { "add" }));
+		Assert.That(handler.Paths.Select(Last), Is.EqualTo(new[] { "pre-flight-checks", "add" }));
 		Assert.That(handler.Bodies.Single().GetProperty("ids").GetArrayLength(), Is.EqualTo(5));
 	}
 

@@ -138,7 +138,7 @@ public class CollectionConfigurationTests
 		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
 		{
 			var isVersion = request.RequestUri!.AbsolutePath.EndsWith("/version");
-			if (isVersion) VersionRequests++; else AddRequests++;
+			if (isVersion) VersionRequests++; else if (request.RequestUri.AbsolutePath.EndsWith("/add")) AddRequests++;
 			return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(isVersion ? "\"1.0.0\"" : "true") });
 		}
 	}
