@@ -92,8 +92,45 @@ jobs:
       if: ${{ matrix.pack }}
       run: dotnet test ChromaDB.Client.Tests -c ${{ env.CONFIGURATION }} -p:ChromaClientTargetFramework=netstandard2.0 --verbosity normal --logger 'GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true'
 
+  trimming:
+    # The client published with trimming and with NativeAOT, where reflection-based serialization is off,
+    # running real requests: Samples/ChromaDB.Client.TrimmingTest. Every trimming or AOT warning is an error.
+    runs-on: ubuntu-latest
+    name: Trimming and NativeAOT
+    services:
+      chroma:
+        image: chromadb/chroma:1.5.9
+        ports:
+          - 8000:8000
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: NativeAOT prerequisites
+      run: sudo apt-get install -y clang zlib1g-dev
+
+    - name: Wait for Chroma
+      run: for i in $(seq 1 60); do curl -sf http://localhost:8000/api/v2/heartbeat && break; sleep 1; done
+
+    - name: Publish with trimming
+      run: dotnet publish Samples/ChromaDB.Client.TrimmingTest -c ${{ env.CONFIGURATION }} -r linux-x64 -o trimmed -p:TreatWarningsAsErrors=true
+
+    - name: Run with trimming
+      run: ./trimmed/ChromaDB.Client.TrimmingTest http://localhost:8000
+
+    - name: Publish with NativeAOT
+      run: dotnet publish Samples/ChromaDB.Client.TrimmingTest -c ${{ env.CONFIGURATION }} -r linux-x64 -o aot -p:TrimmingTestAot=true -p:TreatWarningsAsErrors=true
+
+    - name: Run with NativeAOT
+      run: ./aot/ChromaDB.Client.TrimmingTest http://localhost:8000
+
   publish:
-    needs: ci
+    needs: [ci, trimming]
     # Publishes from the default branch and from version tags: with the NUGET_API_KEY secret in the original
     # repository, and with NuGet trusted publishing where the NUGET_USER variable is set.
     if: ${{ (github.repository == 'ssone95/ChromaDB.Client' || vars.NUGET_USER != '') && (github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'schedule' }}

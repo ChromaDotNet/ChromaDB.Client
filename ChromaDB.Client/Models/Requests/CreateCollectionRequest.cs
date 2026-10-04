@@ -2,5 +2,5 @@
 
 internal class CreateCollectionRequest : GetOrCreateCollectionRequestBase
 {
-	protected override bool GetOrCreate { get; } = false;
+	public override bool GetOrCreate { get; } = false;
 }

@@ -13,7 +13,7 @@ public abstract class ChromaWhereDocumentOperator
 
 	// The JSON of the filter, as the client sends it in "where_document".
 	public override string ToString()
-		=> System.Text.Json.JsonSerializer.Serialize(ToWhereDocument(), Common.HttpClientHelpers.PostJsonSerializerOptions);
+		=> System.Text.Json.JsonSerializer.Serialize(ToWhereDocument(), Common.HttpClientHelpers.TypeInfo<Dictionary<string, object>>(Common.HttpClientHelpers.PostJsonSerializerOptions));
 
 	public static ChromaWhereDocumentOperator Contains(char value)
 		=> Contains(value.ToString());

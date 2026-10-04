@@ -10,7 +10,7 @@ internal abstract class GetOrCreateCollectionRequestBase
 	[JsonPropertyName("metadata")]
 	public Dictionary<string, object>? Metadata { get; init; }
 
-	[JsonInclude]
+	// Public, so that the generated serialization sees it.
 	[JsonPropertyName("get_or_create")]
-	protected abstract bool GetOrCreate { get; }
+	public abstract bool GetOrCreate { get; }
 }

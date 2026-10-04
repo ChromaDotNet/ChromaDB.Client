@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using System.Text.RegularExpressions;
 using ChromaDB.Client.Models.Requests;
 using ChromaDB.Client.Models.Responses;
@@ -15,6 +16,7 @@ internal static partial class HttpClientHelpers
 		AllowTrailingCommas = false,
 		ReferenceHandler = ReferenceHandler.IgnoreCycles,
 		ReadCommentHandling = JsonCommentHandling.Skip,
+		TypeInfoResolver = ChromaJsonResolver.Instance,
 	};
 
 	private static readonly JsonSerializerOptions DeserializerJsonSerializerOptions = new()
@@ -23,6 +25,7 @@ internal static partial class HttpClientHelpers
 		{
 			new ObjectToInferredTypesJsonConverter(),
 		},
+		TypeInfoResolver = ChromaJsonResolver.Instance,
 	};
 
 	private static readonly JsonSerializerOptions ExactDeserializerJsonSerializerOptions = new()
@@ -31,7 +34,12 @@ internal static partial class HttpClientHelpers
 		{
 			new ObjectToExactTypesJsonConverter(),
 		},
+		TypeInfoResolver = ChromaJsonResolver.Instance,
 	};
+
+	// The generated metadata of the type: serialization without reflection, which trimming and NativeAOT keep.
+	internal static JsonTypeInfo<T> TypeInfo<T>(this JsonSerializerOptions options)
+		=> (JsonTypeInfo<T>)options.GetTypeInfo(typeof(T));
 
 	public static JsonSerializerOptions DeserializerOptions(ChromaMetadataValues metadataValues)
 		=> metadataValues == ChromaMetadataValues.Exact ? ExactDeserializerJsonSerializerOptions : DeserializerJsonSerializerOptions;
@@ -49,7 +57,7 @@ internal static partial class HttpClientHelpers
 
 	public static async Task<TResponse> Post<TInput, TResponse>(this ChromaHttpClient httpClient, string endpoint, TInput? input, RequestQueryParams queryParams, CancellationToken cancellationToken)
 	{
-		using var content = new StringContent(JsonSerializer.Serialize(input, PostJsonSerializerOptions) ?? string.Empty, Encoding.UTF8, "application/json");
+		using var content = new StringContent(JsonSerializer.Serialize(input, PostJsonSerializerOptions.TypeInfo<TInput?>()), Encoding.UTF8, "application/json");
 		using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri: httpClient.CreateUri(ValidateAndPrepareEndpoint(endpoint, queryParams)))
 		{
 			Content = content,
@@ -59,7 +67,7 @@ internal static partial class HttpClientHelpers
 	}
 	public static async Task Post<TInput>(this ChromaHttpClient httpClient, string endpoint, TInput? input, RequestQueryParams queryParams, CancellationToken cancellationToken)
 	{
-		using var content = new StringContent(JsonSerializer.Serialize(input, PostJsonSerializerOptions) ?? string.Empty, Encoding.UTF8, "application/json");
+		using var content = new StringContent(JsonSerializer.Serialize(input, PostJsonSerializerOptions.TypeInfo<TInput?>()), Encoding.UTF8, "application/json");
 		using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri: httpClient.CreateUri(ValidateAndPrepareEndpoint(endpoint, queryParams)))
 		{
 			Content = content,
@@ -70,7 +78,7 @@ internal static partial class HttpClientHelpers
 
 	public static async Task<TResponse> Put<TInput, TResponse>(this ChromaHttpClient httpClient, string endpoint, TInput? input, RequestQueryParams queryParams, CancellationToken cancellationToken)
 	{
-		using var content = new StringContent(JsonSerializer.Serialize(input, PostJsonSerializerOptions) ?? string.Empty, Encoding.UTF8, "application/json");
+		using var content = new StringContent(JsonSerializer.Serialize(input, PostJsonSerializerOptions.TypeInfo<TInput?>()), Encoding.UTF8, "application/json");
 		using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Put, requestUri: httpClient.CreateUri(ValidateAndPrepareEndpoint(endpoint, queryParams)))
 		{
 			Content = content,
@@ -80,7 +88,7 @@ internal static partial class HttpClientHelpers
 	}
 	public static async Task Put<TInput>(this ChromaHttpClient httpClient, string endpoint, TInput? input, RequestQueryParams queryParams, CancellationToken cancellationToken)
 	{
-		using var content = new StringContent(JsonSerializer.Serialize(input, PostJsonSerializerOptions) ?? string.Empty, Encoding.UTF8, "application/json");
+		using var content = new StringContent(JsonSerializer.Serialize(input, PostJsonSerializerOptions.TypeInfo<TInput?>()), Encoding.UTF8, "application/json");
 		using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Put, requestUri: httpClient.CreateUri(ValidateAndPrepareEndpoint(endpoint, queryParams)))
 		{
 			Content = content,
@@ -107,7 +115,7 @@ internal static partial class HttpClientHelpers
 			using var httpResponseMessage = await httpClient.SendAsync(httpRequestMessage, cancellationToken);
 			return (int)httpResponseMessage.StatusCode switch
 			{
-				>= 200 and <= 299 => JsonSerializer.Deserialize<TResponse>(await httpResponseMessage.Content.ReadAsStringAsync(), httpClient.DeserializerOptions)!,
+				>= 200 and <= 299 => JsonSerializer.Deserialize(await httpResponseMessage.Content.ReadAsStringAsync(), httpClient.DeserializerOptions.TypeInfo<TResponse>())!,
 				_ => throw await HandleErrorStatusCode(httpRequestMessage, httpResponseMessage),
 			};
 		}
@@ -156,7 +164,7 @@ internal static partial class HttpClientHelpers
 
 		try
 		{
-			var deserialized = JsonSerializer.Deserialize<GeneralError>(errorMessageBody, DeserializerJsonSerializerOptions)!;
+			var deserialized = JsonSerializer.Deserialize(errorMessageBody, DeserializerJsonSerializerOptions.TypeInfo<GeneralError>())!;
 			// v2 API: {"error": "NotFoundError", "message": "..."}. Errors of the 0.x servers outside the API, like a 500: {"detail": "..."}.
 			if (deserialized?.Message is { Length: > 0 } message)
 			{

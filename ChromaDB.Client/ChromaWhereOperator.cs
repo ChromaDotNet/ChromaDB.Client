@@ -20,7 +20,7 @@ public abstract class ChromaWhereOperator
 
 	// The JSON of the filter, as the client sends it in "where".
 	public override string ToString()
-		=> System.Text.Json.JsonSerializer.Serialize(ToWhere(), Common.HttpClientHelpers.PostJsonSerializerOptions);
+		=> System.Text.Json.JsonSerializer.Serialize(ToWhere(), Common.HttpClientHelpers.TypeInfo<Dictionary<string, object>>(Common.HttpClientHelpers.PostJsonSerializerOptions));
 
 	public static ChromaWhereOperator GreaterThan(string key, object value)
 		=> new ChromaWhereValueOperator(key, "$gt", value);

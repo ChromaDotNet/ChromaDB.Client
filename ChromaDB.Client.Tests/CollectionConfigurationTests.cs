@@ -20,6 +20,17 @@ public class CollectionConfigurationTests
 		Assert.That(handler.Body.GetProperty("metadata").GetRawText(), Is.EqualTo($$"""{"key":"value","hnsw:space":"{{expected}}"}"""));
 	}
 
+	// get_or_create is serialized by the generated code too.
+	[Test]
+	public async Task CreateAndGetOrCreateSendGetOrCreate()
+	{
+		var handler = new RecordingHandler(Created);
+		await Client(handler).CreateCollection("c");
+		Assert.That(handler.Body.GetProperty("get_or_create").GetBoolean(), Is.False);
+		await Client(handler).GetOrCreateCollection("c");
+		Assert.That(handler.Body.GetProperty("get_or_create").GetBoolean(), Is.True);
+	}
+
 	[Test]
 	public async Task GetOrCreateSendsTheSpaceInTheMetadata()
 	{

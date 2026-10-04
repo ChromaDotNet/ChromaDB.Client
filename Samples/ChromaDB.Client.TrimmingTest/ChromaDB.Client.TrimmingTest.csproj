@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<!-- Published with trimming, it runs real requests against a Chroma server: see the CI. -->
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<IsPackable>false</IsPackable>
+		<PublishTrimmed>true</PublishTrimmed>
+		<TrimmerSingleWarn>false</TrimmerSingleWarn>
+		<IsTrimmable>true</IsTrimmable>
+		<!-- -p:TrimmingTestAot=true publishes it with NativeAOT; PublishAot on the command line would reach the netstandard2.0 client too. -->
+		<PublishAot Condition="'$(TrimmingTestAot)' == 'true'">true</PublishAot>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\ChromaDB.Client\ChromaDB.Client.csproj" />
+		<ProjectReference Include="..\..\ChromaDB.Client.DependencyInjection\ChromaDB.Client.DependencyInjection.csproj" />
+	</ItemGroup>
+</Project>

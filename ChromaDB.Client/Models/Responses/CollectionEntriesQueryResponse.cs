@@ -24,5 +24,5 @@ internal class CollectionEntriesQueryResponse
 	public List<List<string?>>? Uris { get; init; }
 
 	[JsonPropertyName("data")]
-	public dynamic? Data { get; init; }
+	public object? Data { get; init; }
 }

@@ -96,6 +96,15 @@ public class MetadataAndErrorsTests
 		}
 	}
 
+	// The generated serialization knows the usual types of values; with reflection enabled, as here, the others work as before.
+	[Test]
+	public async Task MetadataValuesOfOtherTypes()
+	{
+		var handler = Respond("true");
+		await CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), handler).Add(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["span"] = TimeSpan.FromSeconds(1), ["text"] = "x", ["number"] = 1.5m }] });
+		Assert.That(handler.Bodies.Single().GetProperty("metadatas")[0].GetRawText(), Is.EqualTo("""{"span":"00:00:01","text":"x","number":1.5}"""));
+	}
+
 	[Test]
 	public void OtherOptionsKeepTheMetadataValues()
 		=> Assert.That(new ChromaConfigurationOptions().WithMetadataValues(ChromaMetadataValues.Exact).WithTenant("t").WithApiVersion(ChromaApiVersion.V1).MetadataValues, Is.EqualTo(ChromaMetadataValues.Exact));
