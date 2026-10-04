@@ -20,6 +20,7 @@ Differences between these servers, seen in the tests:
 | Lists and deletes databases (`ListDatabases`, `DeleteDatabase`) | 0.6.3 – 1.5.9; 0.5.16 – 0.6.2 answer `405 Method Not Allowed` |
 | Gets a collection by its id (`GetCollectionById`) | 1.5.7 – 1.5.9; 0.5.16 – 1.5.6 answer `404 Not Found` |
 | Stores lists in metadata, and filters them with `ChromaWhereOperator.Contains` and `NotContains` | 1.5.0 – 1.5.9; 1.0.0 – 1.4.1 reject the lists with `422`; 0.5.16 – 0.6.3 drop the lists without an error, so the client throws a `ChromaException` before sending them, and reject `$contains` |
+| Reports the space of a collection created without one (`ChromaCollection.Space`) | 1.0.6 – 1.5.9 report `L2`; 0.5.16 – 1.0.5 send `hnsw_configuration.space`, always "l2", so `Space` is null |
 | Searches only the records with the ids of `ChromaQuery.Ids` | 1.0.0 – 1.5.9, which answer `500` with `Error finding id` when one of the ids does not exist; 0.5.16 – 0.6.3 ignore the ids: `Query` throws a `ChromaException` when a result falls outside them |
 
 ## v1 API (`ChromaApiVersion.V1`)
@@ -39,6 +40,8 @@ On these older servers collections and records work; some features are missing o
 Chroma 0.4.10 has no `pre-flight-checks` either, so `GetPreFlightChecks` answers `404 Not Found` there.
 
 A missing endpoint gives a message that names the request, like `Not Found: POST /api/v1/tenants`. The v1 API has no `auth/identity`, so `GetUserIdentity` needs the v2 API: Chroma 0.5.15, 0.5.16 and 0.6.3 answer it with `404 Not Found` in v1. The v1 API does not list or delete databases either: `ListDatabases` and `DeleteDatabase` answer `405 Method Not Allowed` on the servers above from 0.4.15. `GetCollectionById` answers `404 Not Found` on all the servers above. They all ignore `ChromaQuery.Ids`, as Chroma 0.6.3 does with the v2 API, drop lists in metadata, so the client throws a `ChromaException` before sending them, and reject `$contains`.
+
+A collection created with `ChromaCollectionConfiguration.Space` uses that space on all the servers on this page, and `ChromaCollection.Space` reads it back: the client sends it as the `hnsw:space` metadata. The `configuration` field of the request is not used: Chroma 0.4.10 – 0.5.3 ignore it and keep `l2`, and 0.5.4 – 0.6.3 answer it with `500`.
 
 `CollectionExists` recognizes a missing collection on all the servers on this page: Chroma 1.x answers `404`, Chroma 0.5.6 – 0.6.3 `400`, and Chroma 0.4.10 – 0.5.5 `500`, always with "does not exist" in the message.
 

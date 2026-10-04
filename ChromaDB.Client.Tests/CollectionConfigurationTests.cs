@@ -90,8 +90,47 @@ public class CollectionConfigurationTests
 		Assert.That(client.Collection.Name, Is.EqualTo("c"));
 	}
 
+	[Test]
+	public async Task GetCollectionClientUsesTheOptionsOfTheClient()
+	{
+		var handler = new RecordingHandler("3");
+		var id = Guid.NewGuid();
+		var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000", defaultTenant: "t", defaultDatabase: "d"), new HttpClient(handler));
+		Assert.That(await client.GetCollectionClient(id, "c").Count(), Is.EqualTo(3));
+		Assert.That(handler.Path, Is.EqualTo($"/api/v2/tenants/t/databases/d/collections/{id}/count"));
+		Assert.That(await client.GetCollectionClient(new ChromaCollection("c") { Id = id, Tenant = "t2", Database = "d2" }).Count(), Is.EqualTo(3));
+		Assert.That(handler.Path, Is.EqualTo($"/api/v2/tenants/t2/databases/d2/collections/{id}/count"));
+	}
+
+	// The collection clients of one ChromaClient share what it keeps: the version of the server is asked once.
+	[Test]
+	public async Task CollectionClientsOfAClientShareTheVersion()
+	{
+		var handler = new CountingHandler();
+		var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
+		foreach (var name in new[] { "a", "b", "c" })
+		{
+			await client.GetCollectionClient(Guid.NewGuid(), name).Add(new ChromaRecords(["x"]) { Embeddings = [new([1f, 0f])], Metadatas = [new() { ["tags"] = new[] { "y" } }] });
+		}
+		Assert.That(handler.VersionRequests, Is.EqualTo(1));
+		Assert.That(handler.AddRequests, Is.EqualTo(3));
+	}
+
 	static ChromaClient Client(HttpMessageHandler handler)
 		=> new(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
+
+	sealed class CountingHandler : HttpMessageHandler
+	{
+		public int VersionRequests { get; private set; }
+		public int AddRequests { get; private set; }
+
+		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+		{
+			var isVersion = request.RequestUri!.AbsolutePath.EndsWith("/version");
+			if (isVersion) VersionRequests++; else AddRequests++;
+			return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(isVersion ? "\"1.0.0\"" : "true") });
+		}
+	}
 
 	sealed class RecordingHandler(string response) : HttpMessageHandler
 	{

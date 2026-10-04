@@ -43,6 +43,7 @@ public class ApiVersionTests
 		yield return Case("Upsert", c => c.Upsert(["a"], embeddings: [Embedding]), "POST", $"tenants/t/databases/d/collections/{Id}/upsert", $"collections/{Id}/upsert");
 		yield return Case("Delete", c => c.Delete(["a"]), "POST", $"tenants/t/databases/d/collections/{Id}/delete", $"collections/{Id}/delete");
 		yield return Case("Count", c => c.Count(), "GET", $"tenants/t/databases/d/collections/{Id}/count", $"collections/{Id}/count");
+		yield return Case("CountFromGetCollectionClient", c => c.GetCollectionClient(Guid.Parse(Id), "c").Count(), "GET", $"tenants/t/databases/d/collections/{Id}/count", $"collections/{Id}/count");
 		yield return Case("Peek", c => c.Peek(), "POST", $"tenants/t/databases/d/collections/{Id}/get", $"collections/{Id}/get");
 		yield return Case("Modify", c => c.Modify(name: "c2"), "PUT", $"tenants/t/databases/d/collections/{Id}", $"collections/{Id}");
 	}

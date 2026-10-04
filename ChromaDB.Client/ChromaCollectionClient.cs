@@ -13,9 +13,14 @@ public class ChromaCollectionClient
 	private readonly string _database;
 
 	public ChromaCollectionClient(ChromaCollection collection, ChromaConfigurationOptions options, HttpClient httpClient)
+		: this(collection, options, new ChromaHttpClient(httpClient, options))
+	{ }
+
+	// Shares the ChromaHttpClient of a ChromaClient, with what it keeps, like the version of the server.
+	internal ChromaCollectionClient(ChromaCollection collection, ChromaConfigurationOptions options, ChromaHttpClient httpClient)
 	{
 		_collection = collection;
-		_httpClient = new ChromaHttpClient(httpClient, options);
+		_httpClient = httpClient;
 		// An empty tenant or database means the default, as in ChromaClient.
 		_tenant = collection.Tenant is not null and not [] ? collection.Tenant
 			: options.Tenant is not null and not [] ? options.Tenant

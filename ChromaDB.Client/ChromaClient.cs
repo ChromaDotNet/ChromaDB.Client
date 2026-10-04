@@ -8,12 +8,14 @@ namespace ChromaDB.Client;
 
 public class ChromaClient
 {
+	private readonly ChromaConfigurationOptions _options;
 	private readonly ChromaHttpClient _httpClient;
 	private readonly ChromaTenant _currentTenant;
 	private readonly ChromaDatabase _currentDatabase;
 
 	public ChromaClient(ChromaConfigurationOptions options, HttpClient httpClient)
 	{
+		_options = options;
 		_httpClient = new ChromaHttpClient(httpClient, options);
 		_currentTenant = options.Tenant is not null and not []
 			? new ChromaTenant(options.Tenant)
@@ -74,6 +76,14 @@ public class ChromaClient
 			return false;
 		}
 	}
+
+	// A client for the records of the collection, with the options and the HttpClient of this client: no request is sent.
+	public ChromaCollectionClient GetCollectionClient(ChromaCollection collection)
+		=> new(collection, _options, _httpClient);
+
+	// The same without getting the collection first: the requests on a collection need only its id.
+	public ChromaCollectionClient GetCollectionClient(Guid collectionId, string collectionName)
+		=> new(new ChromaCollection(collectionName) { Id = collectionId }, _options, _httpClient);
 
 	public async Task<ChromaCollection> GetCollectionById(Guid id, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 	{

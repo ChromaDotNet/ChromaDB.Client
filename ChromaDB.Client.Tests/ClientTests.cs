@@ -132,6 +132,15 @@ public class ClientTests : ChromaTestsBase
 	}
 
 	[Test]
+	public async Task GetCollectionClient()
+	{
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var collection = await client.CreateCollection($"collection{Random.Shared.Next()}");
+		await client.GetCollectionClient(collection).Add(["a"], embeddings: [new([1f, 0f])]);
+		Assert.That(await client.GetCollectionClient(collection.Id, collection.Name).Count(), Is.EqualTo(1));
+	}
+
+	[Test]
 	public async Task CollectionClientFromTheId()
 	{
 		var collection = await new ChromaClient(BaseConfigurationOptions, HttpClient).CreateCollection($"collection{Random.Shared.Next()}");

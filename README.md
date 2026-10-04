@@ -24,7 +24,7 @@ The package targets .NET 8 and .NET Standard 2.0; the tests run against both bui
 dotnet add package ChromaDotNet.Client
 ```
 
-`ChromaDotNet.Client.DependencyInjection` adds the registration for `Microsoft.Extensions.DependencyInjection`. Every change merged into `main` is also published as a preview version, installed with `--prerelease`.
+`ChromaDotNet.Client.DependencyInjection` adds the registration for `Microsoft.Extensions.DependencyInjection`: `AddChromaClient`, and `AddKeyedChromaClient` for more than one server, tenant or database under different keys. Every change merged into `main` is also published as a preview version, installed with `--prerelease`.
 
 ## Example
 
@@ -141,6 +141,24 @@ var collection = await client.GetCollectionById(id);
 ```
 
 `GetCollectionById` looks for the id in the tenant and database of the options, or in the ones it is given. It needs the v2 API of Chroma 1.5.7 or later: the older servers answer `404 Not Found`.
+
+A `ChromaCollectionClient` can also be built from the id and the name, without getting the collection first; the tenant and database come from the options:
+
+```csharp
+var collectionClient = new ChromaCollectionClient(collectionId, "my_collection", options, httpClient);
+```
+
+## Distance of a collection
+
+```csharp
+var collection = await client.CreateCollection(new ChromaCollectionDefinition("my_collection")
+{
+	Configuration = new() { Space = ChromaSpace.Cosine },
+});
+Console.WriteLine(collection.Space);
+```
+
+`ChromaSpace` is `L2` (the default of Chroma), `Cosine` or `InnerProduct`. The client sends it as the `hnsw:space` metadata, which every tested Chroma applies; `GetOrCreateCollection` takes a `ChromaCollectionDefinition` too. `ChromaCollection.Space` reads it back from that metadata, or from the configuration that Chroma 1.0.6 and later send; it is null for a collection created without a space on the older servers, which do not report it reliably. `ChromaCollection.ConfigurationJson` holds the configuration as the server sends it.
 
 ## Authentication
 
