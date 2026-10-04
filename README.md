@@ -142,10 +142,14 @@ var collection = await client.GetCollectionById(id);
 
 `GetCollectionById` looks for the id in the tenant and database of the options, or in the ones it is given. It needs the v2 API of Chroma 1.5.7 or later: the older servers answer `404 Not Found`.
 
-A `ChromaCollectionClient` can also be built from the id and the name, without getting the collection first; the tenant and database come from the options:
+A `ChromaClient` hands out the clients for the records of its collections, with its options and `HttpClient` and without sending a request, also from the id and the name alone:
 
 ```csharp
-var collectionClient = new ChromaCollectionClient(collectionId, "my_collection", options, httpClient);
+var collectionClient = client.GetCollectionClient(collection);
+var sameCollection = client.GetCollectionClient(collectionId, "my_collection");
+
+// or without a ChromaClient; the tenant and database come from the options
+var standalone = new ChromaCollectionClient(collectionId, "my_collection", options, httpClient);
 ```
 
 ## Distance of a collection
