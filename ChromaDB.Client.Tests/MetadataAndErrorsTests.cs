@@ -74,6 +74,28 @@ public class MetadataAndErrorsTests
 		Assert.That(handler.VersionRequests, Is.EqualTo(1));
 	}
 
+	// The server can be upgraded or replaced while a client lives: what it knows about it expires and is asked again.
+	[Test]
+	public async Task VersionIsAskedAgainAfterItsLifetime()
+	{
+		var lifetime = ChromaDB.Client.Common.ChromaHttpClient.ServerFacts.Lifetime;
+		try
+		{
+			ChromaDB.Client.Common.ChromaHttpClient.ServerFacts.Lifetime = TimeSpan.Zero;
+			var handler = new VersionHandler();
+			handler.Release.SetResult(true);
+			var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler)).GetCollectionClient(Guid.NewGuid(), "c");
+			var records = new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] };
+			await client.Add(records);
+			await client.Add(records);
+			Assert.That(handler.VersionRequests, Is.EqualTo(2));
+		}
+		finally
+		{
+			ChromaDB.Client.Common.ChromaHttpClient.ServerFacts.Lifetime = lifetime;
+		}
+	}
+
 	[Test]
 	public void OtherOptionsKeepTheMetadataValues()
 		=> Assert.That(new ChromaConfigurationOptions().WithMetadataValues(ChromaMetadataValues.Exact).WithTenant("t").WithApiVersion(ChromaApiVersion.V1).MetadataValues, Is.EqualTo(ChromaMetadataValues.Exact));

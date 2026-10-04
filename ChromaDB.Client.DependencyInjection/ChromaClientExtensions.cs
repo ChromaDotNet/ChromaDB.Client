@@ -12,8 +12,8 @@ public static class ChromaClientExtensions
 		options = configurationOptions(options);
 
 		services.AddSingleton(options);
-		AddHttpClient(services, nameof(ChromaClient), options);
-		services.AddSingleton(serviceProvider => new ChromaClient(options, serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(ChromaClient))));
+		services.AddHttpClient(nameof(ChromaClient));
+		services.AddSingleton(serviceProvider => new ChromaClient(options, CreateHttpClient(serviceProvider, nameof(ChromaClient))));
 	}
 
 	// A client and its options under a key, for an application that talks to more than one server, tenant or database.
@@ -26,21 +26,21 @@ public static class ChromaClientExtensions
 
 		var httpClientName = $"{nameof(ChromaClient)}:{serviceKey}";
 		services.AddKeyedSingleton(serviceKey, options);
-		AddHttpClient(services, httpClientName, options);
-		services.AddKeyedSingleton(serviceKey, (serviceProvider, _) => new ChromaClient(options, serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient(httpClientName)));
+		services.AddHttpClient(httpClientName);
+		services.AddKeyedSingleton(serviceKey, (serviceProvider, _) => new ChromaClient(options, CreateHttpClient(serviceProvider, httpClientName)));
 	}
 
-	// The client is a singleton, so it keeps its HttpClient: on .NET the connections are renewed every few minutes,
-	// so that a change of the address of the server in the DNS is seen.
-	private static void AddHttpClient(IServiceCollection services, string name, ChromaConfigurationOptions options)
+	// The client is a singleton and keeps its HttpClient, which sends each request with the current handler of the factory:
+	// the factory renews it after its handler lifetime, two minutes by default, so a change of the server in the DNS is seen
+	// on every target, also .NET Framework.
+	private static HttpClient CreateHttpClient(IServiceProvider serviceProvider, string name)
+		=> new(new CurrentHandler(serviceProvider.GetRequiredService<IHttpMessageHandlerFactory>(), name));
+
+	private sealed class CurrentHandler(IHttpMessageHandlerFactory factory, string name) : HttpMessageHandler
 	{
-		var builder = services.AddHttpClient(name, o =>
-		{
-			o.BaseAddress = options.Uri;
-		});
-#if NET
-		builder.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(2) });
-#endif
+		// The factory owns the handler, so the invoker does not dispose it.
+		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+			=> new HttpMessageInvoker(factory.CreateHandler(name), disposeHandler: false).SendAsync(request, cancellationToken);
 	}
 
 	private static ChromaConfigurationOptions DefaultConfigurationOptions(ChromaConfigurationOptions? options = null)

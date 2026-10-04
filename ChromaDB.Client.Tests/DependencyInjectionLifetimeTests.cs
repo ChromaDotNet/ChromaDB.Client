@@ -53,6 +53,35 @@ public class DependencyInjectionLifetimeTests
 		Assert.That(provider.GetRequiredKeyedService<Consumer>("k").Client, Is.SameAs(provider.GetRequiredKeyedService<ChromaClient>("k")));
 	}
 
+	// The singleton keeps its HttpClient, but each request takes the current handler of the factory, which renews it.
+	[Test]
+	public async Task RequestsUseTheRenewedHandler()
+	{
+		var handlers = new List<int>();
+		var created = 0;
+		var services = new ServiceCollection();
+		services.AddChromaClient(_ => Options);
+		services.AddHttpClient(nameof(ChromaClient))
+			.ConfigurePrimaryHttpMessageHandler(() => new HeartbeatHandler(Interlocked.Increment(ref created), handlers))
+			.SetHandlerLifetime(TimeSpan.FromSeconds(1));
+		using var provider = services.BuildServiceProvider();
+		var client = provider.GetRequiredService<ChromaClient>();
+		await client.Heartbeat();
+		await client.Heartbeat();
+		await Task.Delay(TimeSpan.FromSeconds(2));
+		await client.Heartbeat();
+		Assert.That(handlers, Is.EqualTo(new[] { 1, 1, 2 }));
+	}
+
+	sealed class HeartbeatHandler(int id, List<int> handlers) : HttpMessageHandler
+	{
+		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+		{
+			lock (handlers) handlers.Add(id);
+			return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent("{\"nanosecond heartbeat\":1}") });
+		}
+	}
+
 	sealed class Consumer(ChromaClient client)
 	{
 		public ChromaClient Client { get; } = client;

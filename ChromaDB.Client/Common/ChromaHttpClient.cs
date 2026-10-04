@@ -69,23 +69,30 @@ internal sealed class ChromaHttpClient
 
 	public Uri CreateUri(string endpoint) => new(_baseUri, endpoint);
 
-	// Asked once, when a request needs it, also by concurrent calls; a failed or canceled request is not kept, so the next call asks again.
+	// Asked when a request needs it, once for concurrent calls, and again after ServerFacts.Lifetime, in case the server changed;
+	// a failed or canceled request is not kept, so the next call asks again.
 	// The 0.x servers send their own version; every Chroma 1.x answers "1.0.0", so the version tells only 0.x from 1.x apart.
 	public async Task<bool> IsChroma0(CancellationToken cancellationToken)
 	{
-		if (_server.Version is null)
+		var version = _server.Version;
+		if (version is not { IsCurrent: true })
 		{
 			await _server.VersionLock.WaitAsync(cancellationToken);
 			try
 			{
-				_server.Version ??= await this.Get<string>(Routes.Version, new RequestQueryParams(), cancellationToken);
+				version = _server.Version;
+				if (version is not { IsCurrent: true })
+				{
+					version = new Fact<string>(await this.Get<string>(Routes.Version, new RequestQueryParams(), cancellationToken));
+					_server.Version = version;
+				}
 			}
 			finally
 			{
 				_server.VersionLock.Release();
 			}
 		}
-		return _server.Version.StartsWith("0.", StringComparison.Ordinal);
+		return version.Value.StartsWith("0.", StringComparison.Ordinal);
 	}
 
 	// The endpoints are relative to the base URI, so it needs the trailing slash: without it, new Uri(base, endpoint)
@@ -100,26 +107,30 @@ internal sealed class ChromaHttpClient
 		return path.EndsWith("/") ? uri : new Uri(path + "/");
 	}
 
-	// From pre-flight-checks, asked once like the version. Null for Chroma 0.4.10, which has no pre-flight-checks.
+	// From pre-flight-checks, asked like the version. Null for Chroma 0.4.10, which has no pre-flight-checks.
 	public async Task<int?> GetMaxBatchSize(CancellationToken cancellationToken)
 	{
-		if (!_server.MaxBatchSizeKnown)
+		var maxBatchSize = _server.MaxBatchSize;
+		if (maxBatchSize is not { IsCurrent: true })
 		{
 			await _server.MaxBatchSizeLock.WaitAsync(cancellationToken);
 			try
 			{
-				if (!_server.MaxBatchSizeKnown)
+				maxBatchSize = _server.MaxBatchSize;
+				if (maxBatchSize is not { IsCurrent: true })
 				{
+					int? value;
 					try
 					{
-						var maxBatchSize = (await this.Get<ChromaPreFlightChecks>(Routes.PreFlightChecks, new RequestQueryParams(), cancellationToken)).MaxBatchSize;
-						_server.MaxBatchSize = maxBatchSize > 0 ? maxBatchSize : null;
+						var limit = (await this.Get<ChromaPreFlightChecks>(Routes.PreFlightChecks, new RequestQueryParams(), cancellationToken)).MaxBatchSize;
+						value = limit > 0 ? limit : null;
 					}
 					catch (ChromaException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
 					{
-						_server.MaxBatchSize = null;
+						value = null;
 					}
-					_server.MaxBatchSizeKnown = true;
+					maxBatchSize = new Fact<int?>(value);
+					_server.MaxBatchSize = maxBatchSize;
 				}
 			}
 			finally
@@ -127,7 +138,7 @@ internal sealed class ChromaHttpClient
 				_server.MaxBatchSizeLock.Release();
 			}
 		}
-		return _server.MaxBatchSize;
+		return maxBatchSize.Value;
 	}
 
 	public Task<HttpResponseMessage> SendAsync(HttpRequestMessage httpRequestMessage, CancellationToken cancellationToken)
@@ -143,13 +154,23 @@ internal sealed class ChromaHttpClient
 		return _httpClient.SendAsync(httpRequestMessage, cancellationToken);
 	}
 
-	private sealed class ServerFacts
+	// Each fact is one object, published with a volatile write, so a reader outside the lock sees it whole.
+	internal sealed class ServerFacts
 	{
-		public string? Version;
+		// How long a fact is trusted before it is asked again: the server can be upgraded or replaced while the client lives.
+		internal static TimeSpan Lifetime { get; set; } = TimeSpan.FromMinutes(2);
+
+		public volatile Fact<string>? Version;
 		public readonly SemaphoreSlim VersionLock = new(1, 1);
-		public int? MaxBatchSize;
-		// Volatile: read outside the lock, it is written after MaxBatchSize, so whoever sees it true sees the limit too.
-		public volatile bool MaxBatchSizeKnown;
+		public volatile Fact<int?>? MaxBatchSize;
 		public readonly SemaphoreSlim MaxBatchSizeLock = new(1, 1);
+	}
+
+	internal sealed class Fact<T>(T value)
+	{
+		private readonly DateTime _expires = DateTime.UtcNow + ServerFacts.Lifetime;
+
+		public T Value { get; } = value;
+		public bool IsCurrent => DateTime.UtcNow < _expires;
 	}
 }
