@@ -1,12 +1,20 @@
 namespace ChromaDB.Client;
 
-// The distance function of a collection, "hnsw:space" in Chroma.
+/// <summary>
+/// The distance function of a collection, <c>hnsw:space</c> in Chroma.
+/// </summary>
 public enum ChromaSpace
 {
-	// Squared Euclidean distance, the default of Chroma.
+	/// <summary>
+	/// Squared Euclidean distance, the default of Chroma.
+	/// </summary>
 	L2,
-	// 1 - cosine similarity.
+	/// <summary>
+	/// 1 - cosine similarity.
+	/// </summary>
 	Cosine,
-	// 1 - inner product.
+	/// <summary>
+	/// 1 - inner product.
+	/// </summary>
 	InnerProduct,
 }
