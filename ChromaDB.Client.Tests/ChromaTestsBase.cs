@@ -22,6 +22,7 @@ public abstract class ChromaTestsBase
 	private static readonly string? TestToken = Environment.GetEnvironmentVariable("CHROMA_TEST_TOKEN") is { Length: > 0 } token ? token : null;
 	protected static readonly int? TestMaxBatchSize = int.TryParse(Environment.GetEnvironmentVariable("CHROMA_TEST_MAX_BATCH_SIZE"), out var size) ? size : null;
 	protected static bool RunningServer => TestUri is not null;
+	protected static bool ChromaCloud => TestUri?.Contains(".trychroma.com") == true;
 
 	// CHROMA_TEST_API_VERSION=v1 runs the tests with the v1 API, the only one of Chroma 0.5.15 and earlier.
 	protected static readonly ChromaApiVersion ApiVersion = Environment.GetEnvironmentVariable("CHROMA_TEST_API_VERSION") is "v1" ? ChromaApiVersion.V1 : ChromaApiVersion.V2;
@@ -182,6 +183,18 @@ public abstract class ChromaTestsBase
 
 	// The servers before Chroma 0.5.1 configure their built-in authentication with other settings, and Chroma 1.0 removed it.
 	protected static bool BuiltInAuthenticationTested => ChromaImage.Version >= new Version(0, 5, 1) && !IsChroma1;
+
+	// Only the v2 API of Chroma 1.0.0 and later has the healthcheck: the 0.x servers answer 404.
+	protected static bool HealthcheckSupported => ApiVersion == ChromaApiVersion.V2 && IsChroma1;
+
+	// Chroma 1.0.12 and later filter documents with $regex and $not_regex; 1.0.0 to 1.0.6 reject them, 1.0.10 closes the connection.
+	protected static bool RegexSupported => ChromaImage.Version >= new Version(1, 0, 12);
+
+	// Chroma 1.5.3 and later apply the limit of a delete, declare it in their OpenAPI description and answer how many records they deleted.
+	protected static bool DeleteLimitSupported => ChromaImage.Version >= new Version(1, 5, 3);
+
+	// Chroma 1.0.6 and later apply a new configuration of a collection; the earlier versions answer without applying it.
+	protected static bool NewConfigurationApplied => ChromaImage.Version >= new Version(1, 0, 6);
 
 	// Since Chroma 0.5.20, the server rejects embeddings of different dimensions in the same request.
 	protected static bool EmbeddingDimensionsChecked => ChromaImage.Version >= new Version(0, 5, 20);

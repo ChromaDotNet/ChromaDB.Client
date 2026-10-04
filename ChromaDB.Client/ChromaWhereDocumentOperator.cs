@@ -25,6 +25,12 @@ public abstract class ChromaWhereDocumentOperator
 	public static ChromaWhereDocumentOperator NotContains(string value)
 		=> new ChromaWhereDocumentStringOperator("$not_contains", value);
 
+	// The documents that match the regular expression, from Chroma 1.0.12; the earlier versions reject it.
+	public static ChromaWhereDocumentOperator Regex(string pattern)
+		=> new ChromaWhereDocumentStringOperator("$regex", pattern);
+	public static ChromaWhereDocumentOperator NotRegex(string pattern)
+		=> new ChromaWhereDocumentStringOperator("$not_regex", pattern);
+
 	public static bool operator true(ChromaWhereDocumentOperator _)
 		=> false;
 	public static bool operator false(ChromaWhereDocumentOperator _)

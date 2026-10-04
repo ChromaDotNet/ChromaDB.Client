@@ -6,12 +6,14 @@ internal sealed class ChromaRoutes
 	public static ChromaRoutes V2 { get; } = new()
 	{
 		Heartbeat = "heartbeat",
+		Healthcheck = "healthcheck",
 		Version = "version",
 		Reset = "reset",
 		UserIdentity = "auth/identity",
 		PreFlightChecks = "pre-flight-checks",
 		Tenants = "tenants",
 		Tenant = "tenants/{tenant}",
+		CollectionByCrn = "collections/{crn}",
 		Databases = "tenants/{tenant}/databases",
 		Database = "tenants/{tenant}/databases/{database}",
 		Collections = "tenants/{tenant}/databases/{database}/collections",
@@ -25,12 +27,14 @@ internal sealed class ChromaRoutes
 	public static ChromaRoutes V1 { get; } = new()
 	{
 		Heartbeat = "heartbeat",
+		Healthcheck = "healthcheck",
 		Version = "version",
 		Reset = "reset",
 		UserIdentity = "auth/identity",
 		PreFlightChecks = "pre-flight-checks",
 		Tenants = "tenants",
 		Tenant = "tenants/{tenant}",
+		CollectionByCrn = "collections/{crn}",
 		Databases = "databases?tenant={tenant}",
 		Database = "databases/{database}?tenant={tenant}",
 		Collections = "collections?tenant={tenant}&database={database}",
@@ -41,6 +45,8 @@ internal sealed class ChromaRoutes
 	};
 
 	public required string Heartbeat { get; init; }
+	// Only the v2 API of Chroma 1.0.0 and later has it.
+	public required string Healthcheck { get; init; }
 	public required string Version { get; init; }
 	public required string Reset { get; init; }
 	// Only the v2 API has it.
@@ -48,6 +54,8 @@ internal sealed class ChromaRoutes
 	public required string PreFlightChecks { get; init; }
 	public required string Tenants { get; init; }
 	public required string Tenant { get; init; }
+	// Only Chroma Cloud has it.
+	public required string CollectionByCrn { get; init; }
 	public required string Databases { get; init; }
 	public required string Database { get; init; }
 	public required string Collections { get; init; }

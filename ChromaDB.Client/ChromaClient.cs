@@ -113,6 +113,20 @@ public class ChromaClient
 		return await _httpClient.Get<ChromaHeartbeat>(_httpClient.Routes.Heartbeat, new RequestQueryParams(), cancellationToken);
 	}
 
+	// Whether the server is ready to serve requests, from Chroma 1.0.0; a server that is not ready answers 503, a ChromaException.
+	public async Task<ChromaHealthcheck> Healthcheck(CancellationToken cancellationToken = default)
+	{
+		return await _httpClient.Get<ChromaHealthcheck>(_httpClient.Routes.Healthcheck, new RequestQueryParams(), cancellationToken);
+	}
+
+	// A collection by its Chroma Resource Name, "<tenant resource name>:<database>:<collection>": Chroma Cloud only.
+	public async Task<ChromaCollection> GetCollectionByCrn(string crn, CancellationToken cancellationToken = default)
+	{
+		var requestParams = new RequestQueryParams()
+			.Insert("{crn}", crn);
+		return await _httpClient.Get<ChromaCollection>(_httpClient.Routes.CollectionByCrn, requestParams, cancellationToken);
+	}
+
 	public Task<ChromaCollection> CreateCollection(string name, Dictionary<string, object>? metadata = null, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> CreateCollection(new ChromaCollectionDefinition(name) { Metadata = metadata }, tenant, database, cancellationToken);
 
@@ -204,6 +218,18 @@ public class ChromaClient
 		var requestParams = new RequestQueryParams()
 			.Insert("{tenant}", name);
 		return await _httpClient.Get<ChromaTenant>(_httpClient.Routes.Tenant, requestParams, cancellationToken);
+	}
+
+	// Sets the name of the tenant in the resource names of Chroma Cloud, like the CRN of a collection.
+	public async Task UpdateTenant(string name, string resourceName, CancellationToken cancellationToken = default)
+	{
+		var requestParams = new RequestQueryParams()
+			.Insert("{tenant}", name);
+		var request = new UpdateTenantRequest()
+		{
+			ResourceName = resourceName,
+		};
+		await _httpClient.Patch(_httpClient.Routes.Tenant, request, requestParams, cancellationToken);
 	}
 
 	public async Task CreateDatabase(string name, string? tenant = null, CancellationToken cancellationToken = default)

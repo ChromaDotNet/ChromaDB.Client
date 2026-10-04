@@ -35,7 +35,8 @@ sealed class CreatedOnTheServer
 			{
 				created.Databases[(Part(uri, "tenants", "tenant"), database)] = true;
 			}
-			else if (post && path.EndsWith("/collections", StringComparison.Ordinal))
+			// A fork, on Chroma Cloud, creates a collection too.
+			else if (post && (path.EndsWith("/collections", StringComparison.Ordinal) || path.EndsWith("/fork", StringComparison.Ordinal)))
 			{
 				using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
 				created.Collections[body.RootElement.GetProperty("id").GetGuid()] = (Part(uri, "tenants", "tenant"), Part(uri, "databases", "database"));

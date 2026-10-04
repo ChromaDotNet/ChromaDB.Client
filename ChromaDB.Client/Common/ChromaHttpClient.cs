@@ -128,6 +128,47 @@ internal sealed class ChromaHttpClient
 		}
 	}
 
+	// Chroma 1.5.3 and later apply the limit of a delete, and from that version the OpenAPI description of the server declares it;
+	// the earlier versions ignore it and delete every matching record. Asked like the version, only when a delete has a limit;
+	// a server without the description, or without the limit in it, is taken as one that ignores it.
+	public async Task<bool> SupportsDeleteLimit(CancellationToken cancellationToken)
+	{
+		var supported = _server.DeleteLimit;
+		if (supported is not { IsCurrent: true })
+		{
+			await _server.DeleteLimitLock.WaitAsync(cancellationToken);
+			try
+			{
+				supported = _server.DeleteLimit;
+				if (supported is not { IsCurrent: true })
+				{
+					bool value;
+					try
+					{
+						// At the root of the server, next to the api/v2/ of the base URI.
+						var description = await this.Get<JsonElement>("../../openapi.json", new RequestQueryParams(), cancellationToken);
+						value = description.ValueKind == JsonValueKind.Object
+							&& description.TryGetProperty("components", out var components) && components.ValueKind == JsonValueKind.Object
+							&& components.TryGetProperty("schemas", out var schemas) && schemas.ValueKind == JsonValueKind.Object
+							&& schemas.TryGetProperty("DeleteCollectionRecordsPayload", out var payload)
+							&& payload.GetRawText().Contains("\"limit\"");
+					}
+					catch (ChromaException)
+					{
+						value = false;
+					}
+					supported = new Fact<bool>(value);
+					_server.DeleteLimit = supported;
+				}
+			}
+			finally
+			{
+				_server.DeleteLimitLock.Release();
+			}
+		}
+		return supported.Value;
+	}
+
 	private async Task<ChromaPreFlightChecks?> GetPreFlightChecks(CancellationToken cancellationToken)
 	{
 		var checks = _server.PreFlightChecks;
@@ -183,6 +224,8 @@ internal sealed class ChromaHttpClient
 		public readonly SemaphoreSlim VersionLock = new(1, 1);
 		public volatile Fact<ChromaPreFlightChecks?>? PreFlightChecks;
 		public readonly SemaphoreSlim PreFlightChecksLock = new(1, 1);
+		public volatile Fact<bool>? DeleteLimit;
+		public readonly SemaphoreSlim DeleteLimitLock = new(1, 1);
 	}
 
 	internal sealed class Fact<T>(T value)

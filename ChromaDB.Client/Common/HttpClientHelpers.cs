@@ -97,6 +97,18 @@ internal static partial class HttpClientHelpers
 		await Send(httpClient, httpRequestMessage, cancellationToken);
 	}
 
+	public static async Task Patch<TInput>(this ChromaHttpClient httpClient, string endpoint, TInput? input, RequestQueryParams queryParams, CancellationToken cancellationToken)
+	{
+		using var content = new StringContent(JsonSerializer.Serialize(input, PostJsonSerializerOptions.TypeInfo<TInput?>()), Encoding.UTF8, "application/json");
+		// HttpMethod.Patch is missing from netstandard2.0.
+		using var httpRequestMessage = new HttpRequestMessage(new HttpMethod("PATCH"), requestUri: httpClient.CreateUri(ValidateAndPrepareEndpoint(endpoint, queryParams)))
+		{
+			Content = content,
+			Headers = { Accept = { new MediaTypeWithQualityHeaderValue("application/json") } }
+		};
+		await Send(httpClient, httpRequestMessage, cancellationToken);
+	}
+
 	public static async Task<TResponse> Delete<TResponse>(this ChromaHttpClient httpClient, string endpoint, RequestQueryParams queryParams, CancellationToken cancellationToken)
 	{
 		using var httpRequestMessage = new HttpRequestMessage(HttpMethod.Delete, requestUri: httpClient.CreateUri(ValidateAndPrepareEndpoint(endpoint, queryParams)));
