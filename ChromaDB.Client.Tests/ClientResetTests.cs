@@ -1,5 +1,5 @@
-﻿using ChromaDB.Client.Tests.TestContainer;
-using NUnit.Framework;
+﻿using NUnit.Framework;
+using Testcontainers.Chroma;
 
 namespace ChromaDB.Client.Tests;
 
@@ -27,7 +27,7 @@ public class ClientResetTests
 			Assert.That(result, Is.True);
 		}
 
-		protected override ChromaDBBuilder ConfigureContainer(ChromaDBBuilder builder)
+		protected override ChromaBuilder ConfigureContainer(ChromaBuilder builder)
 			=> IsChroma1
 				? builder.WithEnvironment("CHROMA_ALLOW_RESET", "true")
 				: builder.WithEnvironment("ALLOW_RESET", "TRUE");

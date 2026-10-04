@@ -1,5 +1,5 @@
-﻿using ChromaDB.Client.Tests.TestContainer;
-using NUnit.Framework;
+﻿using NUnit.Framework;
+using Testcontainers.Chroma;
 
 namespace ChromaDB.Client.Tests;
 
@@ -52,7 +52,7 @@ public class ClientAuthTests
 		protected override ChromaConfigurationOptions WithServerCredentials(ChromaConfigurationOptions options)
 			=> options.WithChromaToken("random-ToKen");
 
-		protected override ChromaDBBuilder ConfigureContainer(ChromaDBBuilder builder)
+		protected override ChromaBuilder ConfigureContainer(ChromaBuilder builder)
 			=> builder
 				.WithEnvironment("CHROMA_SERVER_AUTHN_CREDENTIALS", "random-ToKen")
 				.WithEnvironment("CHROMA_SERVER_AUTHN_PROVIDER", "chromadb.auth.token_authn.TokenAuthenticationServerProvider")
@@ -89,7 +89,7 @@ public class ClientAuthTests
 		protected override ChromaConfigurationOptions WithServerCredentials(ChromaConfigurationOptions options)
 			=> options.WithChromaToken("random-ToKen", ChromaTokenTransportHeader.Authorization);
 
-		protected override ChromaDBBuilder ConfigureContainer(ChromaDBBuilder builder)
+		protected override ChromaBuilder ConfigureContainer(ChromaBuilder builder)
 			=> builder
 				.WithEnvironment("CHROMA_SERVER_AUTHN_CREDENTIALS", "random-ToKen")
 				.WithEnvironment("CHROMA_SERVER_AUTHN_PROVIDER", "chromadb.auth.token_authn.TokenAuthenticationServerProvider");
@@ -127,7 +127,7 @@ public class ClientAuthTests
 		protected override ChromaConfigurationOptions WithServerCredentials(ChromaConfigurationOptions options)
 			=> options.WithBasicAuth("admin", "secret");
 
-		protected override ChromaDBBuilder ConfigureContainer(ChromaDBBuilder builder)
+		protected override ChromaBuilder ConfigureContainer(ChromaBuilder builder)
 			=> builder
 				.WithEnvironment("CHROMA_SERVER_AUTHN_CREDENTIALS", Credentials)
 				.WithEnvironment("CHROMA_SERVER_AUTHN_PROVIDER", "chromadb.auth.basic_authn.BasicAuthenticationServerProvider");

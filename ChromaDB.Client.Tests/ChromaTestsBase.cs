@@ -1,5 +1,6 @@
 ﻿using ChromaDB.Client.Tests.TestContainer;
 using NUnit.Framework;
+using Testcontainers.Chroma;
 
 namespace ChromaDB.Client.Tests;
 
@@ -15,7 +16,7 @@ public abstract class ChromaTestsBase
 	protected static readonly ChromaApiVersion ApiVersion = Environment.GetEnvironmentVariable("CHROMA_TEST_API_VERSION") is "v1" ? ChromaApiVersion.V1 : ChromaApiVersion.V2;
 
 	// Null when the fixture is skipped before its container starts.
-	private ChromaDBContainer? _container;
+	private ChromaContainer? _container;
 	private ChromaConfigurationOptions? _baseConfigurationOptions;
 
 	[OneTimeSetUp]
@@ -33,9 +34,9 @@ public abstract class ChromaTestsBase
 		{
 			Assert.Ignore("Chroma 0.4.15 does not add records to the collections of other tenants and databases.");
 		}
-		_container = ConfigureContainer(new ChromaDBBuilder()).Build();
+		_container = ConfigureContainer(new ChromaBuilder(ChromaImage.Name)).Build();
 		await _container.StartAsync();
-		_baseConfigurationOptions = new ChromaConfigurationOptions(uri: $"http://{_container.Hostname}:{_container.GetMappedPublicPort(ChromaDBBuilder.ChromaDBPort)}/api/{(ApiVersion == ChromaApiVersion.V1 ? "v1" : "v2")}/")
+		_baseConfigurationOptions = new ChromaConfigurationOptions(uri: $"{_container.GetConnectionString()}api/{(ApiVersion == ChromaApiVersion.V1 ? "v1" : "v2")}/")
 			.WithApiVersion(ApiVersion);
 		if (TestTenant is not null || TestDatabase is not null)
 		{
@@ -68,55 +69,55 @@ public abstract class ChromaTestsBase
 	protected ChromaConfigurationOptions BaseConfigurationOptions => _baseConfigurationOptions ?? throw new InvalidOperationException();
 
 	// Chroma 1.0 removed the built-in authentication and reads its settings from a configuration file.
-	protected static bool IsChroma1 => ChromaDBBuilder.ChromaDBVersion.Major >= 1;
+	protected static bool IsChroma1 => ChromaImage.Version.Major >= 1;
 
 	// Chroma 0.4.14 has no tenants and databases, 0.4.15 has them.
-	protected static bool TenantsSupported => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 4, 15);
+	protected static bool TenantsSupported => ChromaImage.Version >= new Version(0, 4, 15);
 
 	// Missing in Chroma 0.4.15 and there in 0.4.23, the next version whose image starts: count_collections, the $not_contains
 	// document filter, and the tenant and database in the collections the server returns.
-	protected static bool CountCollectionsAndNotContainsSupported => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 4, 23);
+	protected static bool CountCollectionsAndNotContainsSupported => ChromaImage.Version >= new Version(0, 4, 23);
 
 	// Chroma 0.4.15 creates collections in other tenants and databases, but answers that they do not exist when records
 	// are added to them; 0.4.23 adds them.
-	protected static bool RecordsInOtherTenantsSupported => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 4, 23);
+	protected static bool RecordsInOtherTenantsSupported => ChromaImage.Version >= new Version(0, 4, 23);
 
 	// Chroma 0.4.10 to 0.4.15 ignore the limit and the offset of the list of the collections; 0.4.23 applies them.
-	protected static bool ListCollectionsPagingSupported => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 4, 23);
+	protected static bool ListCollectionsPagingSupported => ChromaImage.Version >= new Version(0, 4, 23);
 
 	// Chroma 0.4.10 has no pre-flight-checks; 0.4.12 has them (the 0.4.11 image does not start).
-	protected static bool PreFlightChecksSupported => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 4, 12);
+	protected static bool PreFlightChecksSupported => ChromaImage.Version >= new Version(0, 4, 12);
 
 	// Chroma 1.0.12 and earlier do not send supports_base64_encoding in the pre-flight checks; 1.0.13 sends it.
-	protected static bool Base64EncodingReported => ChromaDBBuilder.ChromaDBVersion >= new Version(1, 0, 13);
+	protected static bool Base64EncodingReported => ChromaImage.Version >= new Version(1, 0, 13);
 
 	// Chroma 0.4.10 to 0.4.15 reject "uris" in include; 0.4.23 stores and returns the URIs of the records.
-	protected static bool UrisSupported => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 4, 23);
+	protected static bool UrisSupported => ChromaImage.Version >= new Version(0, 4, 23);
 
 	// Only the v2 API of Chroma 0.6.3 and later lists and deletes databases: 0.6.2 and earlier answer 405 Method Not Allowed.
-	protected static bool DatabaseListingSupported => ApiVersion == ChromaApiVersion.V2 && ChromaDBBuilder.ChromaDBVersion >= new Version(0, 6, 3);
+	protected static bool DatabaseListingSupported => ApiVersion == ChromaApiVersion.V2 && ChromaImage.Version >= new Version(0, 6, 3);
 
 	// Only the v2 API of Chroma 1.5.7 and later gets a collection by its id: 1.5.6 and earlier answer 404 Not Found.
-	protected static bool CollectionByIdSupported => ApiVersion == ChromaApiVersion.V2 && ChromaDBBuilder.ChromaDBVersion >= new Version(1, 5, 7);
+	protected static bool CollectionByIdSupported => ApiVersion == ChromaApiVersion.V2 && ChromaImage.Version >= new Version(1, 5, 7);
 
 	// Chroma 0.6.3 and earlier ignore the ids of a query and search all the records; 1.0.0 searches only those.
 	protected static bool IdsInQuerySupported => ApiVersion == ChromaApiVersion.V2 && IsChroma1;
 
 	// Chroma 0.x accepts lists in metadata but drops them; 1.0.0 to 1.4.1 reject them with 422; 1.5.0 stores them and filters them with $contains.
-	protected static bool MetadataListsSupported => IsChroma1 && ChromaDBBuilder.ChromaDBVersion >= new Version(1, 5, 0);
+	protected static bool MetadataListsSupported => IsChroma1 && ChromaImage.Version >= new Version(1, 5, 0);
 	protected static bool IsChroma0 => !IsChroma1;
 
 	// Chroma 1.0.6 and later send "hnsw.space" in the configuration; 0.5.4 to 1.0.5 send "hnsw_configuration.space", always "l2".
-	protected static bool ConfigurationSpaceReported => ChromaDBBuilder.ChromaDBVersion >= new Version(1, 0, 6);
+	protected static bool ConfigurationSpaceReported => ChromaImage.Version >= new Version(1, 0, 6);
 
 	// The servers before Chroma 0.5.1 configure their built-in authentication with other settings, and Chroma 1.0 removed it.
-	protected static bool BuiltInAuthenticationTested => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 5, 1) && !IsChroma1;
+	protected static bool BuiltInAuthenticationTested => ChromaImage.Version >= new Version(0, 5, 1) && !IsChroma1;
 
 	// Since Chroma 0.5.20, the server rejects embeddings of different dimensions in the same request.
-	protected static bool EmbeddingDimensionsChecked => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 5, 20);
+	protected static bool EmbeddingDimensionsChecked => ChromaImage.Version >= new Version(0, 5, 20);
 
 	// Since Chroma 1.0.16, add and upsert require embeddings.
-	protected static bool EmbeddingsRequired => ChromaDBBuilder.ChromaDBVersion >= new Version(1, 0, 16);
+	protected static bool EmbeddingsRequired => ChromaImage.Version >= new Version(1, 0, 16);
 
 	protected static List<ReadOnlyMemory<float>> Embeddings(int count)
 		=> Enumerable.Repeat(new ReadOnlyMemory<float>([1f, 0.5f, 0f, -0.5f, -1f]), count).ToList();
@@ -130,7 +131,7 @@ public abstract class ChromaTestsBase
 			await action();
 	}
 
-	protected virtual ChromaDBBuilder ConfigureContainer(ChromaDBBuilder builder) => builder;
+	protected virtual ChromaBuilder ConfigureContainer(ChromaBuilder builder) => builder;
 
 	// Skips the whole fixture before its container starts, when the server of this version cannot run it.
 	protected virtual string? SkipReason => null;

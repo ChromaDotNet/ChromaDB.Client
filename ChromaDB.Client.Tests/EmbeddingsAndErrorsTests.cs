@@ -40,7 +40,7 @@ public class EmbeddingsAndErrorsTests : ChromaTestsBase
 	[Test]
 	public void ErrorTypeOfAMissingCollection()
 	{
-		var expected = IsChroma1 ? "NotFoundError" : ChromaDB.Client.Tests.TestContainer.ChromaDBBuilder.ChromaDBVersion >= new Version(0, 5, 6) ? "InvalidCollection" : "ValueError";
+		var expected = IsChroma1 ? "NotFoundError" : ChromaDB.Client.Tests.TestContainer.ChromaImage.Version >= new Version(0, 5, 6) ? "InvalidCollection" : "ValueError";
 		var ex = Assert.ThrowsAsync<ChromaException>(() => new ChromaClient(BaseConfigurationOptions, HttpClient).GetCollection($"collection{Random.Shared.Next()}"));
 		Assert.That(ex!.ErrorType, Is.EqualTo(expected));
 	}
