@@ -365,7 +365,7 @@ public class ChromaCollectionClient
 			Params = parameters,
 		};
 		var response = await _httpClient.Post<AttachFunctionRequest, AttachFunctionResponse>(_httpClient.Routes.Collection + "/functions/attach", request, requestParams, cancellationToken);
-		return (response.AttachedFunction, response.Created);
+		return (response.AttachedFunction, response.Created ?? true);
 	}
 
 	public async Task<ChromaAttachedFunction> GetAttachedFunction(string name, CancellationToken cancellationToken = default)

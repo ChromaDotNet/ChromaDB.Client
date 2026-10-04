@@ -213,6 +213,14 @@ public class ApiV2RequestsTests
 		Assert.That((attached.Id, attached.Name, attached.FunctionName, created), Is.EqualTo((Guid.Parse("33333333-2222-3333-4444-555555555555"), "stats", "statistics", true)));
 	}
 
+	[TestCase(""","created":false""", false)]
+	[TestCase("", true)]
+	public async Task AttachFunctionCreated(string created, bool expected)
+	{
+		var server = new FakeServer(_ => (HttpStatusCode.OK, $$"""{"attached_function":{"id":"33333333-2222-3333-4444-555555555555","name":"stats","function_name":"statistics"}{{created}}}"""));
+		Assert.That((await CollectionClient(server).AttachFunction(ChromaFunctions.Statistics, "stats", "stats_output")).Created, Is.EqualTo(expected));
+	}
+
 	[Test]
 	public async Task GetAttachedFunction()
 	{
