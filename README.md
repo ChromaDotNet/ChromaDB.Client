@@ -24,7 +24,7 @@ The package targets .NET 8 and .NET Standard 2.0; the tests run against both bui
 dotnet add package ChromaDotNet.Client
 ```
 
-`ChromaDotNet.Client.DependencyInjection` adds the registration for `Microsoft.Extensions.DependencyInjection`: `AddChromaClient`, and `AddKeyedChromaClient` for more than one server, tenant or database under different keys. Both register the `ChromaClient` as a singleton, so also singletons can take it, with an `HttpClient` from `IHttpClientFactory`; on .NET its connections are renewed every two minutes, so that a change of the address of the server in the DNS is seen. Every change merged into `main` is also published as a preview version, installed with `--prerelease`.
+`ChromaDotNet.Client.DependencyInjection` adds the registration for `Microsoft.Extensions.DependencyInjection`: `AddChromaClient`, and `AddKeyedChromaClient` for more than one server, tenant or database under different keys. Both register the `ChromaClient` as a singleton, so also singletons can take it. Its `HttpClient` sends each request with the current handler of `IHttpClientFactory`, which the factory renews after its handler lifetime, two minutes by default, so a change of the address of the server in the DNS is seen on every target. What the client learns about the server, like its version, is asked again after two minutes. Every change merged into `main` is also published as a preview version, installed with `--prerelease`.
 
 ## Example
 
