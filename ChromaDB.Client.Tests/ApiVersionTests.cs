@@ -34,6 +34,7 @@ public class ApiVersionTests
 		yield return Case("DeleteDatabase", c => c.DeleteDatabase("d"), "DELETE", "tenants/t/databases/d", "databases/d?tenant=t");
 		yield return Case("Get", c => c.Get(), "POST", $"tenants/t/databases/d/collections/{Id}/get", $"collections/{Id}/get");
 		yield return Case("Query", c => c.Query(Embedding), "POST", $"tenants/t/databases/d/collections/{Id}/query", $"collections/{Id}/query");
+		yield return Case("QueryWithIds", c => c.Query(new ChromaQuery([Embedding]) { Ids = ["a"] }), "POST", $"tenants/t/databases/d/collections/{Id}/query", $"collections/{Id}/query");
 		yield return Case("Add", c => c.Add(["a"], embeddings: [Embedding]), "POST", $"tenants/t/databases/d/collections/{Id}/add", $"collections/{Id}/add");
 		yield return Case("Update", c => c.Update(["a"]), "POST", $"tenants/t/databases/d/collections/{Id}/update", $"collections/{Id}/update");
 		yield return Case("Upsert", c => c.Upsert(["a"], embeddings: [Embedding]), "POST", $"tenants/t/databases/d/collections/{Id}/upsert", $"collections/{Id}/upsert");

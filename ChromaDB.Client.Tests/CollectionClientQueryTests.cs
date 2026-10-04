@@ -1,4 +1,5 @@
-﻿using ChromaDB.Client.Tests.Common;
+﻿using ChromaDB.Client.Models;
+using ChromaDB.Client.Tests.Common;
 using NUnit.Framework;
 
 namespace ChromaDB.Client.Tests;
@@ -383,10 +384,71 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result[1][0].Document, Is.Null);
 	}
 
+	[Test]
+	public async Task QueryWithIds()
+	{
+		var client = await Init(withThird: true);
+		var query = new ChromaQuery([Embeddings1, Embeddings2]) { Ids = [Id2, Id3], Include = ChromaQueryInclude.Distances };
+		if (!IdsInQuerySupported)
+		{
+			// The server searches all the records, and Id1 is the nearest to Embeddings1.
+			await Assert.ThatAsync(() => client.Query(query), Throws.InstanceOf<ChromaException>().With.Message.Contains("outside the ids"));
+			return;
+		}
+		var result = await client.Query(query);
+		Assert.That(result, Has.Count.EqualTo(2));
+		Assert.That(result[0].Select(x => x.Id), Is.EquivalentTo(new[] { Id2, Id3 }));
+		Assert.That(result[1].Select(x => x.Id), Is.EquivalentTo(new[] { Id2, Id3 }));
+		Assert.That(result[1][0].Id, Is.EqualTo(Id2));
+		Assert.That(result[1][0].Distance, Is.EqualTo(0).Within(DistanceTolerance));
+	}
+
+	[Test]
+	public async Task QueryWithIdsNResults1()
+	{
+		Assume.That(IdsInQuerySupported, Is.True, "Chroma 0.6.3 and earlier ignore the ids of a query.");
+		var client = await Init(withThird: true);
+		var result = await client.Query(new ChromaQuery([Embeddings1]) { Ids = [Id2, Id3], NResults = 1 });
+		Assert.That(result.Single().Select(x => x.Id), Is.EqualTo(new[] { Id3 }));
+	}
+
+	[Test]
+	public async Task QueryWithIdsAndWhere()
+	{
+		Assume.That(IdsInQuerySupported, Is.True, "Chroma 0.6.3 and earlier ignore the ids of a query.");
+		var client = await Init(withThird: true);
+		var result = await client.Query(new ChromaQuery([Embeddings1]) { Ids = [Id1, Id3], Where = ChromaWhereOperator.Equal(MetadataKey2, Metadata2[MetadataKey2]) });
+		Assert.That(result.Single().Select(x => x.Id), Is.EqualTo(new[] { Id3 }));
+	}
+
+	[Test]
+	public async Task QueryWithEmptyIds()
+	{
+		var client = await Init(withThird: true);
+		var query = new ChromaQuery([Embeddings1]) { Ids = [] };
+		if (!IdsInQuerySupported)
+		{
+			await Assert.ThatAsync(() => client.Query(query), Throws.InstanceOf<ChromaException>().With.Message.Contains("outside the ids"));
+			return;
+		}
+		Assert.That((await client.Query(query)).Single(), Is.Empty);
+	}
+
+	// Chroma 1.x answers 500 "Error finding id" when an id of the query does not exist; Chroma 0.x ignores the ids.
+	[Test]
+	public async Task QueryWithMissingIdThrows()
+	{
+		var client = await Init(withThird: true);
+		await Assert.ThatAsync(() => client.Query(new ChromaQuery([Embeddings1]) { Ids = [Id1, "missing"] }), Throws.InstanceOf<ChromaException>());
+	}
+
 	static readonly string Id1 = "id1";
 	static readonly string Id2 = "id2";
+	static readonly string Id3 = "id3";
 	static readonly ReadOnlyMemory<float> Embeddings1 = new([1, 2, 3]);
 	static readonly ReadOnlyMemory<float> Embeddings2 = new([1.4f, 1.5f, 99.33f]);
+	// Nearer to Embeddings1 than Embeddings2 is, farther than Embeddings1 itself.
+	static readonly ReadOnlyMemory<float> Embeddings3 = new([1, 2, 10]);
 	static readonly string MetadataKey1 = "key1";
 	static readonly string MetadataKey2 = "key2";
 	static readonly Dictionary<string, object> Metadata1 = new()
@@ -402,7 +464,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	static readonly string Doc1 = "Doc1";
 	static readonly string Doc2 = "Doc2";
 
-	async Task<ChromaCollectionClient> Init()
+	async Task<ChromaCollectionClient> Init(bool withThird = false)
 	{
 		var name = $"collection{Random.Shared.Next()}";
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
@@ -412,6 +474,10 @@ public class CollectionClientQueryTests : ChromaTestsBase
 			embeddings: [Embeddings1, Embeddings2],
 			metadatas: [Metadata1, Metadata2],
 			documents: [Doc1, Doc2]);
+		if (withThird)
+		{
+			await collectionClient.Add([Id3], embeddings: [Embeddings3], metadatas: [Metadata2], documents: [Doc2]);
+		}
 		return collectionClient;
 	}
 }

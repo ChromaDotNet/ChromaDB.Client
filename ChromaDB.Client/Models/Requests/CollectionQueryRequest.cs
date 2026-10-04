@@ -18,4 +18,8 @@ internal class CollectionQueryRequest
 
 	[JsonPropertyName("include")]
 	public required List<string> Include { get; init; }
+
+	[JsonPropertyName("ids")]
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public List<string>? Ids { get; init; }
 }

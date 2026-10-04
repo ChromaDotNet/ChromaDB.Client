@@ -99,6 +99,9 @@ public abstract class ChromaTestsBase
 	// Only the v2 API of Chroma 1.5.7 and later gets a collection by its id: 1.5.6 and earlier answer 404 Not Found.
 	protected static bool CollectionByIdSupported => ApiVersion == ChromaApiVersion.V2 && ChromaDBBuilder.ChromaDBVersion >= new Version(1, 5, 7);
 
+	// Chroma 0.6.3 and earlier ignore the ids of a query and search all the records; 1.0.0 searches only those.
+	protected static bool IdsInQuerySupported => ApiVersion == ChromaApiVersion.V2 && IsChroma1;
+
 	// The servers before Chroma 0.5.1 configure their built-in authentication with other settings, and Chroma 1.0 removed it.
 	protected static bool BuiltInAuthenticationTested => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 5, 1) && !IsChroma1;
 

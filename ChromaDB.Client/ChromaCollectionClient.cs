@@ -52,7 +52,10 @@ public class ChromaCollectionClient
 	public async Task<List<ChromaCollectionQueryEntry>> Query(ReadOnlyMemory<float> queryEmbeddings, int nResults = 10, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, ChromaQueryInclude? include = null, CancellationToken cancellationToken = default)
 		=> (await Query([queryEmbeddings], nResults: nResults, where: where, whereDocument: whereDocument, include: include, cancellationToken: cancellationToken)).FirstOrDefault() ?? [];
 
-	public async Task<List<List<ChromaCollectionQueryEntry>>> Query(List<ReadOnlyMemory<float>> queryEmbeddings, int nResults = 10, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, ChromaQueryInclude? include = null, CancellationToken cancellationToken = default)
+	public Task<List<List<ChromaCollectionQueryEntry>>> Query(List<ReadOnlyMemory<float>> queryEmbeddings, int nResults = 10, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, ChromaQueryInclude? include = null, CancellationToken cancellationToken = default)
+		=> Query(new ChromaQuery(queryEmbeddings) { NResults = nResults, Where = where, WhereDocument = whereDocument, Include = include }, cancellationToken);
+
+	public async Task<List<List<ChromaCollectionQueryEntry>>> Query(ChromaQuery query, CancellationToken cancellationToken = default)
 	{
 		var requestParams = new RequestQueryParams()
 			.Insert("{tenant}", _tenant)
@@ -60,14 +63,26 @@ public class ChromaCollectionClient
 			.Insert("{collection_id}", _collection.Id);
 		var request = new CollectionQueryRequest()
 		{
-			QueryEmbeddings = queryEmbeddings,
-			NResults = nResults,
-			Where = where?.ToWhere(),
-			WhereDocument = whereDocument?.ToWhereDocument(),
-			Include = (include ?? ChromaQueryInclude.Metadatas | ChromaQueryInclude.Documents | ChromaQueryInclude.Distances).ToInclude(),
+			QueryEmbeddings = query.QueryEmbeddings,
+			NResults = query.NResults,
+			Where = query.Where?.ToWhere(),
+			WhereDocument = query.WhereDocument?.ToWhereDocument(),
+			Include = (query.Include ?? ChromaQueryInclude.Metadatas | ChromaQueryInclude.Documents | ChromaQueryInclude.Distances).ToInclude(),
+			Ids = query.Ids,
 		};
 		var response = await _httpClient.Post<CollectionQueryRequest, CollectionEntriesQueryResponse>(_httpClient.Routes.Collection + "/query", request, requestParams, cancellationToken);
-		return response.Map() ?? [];
+		var result = response.Map() ?? [];
+		// Chroma 0.x ignores the ids and searches all the records: a result outside the ids shows it. When all the results
+		// are among the ids, they are also the nearest among them, so the answer is right on those servers too.
+		if (query.Ids is not null)
+		{
+			var ids = new HashSet<string>(query.Ids);
+			if (result.Any(entries => entries.Any(entry => !ids.Contains(entry.Id))))
+			{
+				throw new ChromaException("The server searched outside the ids of the query: it does not support them. Chroma 1.0.0 and later do.");
+			}
+		}
+		return result;
 	}
 
 	public Task Add(List<string> ids, List<ReadOnlyMemory<float>>? embeddings = null, List<Dictionary<string, object>>? metadatas = null, List<string>? documents = null, CancellationToken cancellationToken = default)
