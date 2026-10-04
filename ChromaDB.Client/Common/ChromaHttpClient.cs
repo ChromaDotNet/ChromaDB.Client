@@ -19,7 +19,8 @@ internal sealed class ChromaHttpClient
 	private string? _serverVersion;
 	private readonly SemaphoreSlim _serverVersionLock = new(1, 1);
 	private int? _maxBatchSize;
-	private bool _maxBatchSizeKnown;
+	// Volatile: read outside the lock, it is written after _maxBatchSize, so whoever sees it true sees the limit too.
+	private volatile bool _maxBatchSizeKnown;
 	private readonly SemaphoreSlim _maxBatchSizeLock = new(1, 1);
 
 	public ChromaRoutes Routes { get; }
