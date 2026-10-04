@@ -119,7 +119,9 @@ public class ChromaClient
 		return await _httpClient.Get<ChromaHealthcheck>(_httpClient.Routes.Healthcheck, new RequestQueryParams(), cancellationToken);
 	}
 
-	// A collection by its Chroma Resource Name, "<tenant resource name>:<database>:<collection>": Chroma Cloud only.
+	// A collection by its Chroma Resource Name, "<tenant resource name>:<database>:<collection>": Chroma Cloud only, as in the
+	// JavaScript client of Chroma. The operation is hidden in the OpenAPI description, and Chroma Cloud answered 403 to the API
+	// keys tried, of a database and of a whole tenant.
 	public async Task<ChromaCollection> GetCollectionByCrn(string crn, CancellationToken cancellationToken = default)
 	{
 		var requestParams = new RequestQueryParams()
