@@ -288,6 +288,16 @@ public class ApiV2RequestsTests
 			Throws.InstanceOf<ChromaException>().With.Message.Contains(message));
 	}
 
+	// With several databases in the credentials, the one of the options stays, as in the Python client: there is none to compare.
+	[Test]
+	public async Task TenantAndDatabaseFromIdentityWithSeveralDatabases()
+	{
+		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"tenant":"t1","databases":["d1","d2"]}"""));
+		var options = new ChromaConfigurationOptions("http://localhost:8000", defaultDatabase: "d3");
+		var client = await new ChromaClient(options, new HttpClient(server)).WithTenantAndDatabaseFromIdentity();
+		Assert.That((client.Options.Tenant, client.Options.Database), Is.EqualTo(("t1", "d3")));
+	}
+
 	[Test]
 	public async Task TenantAndDatabaseFromIdentityReplaceTheDefaults()
 	{

@@ -116,9 +116,10 @@ public class ChromaClient
 	/// The same client, with the tenant and the database of its credentials, which the server tells in <c>auth/identity</c>, as the
 	/// <c>CloudClient</c> of the Python client of Chroma does. The tenant is taken unless it is <c>*</c>; the database only when the
 	/// credentials have exactly one, other than <c>*</c>: on Chroma Cloud an API key for one database gives both, an API key for a
-	/// whole tenant only the tenant. A tenant or a database of the options other than the default one must match the credentials,
-	/// otherwise it throws a <c>ChromaException</c>. The same <c>HttpClient</c> and what this client learned about the server are kept,
-	/// and this client does not change.
+	/// whole tenant only the tenant. A tenant or a database of the options other than the default one must match the one the
+	/// credentials give, when they give one, otherwise it throws a <c>ChromaException</c>; with several databases in the credentials,
+	/// the one of the options stays as it is, as in the Python client. The same <c>HttpClient</c> and what this client learned about
+	/// the server are kept, and this client does not change.
 	/// </summary>
 	public async Task<ChromaClient> WithTenantAndDatabaseFromIdentity(CancellationToken cancellationToken = default)
 	{
