@@ -10,7 +10,11 @@ public abstract class ChromaRank
 	private protected ChromaRank()
 	{ }
 
-	internal abstract Dictionary<string, object> ToRank();
+	internal Dictionary<string, object> ToRank()
+		=> ToRank(null);
+
+	// embedText gives the sparse vector of a text query on a key; without it, the text goes as it is.
+	internal abstract Dictionary<string, object> ToRank(Func<string, string, Models.ChromaSparseVector>? embedText);
 
 	/// <summary>
 	/// The JSON of the expression, as the client sends it in <c>rank</c>.
@@ -31,6 +35,14 @@ public abstract class ChromaRank
 	/// of a text: <c>$knn</c> with the sparse vector in <c>query</c>. A name of its own, so that <c>Knn(new(...), key)</c> stays unambiguous.
 	/// </summary>
 	public static ChromaRank SparseKnn(Models.ChromaSparseVector query, string key, int limit = 16, double? defaultScore = null, bool returnRank = false)
+		=> new ChromaKnnRank(query, key, limit, defaultScore, returnRank);
+
+	/// <summary>
+	/// The same as <c>SparseKnn</c> with the sparse vector of a text, which <c>ChromaCollectionClient.Search</c> computes with the function
+	/// of the sparse vector index of the key, <c>chroma_bm25</c>, as the Python client of Chroma does. The collection of the client needs
+	/// its schema, as <c>GetCollection</c> and <c>CreateCollection</c> return it.
+	/// </summary>
+	public static ChromaRank SparseKnn(string query, string key, int limit = 16, double? defaultScore = null, bool returnRank = false)
 		=> new ChromaKnnRank(query, key, limit, defaultScore, returnRank);
 
 	/// <summary>
@@ -158,13 +170,14 @@ public abstract class ChromaRank
 		=> rank is ChromaListRank list && list.Operator == @operator ? list.Ranks : [rank];
 }
 
-// The query is a float[] or a ChromaSparseVector.
+// The query is a float[], a ChromaSparseVector or a text.
 internal sealed class ChromaKnnRank(object query, string key, int limit, double? defaultScore, bool returnRank) : ChromaRank
 {
 	// Like the Python client of Chroma: "default" and "return_rank" only when set.
-	internal override Dictionary<string, object> ToRank()
+	internal override Dictionary<string, object> ToRank(Func<string, string, Models.ChromaSparseVector>? embedText)
 	{
-		var knn = new Dictionary<string, object> { ["query"] = query, ["key"] = key, ["limit"] = limit };
+		var vector = query is string text && embedText is not null ? embedText(key, text) : query;
+		var knn = new Dictionary<string, object> { ["query"] = vector, ["key"] = key, ["limit"] = limit };
 		if (defaultScore is { } score)
 		{
 			knn["default"] = score;
@@ -179,7 +192,7 @@ internal sealed class ChromaKnnRank(object query, string key, int limit, double?
 
 internal sealed class ChromaValueRank(double value) : ChromaRank
 {
-	internal override Dictionary<string, object> ToRank()
+	internal override Dictionary<string, object> ToRank(Func<string, string, Models.ChromaSparseVector>? embedText)
 		=> new() { ["$val"] = value };
 }
 
@@ -188,18 +201,18 @@ internal sealed class ChromaListRank(string @operator, ChromaRank[] ranks) : Chr
 	public string Operator { get; } = @operator;
 	public ChromaRank[] Ranks { get; } = ranks;
 
-	internal override Dictionary<string, object> ToRank()
-		=> new() { [Operator] = Ranks.Select(rank => (object)rank.ToRank()).ToArray() };
+	internal override Dictionary<string, object> ToRank(Func<string, string, Models.ChromaSparseVector>? embedText)
+		=> new() { [Operator] = Ranks.Select(rank => (object)rank.ToRank(embedText)).ToArray() };
 }
 
 internal sealed class ChromaUnaryRank(string @operator, ChromaRank rank) : ChromaRank
 {
-	internal override Dictionary<string, object> ToRank()
-		=> new() { [@operator] = rank.ToRank() };
+	internal override Dictionary<string, object> ToRank(Func<string, string, Models.ChromaSparseVector>? embedText)
+		=> new() { [@operator] = rank.ToRank(embedText) };
 }
 
 internal sealed class ChromaBinaryRank(string @operator, ChromaRank left, ChromaRank right) : ChromaRank
 {
-	internal override Dictionary<string, object> ToRank()
-		=> new() { [@operator] = new Dictionary<string, object> { ["left"] = left.ToRank(), ["right"] = right.ToRank() } };
+	internal override Dictionary<string, object> ToRank(Func<string, string, Models.ChromaSparseVector>? embedText)
+		=> new() { [@operator] = new Dictionary<string, object> { ["left"] = left.ToRank(embedText), ["right"] = right.ToRank(embedText) } };
 }

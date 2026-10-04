@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace ChromaDB.Client.Models;
 
 /// <summary>
@@ -5,12 +7,14 @@ namespace ChromaDB.Client.Models;
 /// </summary>
 public sealed class ChromaSparseVectorIndex
 {
-	internal ChromaSparseVectorIndex(string key, string? sourceKey, bool bm25, string? embeddingFunction)
+	internal ChromaSparseVectorIndex(string key, string? sourceKey, bool bm25, string? embeddingFunction, JsonElement? embeddingFunctionConfig)
 	{
 		Key = key;
 		SourceKey = sourceKey;
 		Bm25 = bm25;
 		EmbeddingFunction = embeddingFunction;
+		EmbeddingFunctionConfig = embeddingFunctionConfig;
+		Bm25Function = embeddingFunction == ChromaBm25.Name ? ChromaBm25.FromConfig(embeddingFunctionConfig) : null;
 	}
 
 	/// <summary>
@@ -32,4 +36,16 @@ public sealed class ChromaSparseVectorIndex
 	/// The name of the embedding function the schema declares, like <c>chroma_bm25</c>, when it declares a known one.
 	/// </summary>
 	public string? EmbeddingFunction { get; }
+
+	/// <summary>
+	/// The settings of the embedding function, <c>config</c> in the schema, as the server sends them; null when the schema has none.
+	/// </summary>
+	public JsonElement? EmbeddingFunctionConfig { get; }
+
+	/// <summary>
+	/// The BM25 function with the settings of the schema, as the Python client of Chroma builds it, when the function is
+	/// <c>chroma_bm25</c>: the client computes the vectors of the index with it. Null for the other functions, and for settings
+	/// of the wrong type.
+	/// </summary>
+	public ChromaBm25? Bm25Function { get; }
 }

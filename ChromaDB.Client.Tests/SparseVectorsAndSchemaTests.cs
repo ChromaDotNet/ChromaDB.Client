@@ -192,6 +192,141 @@ public class SparseVectorsAndSchemaTests
 		Assert.That(server.Requests.Single().Body.GetProperty("schema").GetProperty("keys").GetProperty("v").GetRawText(), Does.Contain("""{"k":1}"""));
 	}
 
+	// The settings of chroma_bm25 in the schema, as build_from_config of the Python client reads them: the missing ones get the default values.
+	[Test]
+	public void Bm25FunctionFromTheSchema()
+	{
+		var index = Index("""{"type":"known","name":"chroma_bm25","config":{"k":1.5,"b":0.6,"avg_doc_length":100,"token_max_length":10,"include_tokens":true,"stopwords":["quick","fox"]}}""");
+		var function = index.Bm25Function!;
+		Assert.That((function.K, function.B, function.AvgDocLength, function.TokenMaxLength, function.IncludeTokens, function.Stopwords), Is.EqualTo((1.5, 0.6, 100.0, 10, true, (IReadOnlyList<string>?)["quick", "fox"])));
+		Assert.That(index.EmbeddingFunctionConfig!.Value.GetProperty("k").GetDouble(), Is.EqualTo(1.5));
+		var text = "The quick brown fox jumps over the lazy dog. Foxes!";
+		Assert.That(function.Embed(text).ToString(), Is.EqualTo(new ChromaBm25(1.5, 0.6, 100, 10, ["quick", "fox"], true).Embed(text).ToString()));
+
+		var defaults = Index("""{"type":"known","name":"chroma_bm25","config":{"stopwords":null,"include_tokens":null}}""").Bm25Function!;
+		Assert.That((defaults.K, defaults.B, defaults.AvgDocLength, defaults.TokenMaxLength, defaults.IncludeTokens, defaults.Stopwords), Is.EqualTo((1.2, 0.75, 256.0, 40, false, (IReadOnlyList<string>?)null)));
+		Assert.That(Index("""{"type":"known","name":"chroma_bm25","config":{"token_max_length":12.7}}""").Bm25Function!.TokenMaxLength, Is.EqualTo(12));
+	}
+
+	// Where the Python client keeps no function: another function, no config, or a setting of the wrong type.
+	[TestCase("""{"type":"known","name":"splade","config":{}}""")]
+	[TestCase("""{"type":"known","name":"chroma_bm25"}""")]
+	[TestCase("""{"type":"known","name":"chroma_bm25","config":null}""")]
+	[TestCase("""{"type":"known","name":"chroma_bm25","config":{"k":"1.2"}}""")]
+	[TestCase("""{"type":"known","name":"chroma_bm25","config":{"b":null}}""")]
+	[TestCase("""{"type":"known","name":"chroma_bm25","config":{"token_max_length":1e10}}""")]
+	[TestCase("""{"type":"known","name":"chroma_bm25","config":{"include_tokens":1}}""")]
+	[TestCase("""{"type":"known","name":"chroma_bm25","config":{"stopwords":"the"}}""")]
+	[TestCase("""{"type":"known","name":"chroma_bm25","config":{"stopwords":["the",1]}}""")]
+	public void NoBm25Function(string function)
+	{
+		Assert.That(Index(function).Bm25Function, Is.Null);
+	}
+
+	// As the Python client: the vectors of the indexes with a source key, for the records whose metadata does not have them.
+	[TestCase("add")]
+	[TestCase("upsert")]
+	[TestCase("update")]
+	public async Task SparseVectorsComputedOnWrite(string operation)
+	{
+		var server = new FakeServer(r => r.Path.EndsWith("/version") ? (HttpStatusCode.OK, "\"1.5.9\"") : (HttpStatusCode.OK, "true"));
+		var given = new ChromaSparseVector([1], [0.5f]);
+		var metadatas = new List<Dictionary<string, object>>
+		{
+			new() { ["title"] = "Red apples" },
+			new() { ["doc_bm25"] = given },
+			null!,
+			new() { ["title"] = 5 },
+		};
+		var records = new ChromaRecords(["a", "b", "c", "d"]) { Documents = ["apple pie", "banana split", null!, "cherry tart"], Metadatas = metadatas };
+		var client = CollectionClient(server, TwoSourcesSchema);
+		await (operation switch { "add" => client.Add(records), "upsert" => client.Upsert(records), _ => client.Update(records) });
+
+		var sent = server.Requests.Single(x => x.Path.EndsWith("/" + operation)).Body.GetProperty("metadatas");
+		var bm25 = new ChromaBm25();
+		Assert.That(sent.GetRawText(), Is.EqualTo($$"""
+			[{"title":"Red apples","doc_bm25":{{bm25.Embed("apple pie")}},"title_bm25":{{new ChromaBm25(k: 1.5).Embed("Red apples")}}},
+			{"doc_bm25":{{given}}},
+			null,
+			{"title":5,"doc_bm25":{{bm25.Embed("cherry tart")}}}]
+			""".Replace("\n", "").Replace("\t", "")));
+		Assert.That(metadatas[0].Keys, Is.EqualTo(new[] { "title" }));
+		Assert.That(records.Metadatas, Is.SameAs(metadatas));
+	}
+
+	// Without metadata, a record with a document gets one with its vector.
+	[Test]
+	public async Task SparseVectorsWithoutMetadata()
+	{
+		var server = new FakeServer(r => r.Path.EndsWith("/version") ? (HttpStatusCode.OK, "\"1.5.9\"") : (HttpStatusCode.OK, "true"));
+		await CollectionClient(server, TwoSourcesSchema).Add(new ChromaRecords(["a", "b"]) { Documents = ["apple pie", null!] });
+		Assert.That(server.Requests.Single(x => x.Path.EndsWith("/add")).Body.GetProperty("metadatas").GetRawText(),
+			Is.EqualTo("""[{"doc_bm25":""" + new ChromaBm25().Embed("apple pie") + "},null]"));
+	}
+
+	// Without a schema, or without a source key in it, the records go as they are.
+	[TestCase(null)]
+	[TestCase("""{"defaults":{},"keys":{"doc_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"bm25":true}}}}}}""")]
+	public async Task NoSparseVectorsToCompute(string? schema)
+	{
+		var server = new FakeServer(_ => (HttpStatusCode.OK, "true"));
+		await CollectionClient(server, schema).Add(new ChromaRecords(["a"]) { Documents = ["apple pie"] });
+		Assert.That(server.Requests.Single().Body.TryGetProperty("metadatas", out var metadatas) ? metadatas.ValueKind : JsonValueKind.Undefined, Is.AnyOf(JsonValueKind.Null, JsonValueKind.Undefined));
+	}
+
+	// Another function: the client cannot compute its vectors, so it throws before sending, unless the metadata has them.
+	[Test]
+	public async Task SparseVectorsOfAnotherFunction()
+	{
+		var server = new FakeServer(r => r.Path.EndsWith("/version") ? (HttpStatusCode.OK, "\"1.5.9\"") : (HttpStatusCode.OK, "true"));
+		var client = CollectionClient(server, """{"defaults":{},"keys":{"doc_splade":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"splade","config":{}},"source_key":"#document"}}}}}}""");
+		await Assert.ThatAsync(() => client.Add(new ChromaRecords(["a"]) { Documents = ["apple pie"] }),
+			Throws.InstanceOf<ChromaException>().With.Message.Contains("\"doc_splade\"").And.Message.Contains("\"splade\""));
+		Assert.That(server.Requests, Is.Empty);
+		await client.Add(new ChromaRecords(["a"]) { Documents = ["apple pie"], Metadatas = [new() { ["doc_splade"] = new ChromaSparseVector([1], [0.5f]) }] });
+		Assert.That(server.Requests.Count(x => x.Path.EndsWith("/add")), Is.EqualTo(1));
+	}
+
+	// A text query of SparseKnn becomes the vector of the function of the index, also inside other expressions.
+	[Test]
+	public async Task SearchWithAText()
+	{
+		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"ids":[[]],"documents":[null],"embeddings":[null],"metadatas":[null],"scores":[null],"select":[[]]}"""));
+		var rank = ChromaRank.Rrf([ChromaRank.Knn(new([1f, 0f]), returnRank: true), ChromaRank.SparseKnn("Red apples", "title_bm25", returnRank: true)]);
+		Assert.That(rank.ToString(), Does.Contain("""{"$knn":{"query":"Red apples","key":"title_bm25","limit":16,"return_rank":true}}"""));
+		await CollectionClient(server, TwoSourcesSchema).Search(new ChromaSearch { Rank = rank });
+		Assert.That(server.Requests.Single().Body.GetProperty("searches")[0].GetProperty("rank").GetRawText(),
+			Does.Contain($$$"""{"$knn":{"query":{{{new ChromaBm25(k: 1.5).Embed("Red apples")}}},"key":"title_bm25","limit":16,"return_rank":true}}"""));
+	}
+
+	// As the Python client: a text query needs a key with an index and a function the client knows.
+	[TestCase(null, "doc_bm25")]
+	[TestCase(TwoSourcesSchema, "other")]
+	[TestCase("""{"defaults":{},"keys":{"doc_splade":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"splade","config":{}},"source_key":"#document"}}}}}}""", "doc_splade")]
+	public async Task SearchWithATextItCannotEmbed(string? schema, string key)
+	{
+		var server = new FakeServer(_ => (HttpStatusCode.OK, "{}"));
+		await Assert.ThatAsync(() => CollectionClient(server, schema).Search(new ChromaSearch { Rank = ChromaRank.SparseKnn("apple", key) }),
+			Throws.InstanceOf<ChromaException>().With.Message.Contains($"\"{key}\""));
+		Assert.That(server.Requests, Is.Empty);
+	}
+
+	// doc_bm25 from the documents with the default settings, title_bm25 from the title in the metadata with k 1.5, and an index without a source.
+	const string TwoSourcesSchema = """
+		{"defaults":{},"keys":{
+		"doc_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"chroma_bm25","config":{"k":1.2,"b":0.75,"avg_doc_length":256,"token_max_length":40,"include_tokens":false}},"source_key":"#document","bm25":true}}}},
+		"title_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"chroma_bm25","config":{"k":1.5}},"source_key":"title","bm25":true}}}},
+		"v":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"bm25":false}}}}}}
+		""";
+
+	static ChromaSparseVectorIndex Index(string function)
+		=> new ChromaCollection("c") { SchemaJson = JsonDocument.Parse("""{"defaults":{},"keys":{"v":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":""" + function + ""","source_key":"#document"}}}}}}""").RootElement }
+			.SparseVectorIndexes.Single();
+
+	static ChromaCollectionClient CollectionClient(HttpMessageHandler handler, string? schema)
+		=> new(new ChromaCollection("c") { Id = Guid.Parse("11111111-2222-3333-4444-555555555555"), SchemaJson = schema is null ? null : JsonDocument.Parse(schema).RootElement },
+			new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
+
 	static ChromaClient Client(HttpMessageHandler handler)
 		=> new(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
 

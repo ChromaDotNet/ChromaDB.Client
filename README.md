@@ -347,7 +347,7 @@ var results = await collectionClient.Search(new ChromaSearch { Rank = ChromaRank
 - **`ChromaCollectionSchema`** declares the indexes of a new collection:
   - With `bm25` the server applies the inverse document frequency of BM25. A source key needs an embedding function, as Chroma Cloud rejects one without the other.
   - `ChromaEmbeddingFunctionReference.ChromaBm25()` declares the BM25 function of Chroma with the settings of its Python client, so that the clients that know it compute the vectors.
-  - `ChromaCollection.SparseVectorIndexes` and `ChromaCollection.SchemaJson` read it back.
+  - `ChromaCollection.SparseVectorIndexes` and `ChromaCollection.SchemaJson` read it back. `EmbeddingFunctionConfig` of an index holds the settings of its function, and `Bm25Function` the `ChromaBm25` with those settings.
 - **Where the schema works:**
   - Chroma 1.3.0 and later apply it;
   - a single server rejects a sparse vector index;
@@ -356,21 +356,15 @@ var results = await collectionClient.Search(new ChromaSearch { Rank = ChromaRank
 ## Hybrid search with BM25
 
 ```csharp
-var bm25 = new ChromaBm25();
 var collection = await client.CreateCollection(new ChromaCollectionDefinition("articles")
 {
-	Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, bm25.Reference),
+	Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, new ChromaBm25().Reference),
 });
 var collectionClient = client.GetCollectionClient(collection);
-await collectionClient.Add(new ChromaRecords(ids)
-{
-	Embeddings = embeddings,
-	Documents = documents,
-	Metadatas = documents.Select(document => new Dictionary<string, object> { ["doc_bm25"] = bm25.Embed(document) }).ToList(),
-});
+await collectionClient.Add(new ChromaRecords(ids) { Embeddings = embeddings, Documents = documents });
 var results = await collectionClient.Search(new ChromaSearch
 {
-	Rank = ChromaRank.Rrf([ChromaRank.Knn(queryEmbedding, returnRank: true), ChromaRank.SparseKnn(bm25.Embed(queryText), "doc_bm25", returnRank: true)]),
+	Rank = ChromaRank.Rrf([ChromaRank.Knn(queryEmbedding, returnRank: true), ChromaRank.SparseKnn(queryText, "doc_bm25", returnRank: true)]),
 	Limit = 10,
 	Select = [ChromaSearchKeys.Document, ChromaSearchKeys.Score],
 });
@@ -378,7 +372,11 @@ var results = await collectionClient.Search(new ChromaSearch
 
 - **What `ChromaBm25` computes:** the BM25 vectors as the Python client of Chroma computes them, `chroma_bm25` with the Snowball English stemmer of snowballstemmer 3.1.1. The same text gives the same indices and values in .NET and in Python, so a collection written by one is searched by the other.
 - **How it was tested:** against the Python client on more than 5,000 texts, with the characters of every Unicode script that Python 3.13 knows, on .NET 8 and on .NET Framework. It follows the Unicode rules of Python from its own tables, not those of the runtime.
-- **What you do yourself:** the client does not compute the vectors in `Add`, `Update` and `Upsert` by itself. They go in the metadata key of the index, as above. `Reference` declares the function in the schema, so that the clients of Chroma that know it compute the same vectors.
+- **What the client computes, as the Python client of Chroma does:**
+  - In `Add`, `Update` and `Upsert`, the vectors of each sparse vector index of the schema with a source key and `chroma_bm25`, from the document or from the text in the metadata key, with the settings of the schema. A record whose metadata already has the key keeps its vector. The records and the metadata you pass do not change.
+  - In `Search`, the vector of the text of `SparseKnn(queryText, key)`, with the function of the index of the key.
+  - The schema comes with the collection, from `CreateCollection` or `GetCollection`. A collection client created from an id alone has none, so a text query throws a `ChromaException`; with another function than `chroma_bm25` too, unless the metadata has the vectors.
+- **By hand:** `new ChromaBm25()` with the same settings, or `Bm25Function` of the index, gives the vectors to put in the metadata or in `SparseKnn`. `Reference` declares the function in the schema.
 - **License:** the license of the stemmer is in [THIRD-PARTY-NOTICES.md](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/THIRD-PARTY-NOTICES.md).
 
 ## Authentication

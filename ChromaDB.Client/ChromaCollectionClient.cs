@@ -139,10 +139,12 @@ public class ChromaCollectionClient
 
 	/// <summary>
 	/// Adds the records; with <c>WithBatchSplitting</c> they go in batches of the <c>max_batch_size</c> of the server.
-	/// Since Chroma 1.0.16 the server requires the embeddings: the client does not compute them.
+	/// Since Chroma 1.0.16 the server requires the embeddings: the client does not compute them. It computes the sparse vectors
+	/// of the <c>chroma_bm25</c> indexes of the schema that have a source key, as the Python client of Chroma does.
 	/// </summary>
 	public async Task Add(ChromaRecords records, CancellationToken cancellationToken = default)
 	{
+		records = WithSparseVectors(records);
 		await CheckListsInMetadata(records, cancellationToken);
 		var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
 		var requestParams = new RequestQueryParams()
@@ -171,10 +173,12 @@ public class ChromaCollectionClient
 
 	/// <summary>
 	/// Updates the records with the ids; with <c>WithBatchSplitting</c> they go in batches of the <c>max_batch_size</c>
-	/// of the server.
+	/// of the server. The client computes the sparse vectors of the <c>chroma_bm25</c> indexes of the schema that have a source
+	/// key, as the Python client of Chroma does.
 	/// </summary>
 	public async Task Update(ChromaRecords records, CancellationToken cancellationToken = default)
 	{
+		records = WithSparseVectors(records);
 		await CheckListsInMetadata(records, cancellationToken);
 		var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
 		var requestParams = new RequestQueryParams()
@@ -205,10 +209,12 @@ public class ChromaCollectionClient
 	/// <summary>
 	/// Adds the records, or updates the ones that already exist; with <c>WithBatchSplitting</c> they go in batches of
 	/// the <c>max_batch_size</c> of the server. Since Chroma 1.0.16 the server requires the embeddings: the client does
-	/// not compute them.
+	/// not compute them. It computes the sparse vectors of the <c>chroma_bm25</c> indexes of the schema that have a source
+	/// key, as the Python client of Chroma does.
 	/// </summary>
 	public async Task Upsert(ChromaRecords records, CancellationToken cancellationToken = default)
 	{
+		records = WithSparseVectors(records);
 		await CheckListsInMetadata(records, cancellationToken);
 		var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
 		var requestParams = new RequestQueryParams()
@@ -228,6 +234,67 @@ public class ChromaCollectionClient
 			await _httpClient.Post(_httpClient.Routes.Collection + "/upsert", request, requestParams, cancellationToken);
 		}
 	}
+
+	// As the Python client of Chroma: for each sparse vector index of the schema with a source key and an embedding function, the vector
+	// of each record whose metadata does not have the key, from its document (#document) or from the text in its metadata. The records
+	// and the metadata of the caller stay as they are: the ones that change are copies.
+	private ChromaRecords WithSparseVectors(ChromaRecords records)
+	{
+		if (records.Metadatas is null && records.Documents is null)
+		{
+			return records;
+		}
+		var indexes = _collection.SparseVectorIndexes.Where(index => index.SourceKey is not null && index.EmbeddingFunction is not null).ToList();
+		if (indexes.Count == 0)
+		{
+			return records;
+		}
+		var metadatas = records.Metadatas?.ToList() ?? records.Ids.Select(_ => (Dictionary<string, object>)null!).ToList();
+		var copied = new bool[metadatas.Count];
+		foreach (var index in indexes)
+		{
+			for (var i = 0; i < metadatas.Count; i++)
+			{
+				var metadata = metadatas[i];
+				if (metadata?.ContainsKey(index.Key) == true)
+				{
+					continue;
+				}
+				var text = index.SourceKey == ChromaSearchKeys.Document
+					? records.Documents is { } documents && i < documents.Count ? documents[i] : null
+					: metadata is not null && metadata.TryGetValue(index.SourceKey!, out var value) ? value as string : null;
+				if (text is null)
+				{
+					continue;
+				}
+				var function = index.Bm25Function ?? throw CannotEmbed(index);
+				if (!copied[i])
+				{
+					metadatas[i] = metadata = metadata is null ? [] : new Dictionary<string, object>(metadata, metadata.Comparer);
+					copied[i] = true;
+				}
+				metadata![index.Key] = function.Embed(text);
+			}
+		}
+		return !copied.Contains(true) ? records : new ChromaRecords(records.Ids)
+		{
+			Embeddings = records.Embeddings,
+			Metadatas = metadatas,
+			Documents = records.Documents,
+			Uris = records.Uris,
+		};
+	}
+
+	// The vector of a text query of SparseKnn, with the function of the sparse vector index of the key, as the Python client of Chroma does.
+	private ChromaSparseVector EmbedText(string key, string text)
+	{
+		var index = _collection.SparseVectorIndexes.FirstOrDefault(index => index.Key == key)
+			?? throw new ChromaException($"A text query on \"{key}\" needs a sparse vector index on that key in the schema of the collection, as GetCollection returns it; or give the sparse vector.");
+		return (index.Bm25Function ?? throw CannotEmbed(index)).Embed(text);
+	}
+
+	private static ChromaException CannotEmbed(ChromaSparseVectorIndex index)
+		=> new($"The sparse vectors of \"{index.Key}\" come from the embedding function \"{index.EmbeddingFunction}\" of the schema, which the client cannot compute: it computes chroma_bm25. Give the sparse vectors yourself.");
 
 	// With ChromaConfigurationOptions.WithBatchSplitting, records beyond the max_batch_size of the server go in more requests.
 	// Up to Chroma 1.0.13 a request beyond it fails; later versions accept it, but still declare the limit.
@@ -426,7 +493,7 @@ public class ChromaCollectionClient
 			Searches = searches.Select(search => new CollectionSearchPayload()
 			{
 				Filter = SearchFilter(search),
-				Rank = search.Rank?.ToRank(),
+				Rank = search.Rank?.ToRank(EmbedText),
 				GroupBy = search.GroupBy?.ToGroupBy() ?? [],
 				Limit = new CollectionSearchLimit() { Offset = search.Offset, Limit = search.Limit },
 				Select = new CollectionSearchSelect() { Keys = search.Select?.Distinct().ToList() ?? [] },

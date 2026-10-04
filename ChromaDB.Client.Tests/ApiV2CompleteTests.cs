@@ -189,12 +189,13 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		Assert.That(found.Single().Id, Is.EqualTo("a"));
 	}
 
-	// Hybrid search on Chroma Cloud: the BM25 vectors of ChromaBm25 in a sparse vector index, searched alone and fused with the dense vectors.
+	// Hybrid search on Chroma Cloud: the client computes the BM25 vectors of the documents and of the text queries from the schema,
+	// searched alone and fused with the dense vectors.
 	[Test]
 	public async Task HybridSearchWithBm25()
 	{
 		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has sparse vector indexes.");
-		var bm25 = new ChromaBm25();
+		var bm25 = new ChromaBm25(k: 1.5);
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
 		var collection = client.GetCollectionClient(await client.CreateCollection(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}")
 		{
@@ -205,13 +206,14 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		{
 			Embeddings = [new([1f, 0f]), new([0f, 1f]), new([1f, 1f]), new([0.5f, 0.5f])],
 			Documents = [.. documents],
-			Metadatas = documents.Select(document => new Dictionary<string, object> { ["doc_bm25"] = bm25.Embed(document) }).ToList(),
 		});
-		var keyword = await collection.Search(new ChromaSearch { Rank = ChromaRank.SparseKnn(bm25.Embed("apples"), "doc_bm25"), Limit = 2 });
+		var stored = (ChromaSparseVector)(await client.WithMetadataValues(ChromaMetadataValues.Exact).GetCollectionClient(collection.Collection).Get("b"))!.Metadata!["doc_bm25"];
+		Assert.That(stored.ToString(), Is.EqualTo(bm25.Embed(documents[1]).ToString()));
+		var keyword = await collection.Search(new ChromaSearch { Rank = ChromaRank.SparseKnn("apples", "doc_bm25"), Limit = 2 });
 		Assert.That(keyword.Select(x => x.Id), Is.EquivalentTo(new[] { "a", "d" }));
 		var hybrid = await collection.Search(new ChromaSearch
 		{
-			Rank = ChromaRank.Rrf([ChromaRank.Knn(new([0f, 1f]), returnRank: true), ChromaRank.SparseKnn(bm25.Embed("banana"), "doc_bm25", returnRank: true)]),
+			Rank = ChromaRank.Rrf([ChromaRank.Knn(new([0f, 1f]), returnRank: true), ChromaRank.SparseKnn("banana", "doc_bm25", returnRank: true)]),
 			Limit = 1,
 		});
 		Assert.That(hybrid.Single().Id, Is.EqualTo("b"));

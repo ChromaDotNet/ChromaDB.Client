@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ChromaDB.Client.Common;
 using ChromaDB.Client.Models;
 
@@ -34,7 +35,8 @@ public sealed class ChromaBm25
 	/// <summary>
 	/// The function with the settings of the Python client of Chroma, which are its defaults: <c>k</c> 1.2, <c>b</c> 0.75,
 	/// <c>avgDocLength</c> 256, <c>tokenMaxLength</c> 40 and <c>DefaultStopwords</c>. With <c>includeTokens</c> the vectors also hold
-	/// their tokens. A collection whose schema declares other settings needs the same ones here.
+	/// their tokens. A collection whose schema declares other settings needs the same ones here: <c>Bm25Function</c> of its
+	/// <c>ChromaCollection.SparseVectorIndexes</c> has them.
 	/// </summary>
 	public ChromaBm25(double k = 1.2, double b = 0.75, double avgDocLength = 256, int tokenMaxLength = 40, IEnumerable<string>? stopwords = null, bool includeTokens = false)
 	{
@@ -45,6 +47,52 @@ public sealed class ChromaBm25
 		IncludeTokens = includeTokens;
 		_customStopwords = stopwords is null ? null : Array.AsReadOnly(stopwords.ToArray());
 		_stopwords = new HashSet<string>((_customStopwords ?? DefaultStopwords).Select(Bm25Tokenizer.PythonLower), StringComparer.Ordinal);
+	}
+
+	internal const string Name = "chroma_bm25";
+
+	// build_from_config of the Python client: the settings missing from the config get their default values, and null stopwords are the
+	// default ones. Null when the config is not an object or a setting has the wrong type, where the Python client keeps no function.
+	internal static ChromaBm25? FromConfig(JsonElement? config)
+	{
+		if (config is not { ValueKind: JsonValueKind.Object } settings)
+		{
+			return null;
+		}
+		double? Number(string name, double defaultValue)
+			=> !settings.TryGetProperty(name, out var value) ? defaultValue
+				: value.ValueKind == JsonValueKind.Number ? value.GetDouble()
+				: null;
+		if (Number("k", 1.2) is not { } k || Number("b", 0.75) is not { } b || Number("avg_doc_length", 256) is not { } avgDocLength
+			|| Number("token_max_length", 40) is not { } tokenMaxLength || tokenMaxLength < int.MinValue || tokenMaxLength >= (double)int.MaxValue + 1)
+		{
+			return null;
+		}
+		var includeTokens = false;
+		if (settings.TryGetProperty("include_tokens", out var include))
+		{
+			switch (include.ValueKind)
+			{
+				case JsonValueKind.True:
+					includeTokens = true;
+					break;
+				case JsonValueKind.False or JsonValueKind.Null:
+					break;
+				default:
+					return null;
+			}
+		}
+		List<string>? stopwords = null;
+		if (settings.TryGetProperty("stopwords", out var list) && list.ValueKind != JsonValueKind.Null)
+		{
+			if (list.ValueKind != JsonValueKind.Array || list.EnumerateArray().Any(x => x.ValueKind != JsonValueKind.String))
+			{
+				return null;
+			}
+			stopwords = list.EnumerateArray().Select(x => x.GetString()!).ToList();
+		}
+		// int() of Python truncates toward zero.
+		return new ChromaBm25(k, b, avgDocLength, (int)Math.Truncate(tokenMaxLength), stopwords, includeTokens);
 	}
 
 	/// <summary>
@@ -97,7 +145,7 @@ public sealed class ChromaBm25
 			{
 				config["stopwords"] = _customStopwords.ToArray();
 			}
-			return ChromaEmbeddingFunctionReference.Known("chroma_bm25", config);
+			return ChromaEmbeddingFunctionReference.Known(Name, config);
 		}
 	}
 

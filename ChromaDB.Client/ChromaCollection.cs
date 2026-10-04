@@ -73,11 +73,13 @@ public class ChromaCollection
 					&& index.TryGetProperty("enabled", out var enabled) && enabled.ValueKind == JsonValueKind.True)
 				{
 					var config = index.TryGetProperty("config", out var c) && c.ValueKind == JsonValueKind.Object ? c : default;
+					var function = config.ValueKind == JsonValueKind.Object && config.TryGetProperty("embedding_function", out var f) ? f : default;
 					indexes.Add(new ChromaSparseVectorIndex(
 						key.Name,
 						StringProperty(config, "source_key"),
 						config.ValueKind == JsonValueKind.Object && config.TryGetProperty("bm25", out var bm25) && bm25.ValueKind == JsonValueKind.True,
-						config.ValueKind == JsonValueKind.Object && config.TryGetProperty("embedding_function", out var function) ? StringProperty(function, "name") : null));
+						StringProperty(function, "name"),
+						function.ValueKind == JsonValueKind.Object && function.TryGetProperty("config", out var settings) && settings.ValueKind != JsonValueKind.Null ? settings.Clone() : null));
 				}
 			}
 			return indexes;
