@@ -274,7 +274,7 @@ public class ChromaCollectionClient
 	// A tagged JsonElement object is what the client returns for a sparse vector read with ChromaMetadataValues.Inferred.
 	private static bool IsSparseVector(object? value)
 		=> value is ChromaSparseVector
-			|| value is System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Object } element && ChromaSparseVectorConverter.FromTaggedJson(element) is not null;
+			|| value is System.Text.Json.JsonElement element && ChromaSparseVectorConverter.IsTagged(element);
 
 	// A JsonElement array is what the client returns for a list read with ChromaMetadataValues.Inferred.
 	private static bool IsList(object? value)

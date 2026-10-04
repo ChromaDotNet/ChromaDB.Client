@@ -14,11 +14,13 @@ internal sealed class ChromaSparseVectorConverter : JsonConverter<ChromaSparseVe
 	public override ChromaSparseVector Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
 		=> FromJson(JsonDocument.ParseValue(ref reader).RootElement);
 
-	// Null when the object is not a sparse vector, that is without "#type": "sparse_vector".
+	// Whether the object is a sparse vector, with "#type": "sparse_vector", without reading its values.
+	public static bool IsTagged(JsonElement element)
+		=> element.ValueKind == JsonValueKind.Object && element.TryGetProperty(TypeKey, out var type) && type.ValueKind == JsonValueKind.String && type.ValueEquals(TypeValue);
+
+	// Null when the object is not a sparse vector.
 	public static ChromaSparseVector? FromTaggedJson(JsonElement element)
-		=> element.ValueKind == JsonValueKind.Object && element.TryGetProperty(TypeKey, out var type) && type.ValueKind == JsonValueKind.String && type.GetString() == TypeValue
-			? FromJson(element)
-			: null;
+		=> IsTagged(element) ? FromJson(element) : null;
 
 	static ChromaSparseVector FromJson(JsonElement element)
 	{

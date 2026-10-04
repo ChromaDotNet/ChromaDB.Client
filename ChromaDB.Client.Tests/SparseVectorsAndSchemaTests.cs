@@ -121,6 +121,14 @@ public class SparseVectorsAndSchemaTests
 			: new[] { $"POST {CollectionsPath}", $"DELETE {CollectionsPath}/c" }));
 	}
 
+	// Chroma Cloud answers 400 "If source_key is provided then embedding_function must also be provided".
+	[Test]
+	public void SourceKeyWithoutEmbeddingFunction()
+	{
+		Assert.That(() => new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document), Throws.ArgumentException);
+		Assert.That(() => new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", bm25: true), Throws.Nothing);
+	}
+
 	static ChromaClient Client(HttpMessageHandler handler)
 		=> new(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
 
