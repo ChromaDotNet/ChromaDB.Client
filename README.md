@@ -353,6 +353,34 @@ var results = await collectionClient.Search(new ChromaSearch { Rank = ChromaRank
   - a single server rejects a sparse vector index;
   - Chroma 1.0.0 to 1.2.2 and 0.6.3 create the collection without the schema: `CreateCollection` then deletes it and throws a `ChromaException`, and `GetOrCreateCollection` throws and keeps it, since it may have existed before.
 
+## Hybrid search with BM25
+
+```csharp
+var bm25 = new ChromaBm25();
+var collection = await client.CreateCollection(new ChromaCollectionDefinition("articles")
+{
+	Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, bm25.Reference),
+});
+var collectionClient = client.GetCollectionClient(collection);
+await collectionClient.Add(new ChromaRecords(ids)
+{
+	Embeddings = embeddings,
+	Documents = documents,
+	Metadatas = documents.Select(document => new Dictionary<string, object> { ["doc_bm25"] = bm25.Embed(document) }).ToList(),
+});
+var results = await collectionClient.Search(new ChromaSearch
+{
+	Rank = ChromaRank.Rrf([ChromaRank.Knn(queryEmbedding, returnRank: true), ChromaRank.SparseKnn(bm25.Embed(queryText), "doc_bm25", returnRank: true)]),
+	Limit = 10,
+	Select = [ChromaSearchKeys.Document, ChromaSearchKeys.Score],
+});
+```
+
+- **What `ChromaBm25` computes:** the BM25 vectors as the Python client of Chroma computes them, `chroma_bm25` with the Snowball English stemmer of snowballstemmer 3.1.1. The same text gives the same indices and values in .NET and in Python, so a collection written by one is searched by the other.
+- **How it was tested:** against the Python client on more than 5,000 texts, with the characters of every Unicode script that Python 3.13 knows, on .NET 8 and on .NET Framework. It follows the Unicode rules of Python from its own tables, not those of the runtime.
+- **What you do yourself:** the client does not compute the vectors in `Add`, `Update` and `Upsert` by itself. They go in the metadata key of the index, as above. `Reference` declares the function in the schema, so that the clients of Chroma that know it compute the same vectors.
+- **License:** the license of the stemmer is in [THIRD-PARTY-NOTICES.md](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/THIRD-PARTY-NOTICES.md).
+
 ## Authentication
 
 ```csharp

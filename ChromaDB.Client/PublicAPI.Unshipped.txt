@@ -1,4 +1,15 @@
 #nullable enable
+ChromaDB.Client.ChromaBm25
+ChromaDB.Client.ChromaBm25.AvgDocLength.get -> double
+ChromaDB.Client.ChromaBm25.B.get -> double
+ChromaDB.Client.ChromaBm25.ChromaBm25(double k = 1.2, double b = 0.75, double avgDocLength = 256, int tokenMaxLength = 40, System.Collections.Generic.IEnumerable<string!>? stopwords = null, bool includeTokens = false) -> void
+ChromaDB.Client.ChromaBm25.Embed(string! text) -> ChromaDB.Client.Models.ChromaSparseVector!
+ChromaDB.Client.ChromaBm25.Embed(System.Collections.Generic.IEnumerable<string!>! texts) -> System.Collections.Generic.List<ChromaDB.Client.Models.ChromaSparseVector!>!
+ChromaDB.Client.ChromaBm25.IncludeTokens.get -> bool
+ChromaDB.Client.ChromaBm25.K.get -> double
+ChromaDB.Client.ChromaBm25.Reference.get -> ChromaDB.Client.Models.ChromaEmbeddingFunctionReference!
+ChromaDB.Client.ChromaBm25.Stopwords.get -> System.Collections.Generic.IReadOnlyList<string!>?
+ChromaDB.Client.ChromaBm25.TokenMaxLength.get -> int
 ChromaDB.Client.ChromaCollectionClient.Search(ChromaDB.Client.Models.ChromaSearch! search, ChromaDB.Client.ChromaReadLevel? readLevel = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<ChromaDB.Client.Models.ChromaSearchEntry!>!>!
 ChromaDB.Client.ChromaCollectionClient.Search(System.Collections.Generic.List<ChromaDB.Client.Models.ChromaSearch!>! searches, ChromaDB.Client.ChromaReadLevel? readLevel = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.List<System.Collections.Generic.List<ChromaDB.Client.Models.ChromaSearchEntry!>!>!>!
 ChromaDB.Client.ChromaRank
@@ -61,6 +72,7 @@ const ChromaDB.Client.ChromaSearchKeys.Metadata = "#metadata" -> string!
 const ChromaDB.Client.ChromaSearchKeys.Score = "#score" -> string!
 override ChromaDB.Client.ChromaRank.ToString() -> string!
 override ChromaDB.Client.Models.ChromaSparseVector.ToString() -> string!
+static ChromaDB.Client.ChromaBm25.DefaultStopwords.get -> System.Collections.Generic.IReadOnlyList<string!>!
 static ChromaDB.Client.ChromaRank.Abs(ChromaDB.Client.ChromaRank! rank) -> ChromaDB.Client.ChromaRank!
 static ChromaDB.Client.ChromaRank.Exp(ChromaDB.Client.ChromaRank! rank) -> ChromaDB.Client.ChromaRank!
 static ChromaDB.Client.ChromaRank.implicit operator ChromaDB.Client.ChromaRank!(double value) -> ChromaDB.Client.ChromaRank!

@@ -189,6 +189,34 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		Assert.That(found.Single().Id, Is.EqualTo("a"));
 	}
 
+	// Hybrid search on Chroma Cloud: the BM25 vectors of ChromaBm25 in a sparse vector index, searched alone and fused with the dense vectors.
+	[Test]
+	public async Task HybridSearchWithBm25()
+	{
+		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has sparse vector indexes.");
+		var bm25 = new ChromaBm25();
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var collection = client.GetCollectionClient(await client.CreateCollection(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}")
+		{
+			Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, bm25.Reference),
+		}));
+		string[] documents = ["apple pie with cinnamon", "banana split with chocolate", "cherry tart", "apple juice and apple cider"];
+		await collection.Add(new ChromaRecords(["a", "b", "c", "d"])
+		{
+			Embeddings = [new([1f, 0f]), new([0f, 1f]), new([1f, 1f]), new([0.5f, 0.5f])],
+			Documents = [.. documents],
+			Metadatas = documents.Select(document => new Dictionary<string, object> { ["doc_bm25"] = bm25.Embed(document) }).ToList(),
+		});
+		var keyword = await collection.Search(new ChromaSearch { Rank = ChromaRank.SparseKnn(bm25.Embed("apples"), "doc_bm25"), Limit = 2 });
+		Assert.That(keyword.Select(x => x.Id), Is.EquivalentTo(new[] { "a", "d" }));
+		var hybrid = await collection.Search(new ChromaSearch
+		{
+			Rank = ChromaRank.Rrf([ChromaRank.Knn(new([0f, 1f]), returnRank: true), ChromaRank.SparseKnn(bm25.Embed("banana"), "doc_bm25", returnRank: true)]),
+			Limit = 1,
+		});
+		Assert.That(hybrid.Single().Id, Is.EqualTo("b"));
+	}
+
 	async Task<ChromaCollectionClient> Init()
 	{
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
