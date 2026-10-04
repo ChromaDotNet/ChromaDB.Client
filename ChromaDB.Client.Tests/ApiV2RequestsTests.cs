@@ -261,6 +261,42 @@ public class ApiV2RequestsTests
 		Assert.That(server.Requests.Single().Body.GetProperty("delete_output").GetBoolean(), Is.True);
 	}
 
+	// Like the CloudClient of the Python client of Chroma: the tenant unless it is "*", the database only when there is exactly one.
+	[TestCase("""{"tenant":"t1","databases":["d1"]}""", "t1", "d1")]
+	[TestCase("""{"tenant":"t1","databases":["d1","d1"]}""", "t1", "d1")]
+	[TestCase("""{"tenant":"t1","databases":[]}""", "t1", null)]
+	[TestCase("""{"tenant":"t1","databases":["d1","d2"]}""", "t1", null)]
+	[TestCase("""{"tenant":"*","databases":["*"]}""", null, null)]
+	[TestCase("""{"tenant":null,"databases":null}""", null, null)]
+	public async Task TenantAndDatabaseFromIdentity(string identity, string? tenant, string? database)
+	{
+		var server = new FakeServer(r => r.Path.EndsWith("/auth/identity") ? (HttpStatusCode.OK, identity) : (HttpStatusCode.OK, "[]"));
+		var client = await Client(server).WithTenantAndDatabaseFromIdentity();
+		Assert.That((client.Options.Tenant, client.Options.Database), Is.EqualTo((tenant, database)));
+		await client.ListCollections();
+		Assert.That(server.Requests.Last().Line, Is.EqualTo($"GET /api/v2/tenants/{tenant ?? "default_tenant"}/databases/{database ?? "default_database"}/collections"));
+	}
+
+	// A tenant or a database of the options other than the default one must match the credentials.
+	[TestCase("other", null, "tenant other")]
+	[TestCase(null, "other", "database other")]
+	public async Task TenantAndDatabaseFromIdentityThatDoNotMatch(string? tenant, string? database, string message)
+	{
+		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"tenant":"t1","databases":["d1"]}"""));
+		var options = new ChromaConfigurationOptions("http://localhost:8000", defaultTenant: tenant, defaultDatabase: database);
+		await Assert.ThatAsync(() => new ChromaClient(options, new HttpClient(server)).WithTenantAndDatabaseFromIdentity(),
+			Throws.InstanceOf<ChromaException>().With.Message.Contains(message));
+	}
+
+	[Test]
+	public async Task TenantAndDatabaseFromIdentityReplaceTheDefaults()
+	{
+		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"tenant":"t1","databases":["d1"]}"""));
+		var options = new ChromaConfigurationOptions("http://localhost:8000", defaultTenant: "default_tenant", defaultDatabase: "default_database");
+		var client = await new ChromaClient(options, new HttpClient(server)).WithTenantAndDatabaseFromIdentity();
+		Assert.That((client.Options.Tenant, client.Options.Database), Is.EqualTo(("t1", "d1")));
+	}
+
 	static ChromaClient Client(HttpMessageHandler handler)
 		=> new(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
 

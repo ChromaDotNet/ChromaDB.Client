@@ -106,6 +106,19 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		Assert.That((await collection.GetIndexingStatus()).TotalOps, Is.GreaterThanOrEqualTo(4));
 	}
 
+	// On Chroma Cloud the tenant and the database of the API key; a single server always answers with the default ones.
+	[Test]
+	public async Task TenantAndDatabaseFromIdentity()
+	{
+		Assume.That(ApiVersion, Is.EqualTo(ChromaApiVersion.V2), "The v1 API has no auth/identity.");
+		var options = new ChromaConfigurationOptions(uri: BaseConfigurationOptions.Uri.ToString()).WithApiVersion(ApiVersion);
+		options = BaseConfigurationOptions.ChromaToken is { } token ? options.WithChromaToken(token) : options;
+		var client = await new ChromaClient(options, HttpClient).WithTenantAndDatabaseFromIdentity();
+		Assert.That(client.Options.Tenant, Is.EqualTo(RunningServer ? BaseConfigurationOptions.Tenant ?? "default_tenant" : "default_tenant"));
+		Assert.That(client.Options.Database, Is.EqualTo(RunningServer ? BaseConfigurationOptions.Database ?? "default_database" : "default_database"));
+		Assert.That(await client.ListCollections(), Is.Not.Null);
+	}
+
 	async Task<ChromaCollectionClient> Init()
 	{
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);

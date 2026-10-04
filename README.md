@@ -244,6 +244,13 @@ Console.WriteLine(health.IsExecutorReady);
 
 ## Chroma Cloud
 
+```csharp
+var options = new ChromaConfigurationOptions(uri: "https://api.trychroma.com").WithChromaToken(apiKey);
+var client = await new ChromaClient(options, httpClient).WithTenantAndDatabaseFromIdentity();
+```
+
+`WithTenantAndDatabaseFromIdentity` takes the tenant and the database from the credentials, as the `CloudClient` of the Python client of Chroma does: an API key for one database gives both, an API key for a whole tenant gives only the tenant, so the database goes in the options. A tenant or a database set in the options, other than the default ones, must match the key. A single Chroma server always answers with `default_tenant` and `default_database`.
+
 These operations exist on Chroma Cloud only; a single Chroma server answers them with an error.
 
 ```csharp

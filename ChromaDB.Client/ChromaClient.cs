@@ -113,6 +113,33 @@ public class ChromaClient
 		=> new(_options.WithMetadataValues(metadataValues), _httpClient.WithMetadataValues(metadataValues));
 
 	/// <summary>
+	/// The same client, with the tenant and the database of its credentials, which the server tells in <c>auth/identity</c>, as the
+	/// <c>CloudClient</c> of the Python client of Chroma does. The tenant is taken unless it is <c>*</c>; the database only when the
+	/// credentials have exactly one, other than <c>*</c>: on Chroma Cloud an API key for one database gives both, an API key for a
+	/// whole tenant only the tenant. A tenant or a database of the options other than the default one must match the credentials,
+	/// otherwise it throws a <c>ChromaException</c>. The same <c>HttpClient</c> and what this client learned about the server are kept,
+	/// and this client does not change.
+	/// </summary>
+	public async Task<ChromaClient> WithTenantAndDatabaseFromIdentity(CancellationToken cancellationToken = default)
+	{
+		var identity = await GetUserIdentity(cancellationToken);
+		var tenant = identity.Tenant is { Length: > 0 } and not "*" ? identity.Tenant : null;
+		var databases = identity.Databases?.Distinct().ToList();
+		var database = databases is [{ Length: > 0 } single] && single != "*" ? single : null;
+		if (tenant is not null && _options.Tenant is { Length: > 0 } givenTenant && givenTenant != ClientConstants.DefaultTenantName && givenTenant != tenant)
+		{
+			throw new ChromaException($"The tenant {givenTenant} of the options is not {tenant}, the one of the credentials.");
+		}
+		if (database is not null && _options.Database is { Length: > 0 } givenDatabase && givenDatabase != ClientConstants.DefaultDatabaseName && givenDatabase != database)
+		{
+			throw new ChromaException($"The database {givenDatabase} of the options is not {database}, the one of the credentials.");
+		}
+		var options = tenant is not null ? _options.WithTenant(tenant) : _options;
+		options = database is not null ? options.WithDatabase(database) : options;
+		return new(options, _httpClient);
+	}
+
+	/// <summary>
 	/// A client for the records of the collection, with the options and the <c>HttpClient</c> of this client: no request is sent.
 	/// </summary>
 	public ChromaCollectionClient GetCollectionClient(ChromaCollection collection)
