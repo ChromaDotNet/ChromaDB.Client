@@ -24,8 +24,8 @@ public sealed class ChromaCollectionSchema
 	/// <summary>
 	/// A copy of the schema with a sparse vector index on the metadata key, which holds the sparse vectors of the records, like
 	/// their BM25 vectors. <c>sourceKey</c> is the key of the text they come from, like <c>ChromaSearchKeys.Document</c>; with
-	/// <c>bm25</c> the server applies the inverse document frequency of BM25 to them. Only Chroma Cloud has sparse vector indexes,
-	/// one per collection: a single server rejects them.
+	/// <c>bm25</c> the server applies the inverse document frequency of BM25 to them; with <c>sourceKey</c>, Chroma Cloud also wants
+	/// <c>embeddingFunction</c>. Only Chroma Cloud has sparse vector indexes: a single server rejects them.
 	/// </summary>
 	public ChromaCollectionSchema WithSparseVectorIndex(string key, string? sourceKey = null, bool bm25 = false, ChromaEmbeddingFunctionReference? embeddingFunction = null)
 	{

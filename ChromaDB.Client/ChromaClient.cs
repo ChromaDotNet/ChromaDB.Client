@@ -225,7 +225,8 @@ public class ChromaClient
 		// Chroma 1.0.0 to 1.2.2 create the collection without the schema and without an error: the collection just created goes.
 		if (definition.Schema is not null && collection.SchemaJson is not { ValueKind: System.Text.Json.JsonValueKind.Object })
 		{
-			await DeleteCollection(collection.Name, tenant, database, cancellationToken);
+			// Not canceled with the call: the collection is already created, and it must go.
+			await DeleteCollection(collection.Name, tenant, database, CancellationToken.None);
 			throw new ChromaException("The server creates the collection without its schema: Chroma 1.3.0 and later apply it. The collection was deleted.");
 		}
 		return collection;

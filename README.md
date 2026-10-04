@@ -345,7 +345,7 @@ var results = await collectionClient.Search(new ChromaSearch { Rank = ChromaRank
   - a single server from Chroma 1.0.0 rejects them;
   - Chroma 0.x would drop them without an error, so the client throws a `ChromaException` before sending them.
 - **`ChromaCollectionSchema`** declares the indexes of a new collection:
-  - With `bm25` the server applies the inverse document frequency of BM25.
+  - With `bm25` the server applies the inverse document frequency of BM25. With a source key, Chroma Cloud also wants an embedding function.
   - `ChromaEmbeddingFunctionReference.ChromaBm25()` declares the BM25 function of Chroma with the settings of its Python client, so that the clients that know it compute the vectors.
   - `ChromaCollection.SparseVectorIndexes` and `ChromaCollection.SchemaJson` read it back.
 - **Where the schema works:**
