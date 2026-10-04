@@ -134,9 +134,14 @@ public class Base64AndLimitsTests
 		await plain.Heartbeat();
 		await keyed.Heartbeat();
 		Assert.That(headers, Is.EqualTo(new[] { "plain", "keyed" }));
-		var timeout = Assert.ThrowsAsync<ChromaException>(() => plain.GetVersion());
-		Assert.That(timeout!.InnerException, Is.InstanceOf<TaskCanceledException>());
-		Assert.ThrowsAsync<ChromaException>(() => keyed.GetVersion());
+		// The timeout of 300 ms, not the 100 s of a default HttpClient.
+		foreach (var client in new[] { plain, keyed })
+		{
+			var watch = System.Diagnostics.Stopwatch.StartNew();
+			var timeout = Assert.ThrowsAsync<ChromaException>(() => client.GetVersion());
+			Assert.That(timeout!.InnerException, Is.InstanceOf<TaskCanceledException>());
+			Assert.That(watch.Elapsed, Is.LessThan(TimeSpan.FromSeconds(10)));
+		}
 	}
 
 	static string Last(string path) => path.Substring(path.LastIndexOf('/') + 1);
