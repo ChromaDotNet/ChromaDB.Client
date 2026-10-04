@@ -12,7 +12,7 @@
 		<!-- -p:PackageIdPrefix=Name publishes the package as Name.Client.DependencyInjection. -->
 		<PackageId Condition="'$(PackageIdPrefix)' != ''">$(PackageIdPrefix).Client.DependencyInjection</PackageId>
 		<Authors>ssone95, cincuranet, ChromaDotNet contributors</Authors>
-		<PackageDescription>.NET SDK for Chroma database</PackageDescription>
+		<PackageDescription>Dependency injection for the .NET client for Chroma, the vector database: AddChromaClient and AddKeyedChromaClient. Tested with Chroma 0.4.10 to 1.5.9 and with Chroma Cloud.</PackageDescription>
 		<PackageTags>chroma chromadb vector database</PackageTags>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>

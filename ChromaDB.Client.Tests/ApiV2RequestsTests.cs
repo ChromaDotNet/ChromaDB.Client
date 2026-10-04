@@ -143,15 +143,33 @@ public class ApiV2RequestsTests
 		Assert.That(server.Requests.Single().Line, Is.EqualTo($"GET {CollectionPath}/count?read_level={name}"));
 	}
 
-	[Test]
-	public async Task ModifyConfiguration()
+	// A single server sends "hnsw" with "spann" null, Chroma Cloud the other way around.
+	[TestCase("""{"hnsw":{"ef_search":100},"spann":null}""", """{"hnsw":{"ef_search":200}}""")]
+	[TestCase("""{"hnsw":null,"spann":{"search_nprobe":64}}""", """{"spann":{"search_nprobe":32}}""")]
+	public async Task ModifyConfiguration(string configuration, string expected)
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, "{}"));
-		var collection = Collection("""{"hnsw":{"ef_search":100},"spann":null}""");
-		await CollectionClient(server, collection: collection).ModifyConfiguration(new() { Hnsw = new() { EfSearch = 200 }, Spann = new() { SearchNprobe = 32 } });
+		var update = configuration.StartsWith("""{"hnsw":{""")
+			? new ChromaCollectionConfigurationUpdate { Hnsw = new() { EfSearch = 200 } }
+			: new ChromaCollectionConfigurationUpdate { Spann = new() { SearchNprobe = 32 } };
+		await CollectionClient(server, collection: Collection(configuration)).ModifyConfiguration(update);
 		var request = server.Requests.Single();
 		Assert.That(request.Line, Is.EqualTo($"PUT {CollectionPath}"));
-		Assert.That(request.Body.GetProperty("new_configuration").GetRawText(), Is.EqualTo("""{"hnsw":{"ef_search":200},"spann":{"search_nprobe":32}}"""));
+		Assert.That(request.Body.GetProperty("new_configuration").GetRawText(), Is.EqualTo(expected));
+	}
+
+	// Chroma Cloud answers 500 to HNSW settings on its SPANN index; a single server answers 200 to SPANN settings and keeps "spann" null.
+	[TestCase("""{"hnsw":null,"spann":{"search_nprobe":64}}""", true, "set Spann")]
+	[TestCase("""{"hnsw":{"ef_search":100},"spann":null}""", false, "set Hnsw")]
+	public async Task ModifyConfigurationOfAnotherIndex(string configuration, bool hnsw, string message)
+	{
+		var server = new FakeServer(_ => (HttpStatusCode.OK, "{}"));
+		var update = hnsw
+			? new ChromaCollectionConfigurationUpdate { Hnsw = new() { EfSearch = 200 } }
+			: new ChromaCollectionConfigurationUpdate { Spann = new() { SearchNprobe = 32 } };
+		await Assert.ThatAsync(() => CollectionClient(server, collection: Collection(configuration)).ModifyConfiguration(update),
+			Throws.InstanceOf<ChromaException>().With.Message.Contains(message));
+		Assert.That(server.Requests, Is.Empty);
 	}
 
 	// Chroma 0.5.4 to 1.0.5 send "hnsw_configuration", 0.4.10 to 0.5.3 no configuration: they answer without applying it.

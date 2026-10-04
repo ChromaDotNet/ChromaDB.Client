@@ -422,11 +422,25 @@ public class ChromaCollectionClient
 
 	// Changes the settings of the index, like ef_search. Chroma 1.0.6 and later apply them; the earlier versions answer
 	// without applying them, so on them the client throws a ChromaException before sending the request.
+	// The settings must be those of the index of the collection: HNSW on a single server, SPANN on Chroma Cloud. Chroma Cloud
+	// answers 500 to HNSW settings, and a single server answers without applying SPANN settings: the client throws before both.
 	public async Task ModifyConfiguration(ChromaCollectionConfigurationUpdate configuration, CancellationToken cancellationToken = default)
 	{
-		if (!await AppliesNewConfiguration(cancellationToken))
+		var current = await CurrentConfiguration(cancellationToken);
+		if (current is not { ValueKind: System.Text.Json.JsonValueKind.Object } value
+			|| !value.TryGetProperty("hnsw", out var hnsw) && !value.TryGetProperty("spann", out _))
 		{
 			throw new ChromaException("The server answers without applying a new configuration: Chroma 1.0.6 and later apply it.");
+		}
+		var hasHnsw = hnsw.ValueKind == System.Text.Json.JsonValueKind.Object;
+		var hasSpann = value.TryGetProperty("spann", out var spann) && spann.ValueKind == System.Text.Json.JsonValueKind.Object;
+		if (configuration.Hnsw is not null && !hasHnsw && hasSpann)
+		{
+			throw new ChromaException("The collection has a SPANN index, as on Chroma Cloud, which rejects HNSW settings: set Spann instead.");
+		}
+		if (configuration.Spann is not null && !hasSpann && hasHnsw)
+		{
+			throw new ChromaException("The collection has an HNSW index, as on a single Chroma server, which answers without applying SPANN settings: set Hnsw instead.");
 		}
 		var requestParams = new RequestQueryParams()
 			.Insert("{tenant}", _tenant)
@@ -439,9 +453,9 @@ public class ChromaCollectionClient
 		await _httpClient.Put(_httpClient.Routes.Collection, request, requestParams, cancellationToken);
 	}
 
-	// Chroma 1.0.6 and later, Chroma Cloud too, send the configuration with "hnsw" and "spann"; 0.5.4 to 1.0.5 with
-	// "hnsw_configuration", and 0.4.10 to 0.5.3 send none. Without the configuration at hand, the collection is read by its name.
-	private async Task<bool> AppliesNewConfiguration(CancellationToken cancellationToken)
+	// Chroma 1.0.6 and later, Chroma Cloud too, send the configuration with "hnsw" and "spann", one of them null; 0.5.4 to 1.0.5
+	// with "hnsw_configuration", and 0.4.10 to 0.5.3 send none. Without the configuration at hand, the collection is read by its name.
+	private async Task<System.Text.Json.JsonElement?> CurrentConfiguration(CancellationToken cancellationToken)
 	{
 		var configuration = _collection.ConfigurationJson;
 		if (configuration is null)
@@ -452,7 +466,6 @@ public class ChromaCollectionClient
 				.Insert("{database}", _database);
 			configuration = (await _httpClient.Get<ChromaCollection>(_httpClient.Routes.CollectionByName, requestParams, cancellationToken)).ConfigurationJson;
 		}
-		return configuration is { ValueKind: System.Text.Json.JsonValueKind.Object } value
-			&& (value.TryGetProperty("hnsw", out _) || value.TryGetProperty("spann", out _));
+		return configuration;
 	}
 }

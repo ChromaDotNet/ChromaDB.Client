@@ -11,6 +11,7 @@ _ChromaDB.Client_ is a .NET SDK that offers a seamless connection to the Chroma 
 | 0.5.16 – 1.5.9 | v2, the default | all the tests pass on each release tested |
 | 0.5.1 – 0.5.15 | v1, with `ChromaApiVersion.V1` | all the tests pass on each release tested |
 | 0.4.10 – 0.5.0 | v1, with `ChromaApiVersion.V1` | collections and records work on each release tested; some of these servers miss tenants, `CountCollections` or the `$not_contains` filter |
+| Chroma Cloud | v2 | the tests pass against it, apart from the operations it does not allow to an API key, like `CreateTenant` and `Reset`; see [Chroma Cloud](#chroma-cloud) |
 
 Each release tested, the differences between them and the versions in the CI are listed in [docs/COMPATIBILITY.md](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/COMPATIBILITY.md).
 
@@ -226,6 +227,12 @@ await collectionClient.ModifyConfiguration(new() { Hnsw = new() { EfSearch = 200
 
 `ModifyConfiguration` changes the settings of the index that Chroma lets change after the creation: those of HNSW, like `EfSearch`, and those of the SPANN index of Chroma Cloud, `EfSearch` and `SearchNprobe`. Chroma 1.0.6 and later apply them. The earlier versions answer without applying them: the client tells them by the configuration they send with the collection, and throws a `ChromaException` without sending the request.
 
+The settings must be those of the index of the collection: `Hnsw` on a single Chroma server, `Spann` on Chroma Cloud. Chroma Cloud answers `500` to `Hnsw` settings, and a single server answers without applying `Spann` settings, so the client throws a `ChromaException` before sending either:
+
+```csharp
+await collectionClient.ModifyConfiguration(new() { Spann = new() { SearchNprobe = 32 } }); // on Chroma Cloud
+```
+
 ## Health of the server
 
 ```csharp
@@ -246,7 +253,13 @@ var status = await collectionClient.GetIndexingStatus();
 var indexed = await collectionClient.Count(ChromaReadLevel.IndexOnly);
 ```
 
-`Fork` copies a collection with its records under a new name. `GetIndexingStatus` tells how many writes are indexed. `Count(ChromaReadLevel.IndexOnly)` counts only the records already indexed, so on Chroma Cloud the latest writes can be missing; a single server indexes them at once and gives the same count.
+`Fork` copies a collection with its records under a new name. `GetIndexingStatus` tells how many writes are indexed. `Count(ChromaReadLevel.IndexOnly)` counts only the records already indexed: Chroma Cloud indexes them later, so right after a write the count can be lower, even 0, while `Count()` already sees them. A single server indexes them at once and gives the same count.
+
+```csharp
+await collectionClient.Add(ids, embeddings: embeddings);                  // 6 records
+var all = await collectionClient.Count();                                 // 6
+var indexed = await collectionClient.Count(ChromaReadLevel.IndexOnly);    // on Chroma Cloud, from 0 to 6 until they are indexed
+```
 
 ```csharp
 var (attached, created) = await collectionClient.AttachFunction(ChromaFunctions.Statistics, "my_stats", "my_stats_output");
