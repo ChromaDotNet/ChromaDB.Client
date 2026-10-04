@@ -106,6 +106,9 @@ public abstract class ChromaTestsBase
 	protected static bool MetadataListsSupported => IsChroma1 && ChromaDBBuilder.ChromaDBVersion >= new Version(1, 5, 0);
 	protected static bool IsChroma0 => !IsChroma1;
 
+	// Chroma 1.0.6 and later send "hnsw.space" in the configuration; 0.5.4 to 1.0.5 send "hnsw_configuration.space", always "l2".
+	protected static bool ConfigurationSpaceReported => ChromaDBBuilder.ChromaDBVersion >= new Version(1, 0, 6);
+
 	// The servers before Chroma 0.5.1 configure their built-in authentication with other settings, and Chroma 1.0 removed it.
 	protected static bool BuiltInAuthenticationTested => ChromaDBBuilder.ChromaDBVersion >= new Version(0, 5, 1) && !IsChroma1;
 

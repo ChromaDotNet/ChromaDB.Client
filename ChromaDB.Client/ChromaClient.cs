@@ -91,7 +91,10 @@ public class ChromaClient
 		return await _httpClient.Get<ChromaHeartbeat>(_httpClient.Routes.Heartbeat, new RequestQueryParams(), cancellationToken);
 	}
 
-	public async Task<ChromaCollection> CreateCollection(string name, Dictionary<string, object>? metadata = null, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public Task<ChromaCollection> CreateCollection(string name, Dictionary<string, object>? metadata = null, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+		=> CreateCollection(new ChromaCollectionDefinition(name) { Metadata = metadata }, tenant, database, cancellationToken);
+
+	public async Task<ChromaCollection> CreateCollection(ChromaCollectionDefinition definition, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 	{
 		tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
 		database = database is not null and not [] ? database : _currentDatabase.Name;
@@ -100,13 +103,16 @@ public class ChromaClient
 			.Insert("{database}", database);
 		var request = new CreateCollectionRequest()
 		{
-			Name = name,
-			Metadata = metadata
+			Name = definition.Name,
+			Metadata = definition.ToRequestMetadata()
 		};
 		return await _httpClient.Post<CreateCollectionRequest, ChromaCollection>(_httpClient.Routes.Collections, request, requestParams, cancellationToken);
 	}
 
-	public async Task<ChromaCollection> GetOrCreateCollection(string name, Dictionary<string, object>? metadata = null, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public Task<ChromaCollection> GetOrCreateCollection(string name, Dictionary<string, object>? metadata = null, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+		=> GetOrCreateCollection(new ChromaCollectionDefinition(name) { Metadata = metadata }, tenant, database, cancellationToken);
+
+	public async Task<ChromaCollection> GetOrCreateCollection(ChromaCollectionDefinition definition, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 	{
 		tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
 		database = database is not null and not [] ? database : _currentDatabase.Name;
@@ -115,8 +121,8 @@ public class ChromaClient
 			.Insert("{database}", database);
 		var request = new GetOrCreateCollectionRequest()
 		{
-			Name = name,
-			Metadata = metadata
+			Name = definition.Name,
+			Metadata = definition.ToRequestMetadata()
 		};
 		return await _httpClient.Post<GetOrCreateCollectionRequest, ChromaCollection>(_httpClient.Routes.Collections, request, requestParams, cancellationToken);
 	}

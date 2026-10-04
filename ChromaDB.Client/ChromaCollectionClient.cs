@@ -25,6 +25,11 @@ public class ChromaCollectionClient
 			: ClientConstants.DefaultDatabaseName;
 	}
 
+	// Without getting the collection first: the requests on a collection need only its id, and the tenant and database of the options.
+	public ChromaCollectionClient(Guid collectionId, string collectionName, ChromaConfigurationOptions options, HttpClient httpClient)
+		: this(new ChromaCollection(collectionName) { Id = collectionId }, options, httpClient)
+	{ }
+
 	public ChromaCollection Collection => _collection;
 
 	public async Task<ChromaCollectionEntry?> Get(string id, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, ChromaGetInclude? include = null, CancellationToken cancellationToken = default)

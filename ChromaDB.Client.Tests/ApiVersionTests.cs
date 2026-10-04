@@ -19,6 +19,8 @@ public class ApiVersionTests
 		yield return Case("GetCollectionById", c => c.GetCollectionById(Guid.Parse(Id)), "GET", $"tenants/t/databases/d/collections/by-id/{Id}", $"collections/by-id/{Id}?tenant=t&database=d");
 		yield return Case("Heartbeat", c => c.Heartbeat(), "GET", "heartbeat", "heartbeat");
 		yield return Case("CreateCollection", c => c.CreateCollection("c"), "POST", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
+		yield return Case("CreateCollectionDefinition", c => c.CreateCollection(new ChromaCollectionDefinition("c") { Configuration = new() { Space = ChromaSpace.Cosine } }), "POST", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
+		yield return Case("GetOrCreateCollectionDefinition", c => c.GetOrCreateCollection(new ChromaCollectionDefinition("c")), "POST", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
 		yield return Case("GetOrCreateCollection", c => c.GetOrCreateCollection("c"), "POST", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
 		yield return Case("DeleteCollection", c => c.DeleteCollection("c"), "DELETE", "tenants/t/databases/d/collections/c", "collections/c?tenant=t&database=d");
 		yield return Case("GetVersion", c => c.GetVersion(), "GET", "version", "version");

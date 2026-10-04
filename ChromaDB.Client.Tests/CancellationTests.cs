@@ -19,6 +19,8 @@ public class CancellationTests
 		yield return Case<ChromaClient>("GetCollectionById", (c, t) => c.GetCollectionById(Guid.NewGuid(), cancellationToken: t));
 		yield return Case<ChromaClient>("Heartbeat", (c, t) => c.Heartbeat(t));
 		yield return Case<ChromaClient>("CreateCollection", (c, t) => c.CreateCollection("collection", cancellationToken: t));
+		yield return Case<ChromaClient>("CreateCollectionDefinition", (c, t) => c.CreateCollection(new ChromaCollectionDefinition("collection"), cancellationToken: t));
+		yield return Case<ChromaClient>("GetOrCreateCollectionDefinition", (c, t) => c.GetOrCreateCollection(new ChromaCollectionDefinition("collection"), cancellationToken: t));
 		yield return Case<ChromaClient>("GetOrCreateCollection", (c, t) => c.GetOrCreateCollection("collection", cancellationToken: t));
 		yield return Case<ChromaClient>("DeleteCollection", (c, t) => c.DeleteCollection("collection", cancellationToken: t));
 		yield return Case<ChromaClient>("GetVersion", (c, t) => c.GetVersion(t));

@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using ChromaDB.Client.Models;
+using NUnit.Framework;
 
 namespace ChromaDB.Client.Tests;
 
@@ -92,6 +93,52 @@ public class ClientTests : ChromaTestsBase
 		var result = await client.GetCollection(name);
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result.Name, Is.EqualTo(name));
+	}
+
+	// Two records in the same direction: 0 apart with cosine, 1 apart with l2, and 1 - 2 = -1 for the farther one with ip.
+	[TestCase(ChromaSpace.L2, new[] { 0f, 1f })]
+	[TestCase(ChromaSpace.Cosine, new[] { 0f, 0f })]
+	[TestCase(ChromaSpace.InnerProduct, new[] { -1f, 0f })]
+	public async Task CreateCollectionWithSpace(ChromaSpace space, float[] distances)
+	{
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var collection = await client.CreateCollection(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}") { Configuration = new() { Space = space } });
+		Assert.That(collection.Space, Is.EqualTo(space));
+		Assert.That((await client.GetCollection(collection.Name)).Space, Is.EqualTo(space));
+
+		var collectionClient = new ChromaCollectionClient(collection, BaseConfigurationOptions, HttpClient);
+		await collectionClient.Add(["a", "b"], embeddings: [new([1f, 0f]), new([2f, 0f])]);
+		var result = await collectionClient.Query(new ReadOnlyMemory<float>([1f, 0f]), nResults: 2, include: ChromaQueryInclude.Distances);
+		Assert.That(result.Select(x => x.Distance).OrderBy(x => x), Is.EqualTo(distances).Within(0.0001f));
+	}
+
+	[Test]
+	public async Task GetOrCreateCollectionWithSpace()
+	{
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var definition = new ChromaCollectionDefinition($"collection{Random.Shared.Next()}") { Configuration = new() { Space = ChromaSpace.Cosine } };
+		var created = await client.GetOrCreateCollection(definition);
+		var existing = await client.GetOrCreateCollection(definition);
+		Assert.That(existing.Id, Is.EqualTo(created.Id));
+		Assert.That(existing.Space, Is.EqualTo(ChromaSpace.Cosine));
+	}
+
+	// Without a space Chroma uses l2; the servers before 1.0.6 do not report it reliably.
+	[Test]
+	public async Task SpaceOfACollectionWithoutOne()
+	{
+		var collection = await new ChromaClient(BaseConfigurationOptions, HttpClient).CreateCollection($"collection{Random.Shared.Next()}");
+		Assert.That(collection.Space, ConfigurationSpaceReported ? Is.EqualTo(ChromaSpace.L2) : Is.Null);
+	}
+
+	[Test]
+	public async Task CollectionClientFromTheId()
+	{
+		var collection = await new ChromaClient(BaseConfigurationOptions, HttpClient).CreateCollection($"collection{Random.Shared.Next()}");
+		var collectionClient = new ChromaCollectionClient(collection.Id, collection.Name, BaseConfigurationOptions, HttpClient);
+		await collectionClient.Add(["a"], embeddings: [new([1f, 0f])]);
+		Assert.That(await collectionClient.Count(), Is.EqualTo(1));
+		Assert.That((await new ChromaCollectionClient(collection, BaseConfigurationOptions, HttpClient).Get("a"))?.Id, Is.EqualTo("a"));
 	}
 
 	[Test]
