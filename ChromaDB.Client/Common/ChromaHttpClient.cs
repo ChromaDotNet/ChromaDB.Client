@@ -1,6 +1,8 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using ChromaDB.Client.Models;
 using ChromaDB.Client.Models.Requests;
 
 namespace ChromaDB.Client.Common;
@@ -16,9 +18,13 @@ internal sealed class ChromaHttpClient
 
 	private string? _serverVersion;
 	private readonly SemaphoreSlim _serverVersionLock = new(1, 1);
+	private int? _maxBatchSize;
+	private bool _maxBatchSizeKnown;
+	private readonly SemaphoreSlim _maxBatchSizeLock = new(1, 1);
 
 	public ChromaRoutes Routes { get; }
 	public JsonSerializerOptions DeserializerOptions { get; }
+	public bool BatchSplitting { get; }
 
 	public ChromaHttpClient(HttpClient httpClient, ChromaConfigurationOptions options)
 	{
@@ -26,6 +32,7 @@ internal sealed class ChromaHttpClient
 		_baseUri = CreateBaseUri(options.Uri, options.ApiVersion);
 		Routes = options.ApiVersion == ChromaApiVersion.V1 ? ChromaRoutes.V1 : ChromaRoutes.V2;
 		DeserializerOptions = HttpClientHelpers.DeserializerOptions(options.MetadataValues);
+		BatchSplitting = options.BatchSplitting;
 		if (options.ChromaToken is not null and not [])
 		{
 			if (options.ChromaTokenTransportHeader == ChromaTokenTransportHeader.Authorization)
@@ -78,6 +85,36 @@ internal sealed class ChromaHttpClient
 		}
 		var path = uri.GetLeftPart(UriPartial.Path);
 		return path.EndsWith("/") ? uri : new Uri(path + "/");
+	}
+
+	// From pre-flight-checks, asked once like the version. Null for Chroma 0.4.10, which has no pre-flight-checks.
+	public async Task<int?> GetMaxBatchSize(CancellationToken cancellationToken)
+	{
+		if (!_maxBatchSizeKnown)
+		{
+			await _maxBatchSizeLock.WaitAsync(cancellationToken);
+			try
+			{
+				if (!_maxBatchSizeKnown)
+				{
+					try
+					{
+						var maxBatchSize = (await this.Get<ChromaPreFlightChecks>(Routes.PreFlightChecks, new RequestQueryParams(), cancellationToken)).MaxBatchSize;
+						_maxBatchSize = maxBatchSize > 0 ? maxBatchSize : null;
+					}
+					catch (ChromaException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+					{
+						_maxBatchSize = null;
+					}
+					_maxBatchSizeKnown = true;
+				}
+			}
+			finally
+			{
+				_maxBatchSizeLock.Release();
+			}
+		}
+		return _maxBatchSize;
 	}
 
 	public Task<HttpResponseMessage> SendAsync(HttpRequestMessage httpRequestMessage, CancellationToken cancellationToken)

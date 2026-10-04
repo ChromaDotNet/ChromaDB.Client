@@ -105,15 +105,18 @@ public class ChromaCollectionClient
 			.Insert("{tenant}", _tenant)
 			.Insert("{database}", _database)
 			.Insert("{collection_id}", _collection.Id);
-		var request = new CollectionAddRequest()
+		foreach (var batch in await Batches(records, cancellationToken))
 		{
-			Ids = records.Ids,
-			Embeddings = records.Embeddings,
-			Metadatas = records.Metadatas,
-			Documents = records.Documents,
-			Uris = records.Uris,
-		};
-		await _httpClient.Post(_httpClient.Routes.Collection + "/add", request, requestParams, cancellationToken);
+			var request = new CollectionAddRequest()
+			{
+				Ids = batch.Ids,
+				Embeddings = batch.Embeddings,
+				Metadatas = batch.Metadatas,
+				Documents = batch.Documents,
+				Uris = batch.Uris,
+			};
+			await _httpClient.Post(_httpClient.Routes.Collection + "/add", request, requestParams, cancellationToken);
+		}
 	}
 
 	public Task Update(List<string> ids, List<ReadOnlyMemory<float>>? embeddings = null, List<Dictionary<string, object>>? metadatas = null, List<string>? documents = null, CancellationToken cancellationToken = default)
@@ -126,15 +129,18 @@ public class ChromaCollectionClient
 			.Insert("{tenant}", _tenant)
 			.Insert("{database}", _database)
 			.Insert("{collection_id}", _collection.Id);
-		var request = new CollectionUpdateRequest()
+		foreach (var batch in await Batches(records, cancellationToken))
 		{
-			Ids = records.Ids,
-			Embeddings = records.Embeddings,
-			Metadatas = records.Metadatas,
-			Documents = records.Documents,
-			Uris = records.Uris,
-		};
-		await _httpClient.Post(_httpClient.Routes.Collection + "/update", request, requestParams, cancellationToken);
+			var request = new CollectionUpdateRequest()
+			{
+				Ids = batch.Ids,
+				Embeddings = batch.Embeddings,
+				Metadatas = batch.Metadatas,
+				Documents = batch.Documents,
+				Uris = batch.Uris,
+			};
+			await _httpClient.Post(_httpClient.Routes.Collection + "/update", request, requestParams, cancellationToken);
+		}
 	}
 
 	public Task Upsert(List<string> ids, List<ReadOnlyMemory<float>>? embeddings = null, List<Dictionary<string, object>>? metadatas = null, List<string>? documents = null, CancellationToken cancellationToken = default)
@@ -147,15 +153,37 @@ public class ChromaCollectionClient
 			.Insert("{tenant}", _tenant)
 			.Insert("{database}", _database)
 			.Insert("{collection_id}", _collection.Id);
-		var request = new CollectionUpsertRequest()
+		foreach (var batch in await Batches(records, cancellationToken))
 		{
-			Ids = records.Ids,
-			Embeddings = records.Embeddings,
-			Metadatas = records.Metadatas,
-			Documents = records.Documents,
-			Uris = records.Uris,
-		};
-		await _httpClient.Post(_httpClient.Routes.Collection + "/upsert", request, requestParams, cancellationToken);
+			var request = new CollectionUpsertRequest()
+			{
+				Ids = batch.Ids,
+				Embeddings = batch.Embeddings,
+				Metadatas = batch.Metadatas,
+				Documents = batch.Documents,
+				Uris = batch.Uris,
+			};
+			await _httpClient.Post(_httpClient.Routes.Collection + "/upsert", request, requestParams, cancellationToken);
+		}
+	}
+
+	// With ChromaConfigurationOptions.WithBatchSplitting, records beyond the max_batch_size of the server go in more requests.
+	// Up to Chroma 1.0.13 a request beyond it fails; later versions accept it, but still declare the limit.
+	private async Task<List<ChromaRecords>> Batches(ChromaRecords records, CancellationToken cancellationToken)
+	{
+		if (!_httpClient.BatchSplitting || await _httpClient.GetMaxBatchSize(cancellationToken) is not { } size || records.Ids.Count <= size)
+		{
+			return [records];
+		}
+		return Enumerable.Range(0, (records.Ids.Count + size - 1) / size)
+			.Select(i => new ChromaRecords(records.Ids.Skip(i * size).Take(size).ToList())
+			{
+				Embeddings = records.Embeddings?.Skip(i * size).Take(size).ToList(),
+				Metadatas = records.Metadatas?.Skip(i * size).Take(size).ToList(),
+				Documents = records.Documents?.Skip(i * size).Take(size).ToList(),
+				Uris = records.Uris?.Skip(i * size).Take(size).ToList(),
+			})
+			.ToList();
 	}
 
 	// The 0.x servers accept lists in metadata but drop them without an error; Chroma 1.0 to 1.4 reject them, 1.5.0 stores them.
@@ -179,13 +207,16 @@ public class ChromaCollectionClient
 			.Insert("{tenant}", _tenant)
 			.Insert("{database}", _database)
 			.Insert("{collection_id}", _collection.Id);
-		var request = new CollectionDeleteRequest()
+		foreach (var batch in await Batches(new ChromaRecords(ids), cancellationToken))
 		{
-			Ids = ids,
-			Where = where?.ToWhere(),
-			WhereDocument = whereDocument?.ToWhereDocument(),
-		};
-		await _httpClient.Post(_httpClient.Routes.Collection + "/delete", request, requestParams, cancellationToken);
+			var request = new CollectionDeleteRequest()
+			{
+				Ids = batch.Ids,
+				Where = where?.ToWhere(),
+				WhereDocument = whereDocument?.ToWhereDocument(),
+			};
+			await _httpClient.Post(_httpClient.Routes.Collection + "/delete", request, requestParams, cancellationToken);
+		}
 	}
 
 	public async Task<int> Count(CancellationToken cancellationToken = default)

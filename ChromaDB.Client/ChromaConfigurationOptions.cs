@@ -13,6 +13,7 @@ public class ChromaConfigurationOptions
 	public string? BasicAuthPassword { get; init; }
 	public ChromaApiVersion ApiVersion { get; init; }
 	public ChromaMetadataValues MetadataValues { get; init; }
+	public bool BatchSplitting { get; init; }
 
 	public ChromaConfigurationOptions(Uri uri, string? defaultTenant = null, string? defaultDatabase = null, string? chromaToken = null)
 	{
@@ -38,6 +39,7 @@ public class ChromaConfigurationOptions
 		BasicAuthPassword = options.BasicAuthPassword;
 		ApiVersion = options.ApiVersion;
 		MetadataValues = options.MetadataValues;
+		BatchSplitting = options.BatchSplitting;
 	}
 
 	public ChromaConfigurationOptions WithUri(Uri uri)
@@ -66,4 +68,9 @@ public class ChromaConfigurationOptions
 
 	public ChromaConfigurationOptions WithMetadataValues(ChromaMetadataValues metadataValues)
 		=> new(this) { MetadataValues = metadataValues };
+
+	// Add, Update, Upsert and Delete send their records in batches of the max_batch_size of the server, one request after
+	// the other. If a batch fails, the earlier ones stay written.
+	public ChromaConfigurationOptions WithBatchSplitting(bool batchSplitting = true)
+		=> new(this) { BatchSplitting = batchSplitting };
 }

@@ -10,7 +10,7 @@ namespace ChromaDB.Client.Common;
 
 internal static partial class HttpClientHelpers
 {
-	private static readonly JsonSerializerOptions PostJsonSerializerOptions = new()
+	internal static readonly JsonSerializerOptions PostJsonSerializerOptions = new()
 	{
 		AllowTrailingCommas = false,
 		ReferenceHandler = ReferenceHandler.IgnoreCycles,

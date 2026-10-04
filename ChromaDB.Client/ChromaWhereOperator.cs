@@ -11,11 +11,16 @@ public abstract class ChromaWhereOperator
 
 	internal abstract Dictionary<string, object> ToWhere();
 
+	// Every tested Chroma rejects $in and $nin without values, so the client rejects them before the request.
 	public static ChromaWhereOperator In(string key, params object[] values)
-		=> new ChromaWhereValueOperator(key, "$in", values);
+		=> values is { Length: > 0 } ? new ChromaWhereValueOperator(key, "$in", values) : throw new ArgumentException("In needs at least one value: Chroma rejects $in without values.", nameof(values));
 
 	public static ChromaWhereOperator NotIn(string key, params object[] values)
-		=> new ChromaWhereValueOperator(key, "$nin", values);
+		=> values is { Length: > 0 } ? new ChromaWhereValueOperator(key, "$nin", values) : throw new ArgumentException("NotIn needs at least one value: Chroma rejects $nin without values.", nameof(values));
+
+	// The JSON of the filter, as the client sends it in "where".
+	public override string ToString()
+		=> System.Text.Json.JsonSerializer.Serialize(ToWhere(), Common.HttpClientHelpers.PostJsonSerializerOptions);
 
 	public static ChromaWhereOperator GreaterThan(string key, object value)
 		=> new ChromaWhereValueOperator(key, "$gt", value);

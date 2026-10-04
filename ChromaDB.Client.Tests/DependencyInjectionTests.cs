@@ -25,7 +25,7 @@ public class DependencyInjectionTests : ChromaTestsBase
 		services.AddKeyedChromaClient("first", _ => BaseConfigurationOptions);
 		services.AddKeyedChromaClient("second", _ => BaseConfigurationOptions.WithUri("http://localhost:1/"));
 		using var provider = services.BuildServiceProvider();
-		Assert.That(provider.GetRequiredKeyedService<ChromaConfigurationOptions>("first"), Is.SameAs(provider.GetRequiredKeyedService<ChromaConfigurationOptions>("first")));
+		Assert.That(provider.GetRequiredKeyedService<ChromaConfigurationOptions>("first"), Is.SameAs(BaseConfigurationOptions));
 		Assert.That(provider.GetRequiredKeyedService<ChromaConfigurationOptions>("second").Uri, Is.EqualTo(new Uri("http://localhost:1/")));
 		var result = await provider.GetRequiredKeyedService<ChromaClient>("first").Heartbeat();
 		Assert.That(result.NanosecondHeartbeat, Is.GreaterThan(0));
