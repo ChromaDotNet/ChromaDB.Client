@@ -139,6 +139,47 @@ public class SparseVectorsAndSchemaTests
 		Assert.That(() => new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", bm25: true), Throws.Nothing);
 	}
 
+	// The call is canceled once the answer to the creation has arrived: the collection is deleted all the same.
+	[Test]
+	public async Task SchemaThatTheServerIgnoresWhenTheCallIsCanceledAfterTheAnswer()
+	{
+		using var cancellation = new CancellationTokenSource();
+		var requests = new List<string>();
+		var handler = new CancelAfterAnswer(cancellation, requests);
+		var definition = new ChromaCollectionDefinition("c") { Schema = new ChromaCollectionSchema().WithSparseVectorIndex("v") };
+		var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
+		await Assert.ThatAsync(() => client.CreateCollection(definition, cancellationToken: cancellation.Token), Throws.InstanceOf<ChromaException>());
+		Assert.That(requests, Is.EqualTo(new[] { "POST", "DELETE" }));
+	}
+
+	// Answers the creation with a collection without a schema, and cancels the token when the body of that answer has been read.
+	sealed class CancelAfterAnswer(CancellationTokenSource cancellation, List<string> requests) : HttpMessageHandler
+	{
+		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+		{
+			requests.Add(request.Method.Method);
+			HttpContent content = request.Method == HttpMethod.Post
+				? new CancelWhenRead("""{"id":"11111111-2222-3333-4444-555555555555","name":"c","schema":null}""", cancellation)
+				: new StringContent("{}");
+			return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+		}
+	}
+
+	sealed class CancelWhenRead(string body, CancellationTokenSource cancellation) : HttpContent
+	{
+		protected override async Task SerializeToStreamAsync(Stream stream, System.Net.TransportContext? context)
+		{
+			await stream.WriteAsync(System.Text.Encoding.UTF8.GetBytes(body));
+			cancellation.Cancel();
+		}
+
+		protected override bool TryComputeLength(out long length)
+		{
+			length = -1;
+			return false;
+		}
+	}
+
 	static ChromaClient Client(HttpMessageHandler handler)
 		=> new(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
 
