@@ -1,13 +1,34 @@
 ﻿namespace ChromaDB.Client;
 
+/// <summary>
+/// What a query returns besides the ids of the results; the values can be combined.
+/// </summary>
 [Flags]
 public enum ChromaQueryInclude
 {
+	/// <summary>
+	/// Nothing besides the ids.
+	/// </summary>
 	None = 0,
+	/// <summary>
+	/// The embeddings of the results.
+	/// </summary>
 	Embeddings = 1 << 0,
+	/// <summary>
+	/// The metadatas of the results.
+	/// </summary>
 	Metadatas = 1 << 1,
+	/// <summary>
+	/// The documents of the results.
+	/// </summary>
 	Documents = 1 << 2,
+	/// <summary>
+	/// The distances of the results from the query embedding.
+	/// </summary>
 	Distances = 1 << 3,
+	/// <summary>
+	/// The URIs of the results.
+	/// </summary>
 	Uris = 1 << 4,
 }
 

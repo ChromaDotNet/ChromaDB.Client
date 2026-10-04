@@ -2,13 +2,28 @@ using ChromaDB.Client.Common;
 
 namespace ChromaDB.Client.Models;
 
-// A collection to create: its name, metadata and configuration.
+/// <summary>
+/// A collection to create: its name, metadata and configuration.
+/// </summary>
 public class ChromaCollectionDefinition
 {
+	/// <summary>
+	/// The name of the collection.
+	/// </summary>
 	public string Name { get; }
+	/// <summary>
+	/// The metadata of the collection.
+	/// </summary>
 	public Dictionary<string, object>? Metadata { get; init; }
+	/// <summary>
+	/// The settings of the collection, like its space. The client sends the space as the <c>hnsw:space</c> metadata,
+	/// which every tested Chroma applies.
+	/// </summary>
 	public ChromaCollectionConfiguration? Configuration { get; init; }
 
+	/// <summary>
+	/// Creates the definition of a collection with the name.
+	/// </summary>
 	public ChromaCollectionDefinition(string name)
 	{
 		Name = name;
