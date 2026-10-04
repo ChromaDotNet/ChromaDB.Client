@@ -67,7 +67,7 @@ public class ClientTests : ChromaTestsBase
 	[Test]
 	public async Task SharedHttpClientWithAnotherUriForCollection()
 	{
-		using var httpClient = new HttpClient();
+		using var httpClient = NewHttpClient();
 		var client = new ChromaClient(BaseConfigurationOptions, httpClient);
 		var collection = await client.CreateCollection($"collection{Random.Shared.Next()}");
 		Assert.That(() => new ChromaCollectionClient(collection, BaseConfigurationOptions.WithUri("http://localhost:1/api/v2/"), httpClient), Throws.Nothing);

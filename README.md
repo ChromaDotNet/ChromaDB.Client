@@ -235,7 +235,7 @@ With `CHROMA_TEST_URI` the tests run against a server already running, like Chro
 - `CHROMA_TEST_TENANT` and `CHROMA_TEST_DATABASE` are used as they are, not created;
 - `CHROMA_TEST_MAX_BATCH_SIZE` is a batch limit lower than the one the server declares, like 300 on Chroma Cloud.
 
-Each fixture deletes the collections it created. The tests that reset the server, create or look up other tenants and databases, or query an id that does not exist, are skipped.
+Each fixture deletes the collections and the databases its requests created, and nothing else. The tests that reset the server, create or look up other tenants and databases, or query an id that does not exist, are skipped.
 
 ## Migrating from ChromaDB.Client 1.x
 

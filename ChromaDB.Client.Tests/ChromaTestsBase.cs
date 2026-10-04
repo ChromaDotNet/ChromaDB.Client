@@ -1,4 +1,5 @@
-﻿using ChromaDB.Client.Tests.TestContainer;
+﻿using ChromaDB.Client.Models;
+using ChromaDB.Client.Tests.TestContainer;
 using NUnit.Framework;
 using Testcontainers.Chroma;
 
@@ -6,7 +7,9 @@ namespace ChromaDB.Client.Tests;
 
 public abstract class ChromaTestsBase
 {
-	protected static readonly HttpClient HttpClient = new();
+	// On a server already running, the requests of the fixture are recorded: at its end it deletes what they created.
+	private readonly CreatedOnTheServer _created = new();
+	protected HttpClient HttpClient { get; }
 
 	// CHROMA_TEST_TENANT and CHROMA_TEST_DATABASE run the tests in that tenant and database, created for each fixture, instead of the default ones.
 	private static readonly string? TestTenant = Environment.GetEnvironmentVariable("CHROMA_TEST_TENANT") is { Length: > 0 } tenant ? tenant : null;
@@ -26,8 +29,14 @@ public abstract class ChromaTestsBase
 	// Null when the fixture is skipped before its container starts.
 	private ChromaContainer? _container;
 	private ChromaConfigurationOptions? _baseConfigurationOptions;
-	private HashSet<string>? _collectionsBefore;
-	private HashSet<string>? _databasesBefore;
+
+	protected ChromaTestsBase()
+	{
+		HttpClient = NewHttpClient();
+	}
+
+	// An HttpClient whose requests to a server already running are recorded, for the tests that need an HttpClient of their own.
+	protected HttpClient NewHttpClient() => RunningServer ? _created.NewHttpClient() : new HttpClient();
 
 	[OneTimeSetUp]
 	public async Task OneTimeSetUp()
@@ -50,7 +59,6 @@ public abstract class ChromaTestsBase
 			_baseConfigurationOptions = TestToken is not null ? _baseConfigurationOptions.WithChromaToken(TestToken) : _baseConfigurationOptions;
 			_baseConfigurationOptions = TestTenant is not null ? _baseConfigurationOptions.WithTenant(TestTenant) : _baseConfigurationOptions;
 			_baseConfigurationOptions = TestDatabase is not null ? _baseConfigurationOptions.WithDatabase(TestDatabase) : _baseConfigurationOptions;
-			(_collectionsBefore, _databasesBefore) = await CollectionsAndDatabases();
 			return;
 		}
 		_container = ConfigureContainer(new ChromaBuilder(ChromaImage.Name)).Build();
@@ -78,11 +86,12 @@ public abstract class ChromaTestsBase
 	[OneTimeTearDown]
 	public async Task OneTimeTearDown()
 	{
-		if (RunningServer && _baseConfigurationOptions is not null && _collectionsBefore is not null)
+		if (RunningServer && _baseConfigurationOptions is not null)
 		{
 			await DeleteWhatTheFixtureCreated();
 		}
 		_baseConfigurationOptions = null;
+		HttpClient.Dispose();
 		if (_container is not null)
 		{
 			await _container.DisposeAsync();
@@ -91,39 +100,37 @@ public abstract class ChromaTestsBase
 
 	protected ChromaConfigurationOptions BaseConfigurationOptions => _baseConfigurationOptions ?? throw new InvalidOperationException();
 
-	// The names of the collections of the database of the tests, and of the databases of its tenant where the server lists them.
-	private async Task<(HashSet<string>, HashSet<string>?)> CollectionsAndDatabases()
-	{
-		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		var collections = (await client.ListCollections()).Select(x => x.Name).ToHashSet();
-		HashSet<string>? databases;
-		try
-		{
-			databases = (await client.ListDatabases()).Select(x => x.Name).ToHashSet();
-		}
-		catch (ChromaException)
-		{
-			databases = null;
-		}
-		return (collections, databases);
-	}
-
 	// On a running server what the tests create stays, and on Chroma Cloud it costs: the fixture deletes it.
 	private async Task DeleteWhatTheFixtureCreated()
 	{
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		var (collections, databases) = await CollectionsAndDatabases();
-		foreach (var name in collections.Except(_collectionsBefore!))
+		foreach (var place in _created.Collections.GroupBy(x => x.Value, x => x.Key))
 		{
-			await client.DeleteCollection(name);
-		}
-		foreach (var database in databases?.Except(_databasesBefore ?? []) ?? [])
-		{
-			foreach (var collection in await client.ListCollections(database: database))
+			List<ChromaCollection> collections;
+			try
 			{
-				await client.DeleteCollection(collection.Name, database: database);
+				collections = await client.ListCollections(place.Key.Tenant, place.Key.Database);
 			}
-			await client.DeleteDatabase(database);
+			catch (ChromaException)
+			{
+				// A test deleted the database.
+				continue;
+			}
+			foreach (var collection in collections.Where(x => place.Contains(x.Id)))
+			{
+				await client.DeleteCollection(collection.Name, place.Key.Tenant, place.Key.Database);
+			}
+		}
+		foreach (var (tenant, name) in _created.Databases.Keys)
+		{
+			try
+			{
+				await client.DeleteDatabase(name, tenant);
+			}
+			catch (ChromaException)
+			{
+				// A test deleted it, or the server does not delete databases.
+			}
 		}
 	}
 
