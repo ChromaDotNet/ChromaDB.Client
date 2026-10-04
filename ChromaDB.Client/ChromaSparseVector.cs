@@ -36,9 +36,10 @@ public sealed class ChromaSparseVector
 				throw new ArgumentException($"The indices of a sparse vector must be in strictly ascending order: {indices[i]} after {indices[i - 1]} at position {i}.", nameof(indices));
 			}
 		}
-		Indices = indices.ToArray();
-		Values = values.ToArray();
-		Tokens = tokens?.ToArray();
+		// Read-only copies: a cast cannot change them after the checks.
+		Indices = Array.AsReadOnly(indices.ToArray());
+		Values = Array.AsReadOnly(values.ToArray());
+		Tokens = tokens is null ? null : Array.AsReadOnly(tokens.ToArray());
 	}
 
 	/// <summary>

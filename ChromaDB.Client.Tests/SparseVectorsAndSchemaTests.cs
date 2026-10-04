@@ -30,6 +30,16 @@ public class SparseVectorsAndSchemaTests
 		Assert.That(() => new ChromaSparseVector([1], [1f], ["a", "b"]), Throws.ArgumentException);
 	}
 
+	// The checked values cannot change afterwards, not even through a cast.
+	[Test]
+	public void SparseVectorIsReadOnly()
+	{
+		var vector = new ChromaSparseVector([1, 5], [0.5f, 0.7f], ["a", "b"]);
+		Assert.That(vector.Indices, Is.Not.InstanceOf<int[]>());
+		Assert.That(vector.Values, Is.Not.InstanceOf<float[]>());
+		Assert.That(vector.Tokens, Is.Not.InstanceOf<string[]>());
+	}
+
 	[Test]
 	public void KnnWithASparseVector()
 	{
