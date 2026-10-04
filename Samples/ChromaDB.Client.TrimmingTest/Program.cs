@@ -6,7 +6,10 @@ using Microsoft.Extensions.DependencyInjection;
 // Runs the main calls of the client against the server at args[0], like http://localhost:8000.
 // Published with trimming, it fails if the client needs code that trimming removed.
 // --lists: the server stores lists in metadata (Chroma 1.5.0 and later), so they must work.
-var options = new ChromaConfigurationOptions(uri: args.Length > 0 && !args[0].StartsWith("--") ? args[0] : "http://localhost:8000");
+// With CHROMA_HOST, like api.trychroma.com, it runs against Chroma Cloud: CHROMA_API_KEY, CHROMA_TENANT and CHROMA_DATABASE.
+var options = Environment.GetEnvironmentVariable("CHROMA_HOST") is { Length: > 0 } host
+	? CloudOptions(host)
+	: new ChromaConfigurationOptions(uri: args.Length > 0 && !args[0].StartsWith("--") ? args[0] : "http://localhost:8000");
 var listsStored = args.Contains("--lists");
 using var httpClient = new HttpClient();
 var client = new ChromaClient(options, httpClient);
@@ -161,7 +164,15 @@ await Check("Tenants and databases", async () =>
 	if (Version.TryParse(version, out var parsed) && parsed < new Version(0, 4, 15))
 		return "skipped";
 	var tenant = $"tenant{Guid.NewGuid():N}";
-	await client.CreateTenant(tenant);
+	try
+	{
+		await client.CreateTenant(tenant);
+	}
+	catch (ChromaException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
+	{
+		// Chroma Cloud does not let a key create tenants.
+		return $"skipped: {ex.Message}";
+	}
 	await client.CreateDatabase("database", tenant: tenant);
 	return $"{(await client.GetTenant(tenant)).Name}/{(await client.GetDatabase("database", tenant: tenant)).Name}";
 });
@@ -182,3 +193,11 @@ await Check("DeleteCollection", async () =>
 
 Console.WriteLine(failures == 0 ? "ALL OK" : $"{failures} FAILED");
 return failures;
+
+static ChromaConfigurationOptions CloudOptions(string host)
+{
+	var options = new ChromaConfigurationOptions(uri: host.Contains("://") ? host : $"https://{host}");
+	options = Environment.GetEnvironmentVariable("CHROMA_API_KEY") is { Length: > 0 } key ? options.WithChromaToken(key) : options;
+	options = Environment.GetEnvironmentVariable("CHROMA_TENANT") is { Length: > 0 } tenant ? options.WithTenant(tenant) : options;
+	return Environment.GetEnvironmentVariable("CHROMA_DATABASE") is { Length: > 0 } database ? options.WithDatabase(database) : options;
+}

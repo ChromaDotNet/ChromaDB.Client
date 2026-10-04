@@ -11,7 +11,7 @@ public class BatchSplittingTests : ChromaTestsBase
 	public async Task AddAndDeleteBeyondTheMaxBatchSize()
 	{
 		Assume.That(PreFlightChecksSupported, Is.True, "Chroma 0.4.10 has no pre-flight-checks, so the client does not know its limit.");
-		var options = BaseConfigurationOptions.WithBatchSplitting();
+		var options = TestMaxBatchSize is { } limit ? BaseConfigurationOptions.WithBatchSplitting(limit) : BaseConfigurationOptions.WithBatchSplitting();
 		var client = new ChromaClient(options, HttpClient);
 		var count = (await client.GetPreFlightChecks()).MaxBatchSize + 1;
 		var collectionClient = client.GetCollectionClient(await client.CreateCollection($"collection{Random.Shared.Next()}"));

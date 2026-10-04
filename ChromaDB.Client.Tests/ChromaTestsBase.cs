@@ -12,12 +12,22 @@ public abstract class ChromaTestsBase
 	private static readonly string? TestTenant = Environment.GetEnvironmentVariable("CHROMA_TEST_TENANT") is { Length: > 0 } tenant ? tenant : null;
 	private static readonly string? TestDatabase = Environment.GetEnvironmentVariable("CHROMA_TEST_DATABASE") is { Length: > 0 } database ? database : null;
 
+	// CHROMA_TEST_URI runs the tests against a server already running, like Chroma Cloud, instead of a container: CHROMA_TEST_TOKEN
+	// goes in X-Chroma-Token, CHROMA_TEST_TENANT and CHROMA_TEST_DATABASE are used as they are, not created, and the collections and
+	// databases a fixture creates are deleted at its end. CHROMA_TEST_MAX_BATCH_SIZE is a limit lower than the declared one, like 300 on Chroma Cloud.
+	private static readonly string? TestUri = Environment.GetEnvironmentVariable("CHROMA_TEST_URI") is { Length: > 0 } uri ? uri : null;
+	private static readonly string? TestToken = Environment.GetEnvironmentVariable("CHROMA_TEST_TOKEN") is { Length: > 0 } token ? token : null;
+	protected static readonly int? TestMaxBatchSize = int.TryParse(Environment.GetEnvironmentVariable("CHROMA_TEST_MAX_BATCH_SIZE"), out var size) ? size : null;
+	protected static bool RunningServer => TestUri is not null;
+
 	// CHROMA_TEST_API_VERSION=v1 runs the tests with the v1 API, the only one of Chroma 0.5.15 and earlier.
 	protected static readonly ChromaApiVersion ApiVersion = Environment.GetEnvironmentVariable("CHROMA_TEST_API_VERSION") is "v1" ? ChromaApiVersion.V1 : ChromaApiVersion.V2;
 
 	// Null when the fixture is skipped before its container starts.
 	private ChromaContainer? _container;
 	private ChromaConfigurationOptions? _baseConfigurationOptions;
+	private HashSet<string>? _collectionsBefore;
+	private HashSet<string>? _databasesBefore;
 
 	[OneTimeSetUp]
 	public async Task OneTimeSetUp()
@@ -33,6 +43,15 @@ public abstract class ChromaTestsBase
 		if ((TestTenant is not null || TestDatabase is not null) && !RecordsInOtherTenantsSupported)
 		{
 			Assert.Ignore("Chroma 0.4.15 does not add records to the collections of other tenants and databases.");
+		}
+		if (RunningServer)
+		{
+			_baseConfigurationOptions = new ChromaConfigurationOptions(uri: TestUri!).WithApiVersion(ApiVersion);
+			_baseConfigurationOptions = TestToken is not null ? _baseConfigurationOptions.WithChromaToken(TestToken) : _baseConfigurationOptions;
+			_baseConfigurationOptions = TestTenant is not null ? _baseConfigurationOptions.WithTenant(TestTenant) : _baseConfigurationOptions;
+			_baseConfigurationOptions = TestDatabase is not null ? _baseConfigurationOptions.WithDatabase(TestDatabase) : _baseConfigurationOptions;
+			(_collectionsBefore, _databasesBefore) = await CollectionsAndDatabases();
+			return;
 		}
 		_container = ConfigureContainer(new ChromaBuilder(ChromaImage.Name)).Build();
 		await _container.StartAsync();
@@ -59,6 +78,10 @@ public abstract class ChromaTestsBase
 	[OneTimeTearDown]
 	public async Task OneTimeTearDown()
 	{
+		if (RunningServer && _baseConfigurationOptions is not null && _collectionsBefore is not null)
+		{
+			await DeleteWhatTheFixtureCreated();
+		}
 		_baseConfigurationOptions = null;
 		if (_container is not null)
 		{
@@ -68,8 +91,47 @@ public abstract class ChromaTestsBase
 
 	protected ChromaConfigurationOptions BaseConfigurationOptions => _baseConfigurationOptions ?? throw new InvalidOperationException();
 
+	// The names of the collections of the database of the tests, and of the databases of its tenant where the server lists them.
+	private async Task<(HashSet<string>, HashSet<string>?)> CollectionsAndDatabases()
+	{
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var collections = (await client.ListCollections()).Select(x => x.Name).ToHashSet();
+		HashSet<string>? databases;
+		try
+		{
+			databases = (await client.ListDatabases()).Select(x => x.Name).ToHashSet();
+		}
+		catch (ChromaException)
+		{
+			databases = null;
+		}
+		return (collections, databases);
+	}
+
+	// On a running server what the tests create stays, and on Chroma Cloud it costs: the fixture deletes it.
+	private async Task DeleteWhatTheFixtureCreated()
+	{
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var (collections, databases) = await CollectionsAndDatabases();
+		foreach (var name in collections.Except(_collectionsBefore!))
+		{
+			await client.DeleteCollection(name);
+		}
+		foreach (var database in databases?.Except(_databasesBefore ?? []) ?? [])
+		{
+			foreach (var collection in await client.ListCollections(database: database))
+			{
+				await client.DeleteCollection(collection.Name, database: database);
+			}
+			await client.DeleteDatabase(database);
+		}
+	}
+
 	// Chroma 1.0 removed the built-in authentication and reads its settings from a configuration file.
 	protected static bool IsChroma1 => ChromaImage.Version.Major >= 1;
+
+	// A server already running, like Chroma Cloud, may not let the tests create tenants: Chroma Cloud answers 403.
+	protected static bool TenantCreationTested => !RunningServer;
 
 	// Chroma 0.4.14 has no tenants and databases, 0.4.15 has them.
 	protected static bool TenantsSupported => ChromaImage.Version >= new Version(0, 4, 15);

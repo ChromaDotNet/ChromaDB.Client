@@ -28,8 +28,10 @@ public class ClientTests : ChromaTestsBase
 		Assume.That(ApiVersion, Is.EqualTo(ChromaApiVersion.V2), "The v1 API has no auth/identity.");
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
 		var result = await client.GetUserIdentity();
-		Assert.That(result.Tenant, Is.EqualTo("default_tenant"));
-		Assert.That(result.Databases, Contains.Item("default_database"));
+		// A container answers with the defaults whatever tenant the tests use; a server already running, like Chroma Cloud,
+		// with the tenant of the key and its databases.
+		Assert.That(result.Tenant, Is.EqualTo(RunningServer ? BaseConfigurationOptions.Tenant ?? "default_tenant" : "default_tenant"));
+		Assert.That(result.Databases, RunningServer ? Is.Not.Empty : Contains.Item("default_database"));
 	}
 
 	[Test]

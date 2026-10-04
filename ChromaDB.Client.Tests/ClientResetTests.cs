@@ -8,6 +8,8 @@ public class ClientResetTests
 	[TestFixture]
 	public class DefaultSettings : ChromaTestsBase
 	{
+		protected override string? SkipReason => RunningServer ? "The reset of a server already running is not tested: Chroma Cloud answers 403." : null;
+
 		[Test]
 		public async Task ResetSimple()
 		{
@@ -19,6 +21,8 @@ public class ClientResetTests
 	[TestFixture]
 	public class AllowReset : ChromaTestsBase
 	{
+		protected override string? SkipReason => RunningServer ? "Allowing the reset needs a container started with that setting." : null;
+
 		[Test]
 		public async Task ResetSimple()
 		{

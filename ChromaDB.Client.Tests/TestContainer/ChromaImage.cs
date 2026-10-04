@@ -5,7 +5,10 @@ namespace ChromaDB.Client.Tests.TestContainer;
 // The Chroma image the tests run against, from CHROMA_IMAGE, and its version, which tells the tests what the server supports.
 public static class ChromaImage
 {
-	public static readonly string Name = Environment.GetEnvironmentVariable("CHROMA_IMAGE") is { Length: > 0 } image ? image : "chromadb/chroma:0.6.3";
+	// Against a server already running (CHROMA_TEST_URI), like Chroma Cloud, the tests take the latest release unless CHROMA_IMAGE says otherwise.
+	public static readonly string Name = Environment.GetEnvironmentVariable("CHROMA_IMAGE") is { Length: > 0 } image ? image
+		: Environment.GetEnvironmentVariable("CHROMA_TEST_URI") is { Length: > 0 } ? "chromadb/chroma:latest"
+		: "chromadb/chroma:0.6.3";
 	public static readonly System.Version Version = ParseVersion(Name);
 
 	// "latest" is newer than any release; other tags start with the version, like "1.5.9" or "1.5.10.dev312".

@@ -12,6 +12,7 @@ public class TenantDatabaseTests : ChromaTestsBase
 	[Test]
 	public async Task CreateTenant()
 	{
+		Assume.That(TenantCreationTested, Is.True, "A server already running may not let the tests create tenants.");
 		var name = $"tenant{Random.Shared.Next()}";
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
@@ -23,6 +24,7 @@ public class TenantDatabaseTests : ChromaTestsBase
 	[Test]
 	public async Task CreateTenantAlreadyExists()
 	{
+		Assume.That(TenantCreationTested, Is.True, "A server already running may not let the tests create tenants.");
 		var name = $"tenant{Random.Shared.Next()}";
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
@@ -40,6 +42,7 @@ public class TenantDatabaseTests : ChromaTestsBase
 	[Test]
 	public async Task CreateDatabase()
 	{
+		Assume.That(TenantCreationTested, Is.True, "A server already running may not let the tests create tenants.");
 		var tenant = $"tenant{Random.Shared.Next()}";
 		var name = $"database{Random.Shared.Next()}";
 
@@ -83,6 +86,7 @@ public class TenantDatabaseTests : ChromaTestsBase
 	[Test]
 	public async Task ListDatabases()
 	{
+		Assume.That(TenantCreationTested, Is.True, "A server already running may not let the tests create tenants.");
 		Assume.That(DatabaseListingSupported, Is.True, "Only the v2 API of Chroma 0.6.3 and later lists databases.");
 		var tenant = $"tenant{Random.Shared.Next()}";
 
@@ -113,6 +117,7 @@ public class TenantDatabaseTests : ChromaTestsBase
 	[Test]
 	public async Task ListDatabasesPage()
 	{
+		Assume.That(TenantCreationTested, Is.True, "A server already running may not let the tests create tenants.");
 		Assume.That(DatabaseListingSupported, Is.True, "Only the v2 API of Chroma 0.6.3 and later lists databases.");
 		var tenant = $"tenant{Random.Shared.Next()}";
 
@@ -129,6 +134,7 @@ public class TenantDatabaseTests : ChromaTestsBase
 	[Test]
 	public async Task DeleteDatabase()
 	{
+		Assume.That(TenantCreationTested, Is.True, "A server already running may not let the tests create tenants.");
 		Assume.That(DatabaseListingSupported, Is.True, "Only the v2 API of Chroma 0.6.3 and later deletes databases.");
 		var tenant = $"tenant{Random.Shared.Next()}";
 
@@ -167,6 +173,7 @@ public class TenantDatabaseTests : ChromaTestsBase
 	[Test]
 	public async Task CollectionInTenantAndDatabase()
 	{
+		Assume.That(TenantCreationTested, Is.True, "A server already running may not let the tests create tenants.");
 		Assume.That(RecordsInOtherTenantsSupported, Is.True, "Chroma 0.4.15 does not add records to the collections of other tenants and databases.");
 		var tenant = $"tenant{Random.Shared.Next()}";
 		var database = $"database{Random.Shared.Next()}";
