@@ -113,7 +113,7 @@ if (!await client.CollectionExists("my_collection"))
 }
 ```
 
-`CollectionExists` tells a missing collection from the other errors on every tested server: Chroma 1.x answers `404`, the 0.x servers `400` or `500` with "does not exist" in the message.
+`CollectionExists` tells a missing collection from the other errors on every tested server: Chroma 1.x answers `404`, the 0.x servers `400` or `500`, always with "does not exist" in the message. Any other error, like a bare `404` from a wrong address, throws.
 
 ## Tenants and databases
 
