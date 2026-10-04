@@ -82,6 +82,9 @@ public class MetadataAndErrorsTests
 	// Other errors are not a missing collection.
 	[TestCase(HttpStatusCode.InternalServerError, """{"error":"InternalError","message":"Database is locked"}""")]
 	[TestCase(HttpStatusCode.Unauthorized, """{"error":"AuthError","message":"Unauthorized"}""")]
+	[TestCase(HttpStatusCode.NotFound, """{"detail":"Not Found"}""")]
+	[TestCase(HttpStatusCode.NotFound, "")]
+	[TestCase(HttpStatusCode.NotFound, """{"error":"NotFoundError","message":"Tenant [t] not found"}""")]
 	public async Task CollectionExistsThrowsOnOtherErrors(HttpStatusCode statusCode, string body)
 	{
 		using var httpClient = new HttpClient(new FixedHandler(statusCode, body));
@@ -112,6 +115,41 @@ public class MetadataAndErrorsTests
 		await Assert.ThatAsync(() => client.Update(new ChromaRecords(["a"]) { Metadatas = [new() { ["tags"] = new List<bool> { true } }] }), Throws.InstanceOf<ChromaException>());
 		// The version is asked once, and no record is sent.
 		Assert.That(handler.Paths, Is.EqualTo(new[] { "/api/v2/version" }));
+	}
+
+	// A list read with the default ChromaMetadataValues.Inferred is a JsonElement: written back, it is a list too.
+	[Test]
+	public async Task JsonArraysInMetadataToChroma0Throw()
+	{
+		var handler = Respond("\"0.6.3\"");
+		var client = CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), handler);
+		var list = JsonDocument.Parse("""["x"]""").RootElement.Clone();
+		Assert.ThrowsAsync<ChromaException>(() => client.Add(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = list }] }));
+		Assert.That(handler.Paths, Is.EqualTo(new[] { "/api/v2/version" }));
+	}
+
+	[Test]
+	public async Task ConcurrentListsAskTheVersionOnce()
+	{
+		var handler = new VersionHandler();
+		var client = CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), handler);
+		var adds = Enumerable.Range(0, 5).Select(_ => client.Add(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] })).ToList();
+		handler.Release.SetResult(true);
+		await Task.WhenAll(adds);
+		Assert.That(handler.VersionRequests, Is.EqualTo(1));
+	}
+
+	// A canceled version request is not kept: the next call asks again.
+	[Test]
+	public async Task CanceledVersionRequestIsAskedAgain()
+	{
+		var handler = new VersionHandler();
+		var client = CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), handler);
+		using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+		await Assert.ThatAsync(() => client.Add(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] }, cts.Token), Throws.InstanceOf<OperationCanceledException>());
+		handler.Release.SetResult(true);
+		await client.Add(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] });
+		Assert.That(handler.VersionRequests, Is.EqualTo(2));
 	}
 
 	[Test]
@@ -157,6 +195,25 @@ public class MetadataAndErrorsTests
 				Bodies.Add(JsonDocument.Parse(await request.Content.ReadAsStringAsync(cancellationToken)).RootElement.Clone());
 			}
 			return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(response) };
+		}
+	}
+
+	// Answers "1.0.0" to the version requests once Release is set, and true to the others.
+	sealed class VersionHandler : HttpMessageHandler
+	{
+		int _versionRequests;
+		public int VersionRequests => _versionRequests;
+		public TaskCompletionSource<bool> Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+		protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+		{
+			if (request.RequestUri!.AbsolutePath.EndsWith("/version"))
+			{
+				Interlocked.Increment(ref _versionRequests);
+				await Release.Task.WaitAsync(cancellationToken);
+				return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("\"1.0.0\"") };
+			}
+			return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("true") };
 		}
 	}
 

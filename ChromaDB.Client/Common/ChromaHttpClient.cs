@@ -15,6 +15,7 @@ internal sealed class ChromaHttpClient
 	private readonly AuthenticationHeaderValue? _authorization;
 
 	private string? _serverVersion;
+	private readonly SemaphoreSlim _serverVersionLock = new(1, 1);
 
 	public ChromaRoutes Routes { get; }
 	public JsonSerializerOptions DeserializerOptions { get; }
@@ -48,11 +49,22 @@ internal sealed class ChromaHttpClient
 
 	public Uri CreateUri(string endpoint) => new(_baseUri, endpoint);
 
-	// Asked once, when a request needs it. The 0.x servers send their own version; every Chroma 1.x answers "1.0.0",
-	// so the version tells only 0.x from 1.x apart.
+	// Asked once, when a request needs it, also by concurrent calls; a failed or canceled request is not kept, so the next call asks again.
+	// The 0.x servers send their own version; every Chroma 1.x answers "1.0.0", so the version tells only 0.x from 1.x apart.
 	public async Task<bool> IsChroma0(CancellationToken cancellationToken)
 	{
-		_serverVersion ??= await this.Get<string>(Routes.Version, new RequestQueryParams(), cancellationToken);
+		if (_serverVersion is null)
+		{
+			await _serverVersionLock.WaitAsync(cancellationToken);
+			try
+			{
+				_serverVersion ??= await this.Get<string>(Routes.Version, new RequestQueryParams(), cancellationToken);
+			}
+			finally
+			{
+				_serverVersionLock.Release();
+			}
+		}
 		return _serverVersion.StartsWith("0.", StringComparison.Ordinal);
 	}
 

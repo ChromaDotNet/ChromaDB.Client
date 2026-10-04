@@ -59,7 +59,8 @@ public class ChromaClient
 		return await _httpClient.Get<ChromaCollection>(_httpClient.Routes.CollectionByName, requestParams, cancellationToken);
 	}
 
-	// A missing collection: 404 from Chroma 1.x; 400 or 500 with "does not exist" in the message from the 0.x servers.
+	// A missing collection: 404 from Chroma 1.x, 400 or 500 from the 0.x servers, always with "does not exist" in the message,
+	// also when the tenant or the database is missing. Any other error, like a bare 404 from a wrong address, still throws.
 	public async Task<bool> CollectionExists(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 	{
 		try
@@ -67,8 +68,8 @@ public class ChromaClient
 			await GetCollection(name, tenant, database, cancellationToken);
 			return true;
 		}
-		catch (ChromaException ex) when (ex.StatusCode == HttpStatusCode.NotFound
-			|| ex.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError && ex.Message.Contains("does not exist"))
+		catch (ChromaException ex) when (ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError
+			&& ex.Message.Contains("does not exist"))
 		{
 			return false;
 		}

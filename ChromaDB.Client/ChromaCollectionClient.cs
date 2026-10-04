@@ -151,12 +151,17 @@ public class ChromaCollectionClient
 	// The 0.x servers accept lists in metadata but drop them without an error; Chroma 1.0 to 1.4 reject them, 1.5.0 stores them.
 	private async Task CheckListsInMetadata(ChromaRecords records, CancellationToken cancellationToken)
 	{
-		if (records.Metadatas?.Any(metadata => metadata?.Values.Any(value => value is System.Collections.IEnumerable and not string and not System.Collections.IDictionary) == true) == true
+		if (records.Metadatas?.Any(metadata => metadata?.Values.Any(IsList) == true) == true
 			&& await _httpClient.IsChroma0(cancellationToken))
 		{
 			throw new ChromaException("Chroma 0.x drops the lists in metadata without an error: they need Chroma 1.5.0 or later.");
 		}
 	}
+
+	// A JsonElement array is what the client returns for a list read with ChromaMetadataValues.Inferred.
+	private static bool IsList(object? value)
+		=> value is System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Array }
+			or System.Collections.IEnumerable and not string and not System.Collections.IDictionary;
 
 	public async Task Delete(List<string> ids, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, CancellationToken cancellationToken = default)
 	{
