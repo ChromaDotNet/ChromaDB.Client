@@ -1,10 +1,18 @@
 namespace ChromaDB.Client;
 
-// How the client reads the values of the metadata of collections and records.
+/// <summary>
+/// How the client reads the values of the metadata of collections and records.
+/// </summary>
 public enum ChromaMetadataValues
 {
-	// A string that looks like a date becomes a DateTime, and a list stays a JsonElement, as in the earlier versions.
+	/// <summary>
+	/// A string that looks like a date becomes a <c>DateTime</c>, and a list stays a <c>JsonElement</c>, as in the earlier versions.
+	/// The default.
+	/// </summary>
 	Inferred,
-	// A string stays a string, and a list becomes a List<object> of string, long, double and bool, like the single values.
+	/// <summary>
+	/// A string stays a string, and a list becomes a <c>List&lt;object&gt;</c> of <c>string</c>, <c>long</c>, <c>double</c>
+	/// and <c>bool</c>, like the single values.
+	/// </summary>
 	Exact,
 }

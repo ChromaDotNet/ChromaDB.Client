@@ -4,12 +4,24 @@ using Microsoft.Extensions.Options;
 
 namespace ChromaDB.Client.DependencyInjection;
 
+/// <summary>
+/// The registration of the <c>ChromaClient</c> for <c>Microsoft.Extensions.DependencyInjection</c>. The client is a singleton
+/// and sends each request with the current handler of <c>IHttpClientFactory</c>, which the factory renews after its handler
+/// lifetime, two minutes by default.
+/// </summary>
 public static class ChromaClientExtensions
 {
+	/// <summary>
+	/// Registers a <c>ChromaClient</c> and its options as singletons. <c>configurationOptions</c> takes the default options,
+	/// for <c>http://localhost:8000</c>, and returns the options of the client.
+	/// </summary>
 	public static void AddChromaClient(this IServiceCollection services, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions = null)
 		=> AddChromaClient(services, configurationOptions, _ => { });
 
-	// configureHttpClient configures the HttpClient of the client, like a resilience handler, a proxy or a timeout.
+	/// <summary>
+	/// Registers a <c>ChromaClient</c> and its options as singletons. <c>configureHttpClient</c> configures the <c>HttpClient</c>
+	/// of the client, like a resilience handler, a proxy or a timeout.
+	/// </summary>
 	public static void AddChromaClient(this IServiceCollection services, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions, Action<IHttpClientBuilder> configureHttpClient)
 	{
 		configurationOptions ??= DefaultConfigurationOptions;
@@ -22,10 +34,17 @@ public static class ChromaClientExtensions
 		services.AddSingleton(serviceProvider => new ChromaClient(options, CreateHttpClient(serviceProvider, nameof(ChromaClient))));
 	}
 
-	// A client and its options under a key, for an application that talks to more than one server, tenant or database.
+	/// <summary>
+	/// A client and its options under a key, for an application that talks to more than one server, tenant or database.
+	/// Both are registered as singletons.
+	/// </summary>
 	public static void AddKeyedChromaClient(this IServiceCollection services, object? serviceKey, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions = null)
 		=> AddKeyedChromaClient(services, serviceKey, configurationOptions, _ => { });
 
+	/// <summary>
+	/// Registers a <c>ChromaClient</c> and its options as singletons under <c>serviceKey</c>. <c>configureHttpClient</c>
+	/// configures the <c>HttpClient</c> of the client, like a resilience handler, a proxy or a timeout.
+	/// </summary>
 	public static void AddKeyedChromaClient(this IServiceCollection services, object? serviceKey, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions, Action<IHttpClientBuilder> configureHttpClient)
 	{
 		configurationOptions ??= DefaultConfigurationOptions;
