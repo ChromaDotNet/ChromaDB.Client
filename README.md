@@ -319,7 +319,7 @@ var perCategory = new ChromaSearchGroupBy(ChromaSearchAggregate.MinK(3, ChromaSe
 var many = await collectionClient.Search([new ChromaSearch { Rank = fused, Limit = 5 }, new ChromaSearch { GroupBy = perCategory, Rank = fused }]);
 ```
 
-`ChromaSearchGroupBy` keeps, for each value of the metadata keys, the records the aggregate chooses. Several searches go in one request, and their results come in order. `ToString()` of a `ChromaRank` gives its JSON.
+`ChromaSearchGroupBy` keeps, for each value of the metadata keys, the records the aggregate chooses. Several searches go in one request, and their results come in order. `ToString()` of a `ChromaRank` gives its JSON; a text query of `SparseKnn` is in it as the text, where `Search` sends its sparse vector.
 
 ## Sparse vectors and schema
 

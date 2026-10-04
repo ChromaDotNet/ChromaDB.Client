@@ -17,7 +17,8 @@ public abstract class ChromaRank
 	internal abstract Dictionary<string, object> ToRank(Func<string, string, Models.ChromaSparseVector>? embedText);
 
 	/// <summary>
-	/// The JSON of the expression, as the client sends it in <c>rank</c>.
+	/// The JSON of the expression, as the client sends it in <c>rank</c>. A text query of <c>SparseKnn</c> is in it as the text:
+	/// <c>ChromaCollectionClient.Search</c> sends its sparse vector instead.
 	/// </summary>
 	public override string ToString()
 		=> System.Text.Json.JsonSerializer.Serialize(ToRank(), Common.HttpClientHelpers.TypeInfo<Dictionary<string, object>>(Common.HttpClientHelpers.PostJsonSerializerOptions));
