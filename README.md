@@ -115,6 +115,25 @@ if (!await client.CollectionExists("my_collection"))
 
 `CollectionExists` tells a missing collection from the other errors on every tested server: Chroma 1.x answers `404`, the 0.x servers `400` or `500`, always with "does not exist" in the message. Any other error, like a bare `404` from a wrong address, throws.
 
+## Filters
+
+`ToString()` of a `ChromaWhereOperator` or a `ChromaWhereDocumentOperator` is the JSON the client sends:
+
+```csharp
+var where = ChromaWhereOperator.Equal("year", 2026) & ChromaWhereOperator.In("lang", "en", "it");
+Console.WriteLine(where); // {"$and":[{"year":{"$eq":2026}},{"lang":{"$in":["en","it"]}}]}
+```
+
+`In` and `NotIn` without values throw an `ArgumentException`: every tested Chroma rejects `$in` and `$nin` without values.
+
+## Large writes
+
+```csharp
+var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithBatchSplitting();
+```
+
+With `WithBatchSplitting`, `Add`, `Update`, `Upsert` and `Delete` send their records in batches of the `max_batch_size` of the server, one request after the other; the client asks `pre-flight-checks` once. If a batch fails, the earlier ones stay written. Without it, as by default, the records go in one request: up to Chroma 1.0.13 a request beyond the limit fails, later versions accept it. Chroma 0.4.10 has no `pre-flight-checks`, so its records always go in one request.
+
 ## Tenants and databases
 
 ```csharp
