@@ -81,6 +81,14 @@ Console.WriteLine(entries[0].Uri);
 
 `ChromaRecords` holds the ids, embeddings, metadatas, documents and URIs of the records for `Add`, `Update` and `Upsert`.
 
+## Querying some records only
+
+```csharp
+var results = await collectionClient.Query(new ChromaQuery([new([1f, 0.5f, 0f])]) { Ids = ["a", "c"], NResults = 1 });
+```
+
+`ChromaQuery` holds the query embeddings, the number of results, the filters, what to include and the ids to search among. Chroma 1.0.0 and later search only the records with those ids. Chroma 0.x ignores them and searches all the records: when a result falls outside the ids, `Query` throws a `ChromaException` instead of returning it.
+
 ## Tenants and databases
 
 ```csharp

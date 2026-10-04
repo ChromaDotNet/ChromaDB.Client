@@ -19,6 +19,7 @@ Differences between these servers, seen in the tests:
 | Built-in authentication: token in `X-Chroma-Token` or `Authorization: Bearer`, and basic | 0.5.16 – 0.6.3; Chroma 1.5.9 accepts requests without credentials |
 | Lists and deletes databases (`ListDatabases`, `DeleteDatabase`) | 0.6.3 – 1.5.9; 0.5.16 – 0.6.2 answer `405 Method Not Allowed` |
 | Gets a collection by its id (`GetCollectionById`) | 1.5.7 – 1.5.9; 0.5.16 – 1.5.6 answer `404 Not Found` |
+| Searches only the records with the ids of `ChromaQuery.Ids` | 1.0.0 – 1.5.9, which answer `500` with `Error finding id` when one of the ids does not exist; 0.5.16 – 0.6.3 ignore the ids: `Query` throws a `ChromaException` when a result falls outside them |
 
 ## v1 API (`ChromaApiVersion.V1`)
 
@@ -36,7 +37,7 @@ On these older servers collections and records work; some features are missing o
 
 Chroma 0.4.10 has no `pre-flight-checks` either, so `GetPreFlightChecks` answers `404 Not Found` there.
 
-A missing endpoint gives a message that names the request, like `Not Found: POST /api/v1/tenants`. The v1 API has no `auth/identity`, so `GetUserIdentity` needs the v2 API: Chroma 0.5.15, 0.5.16 and 0.6.3 answer it with `404 Not Found` in v1. The v1 API does not list or delete databases either: `ListDatabases` and `DeleteDatabase` answer `405 Method Not Allowed` on the servers above from 0.4.15. `GetCollectionById` answers `404 Not Found` on all the servers above.
+A missing endpoint gives a message that names the request, like `Not Found: POST /api/v1/tenants`. The v1 API has no `auth/identity`, so `GetUserIdentity` needs the v2 API: Chroma 0.5.15, 0.5.16 and 0.6.3 answer it with `404 Not Found` in v1. The v1 API does not list or delete databases either: `ListDatabases` and `DeleteDatabase` answer `405 Method Not Allowed` on the servers above from 0.4.15. `GetCollectionById` answers `404 Not Found` on all the servers above. They all ignore `ChromaQuery.Ids`, as Chroma 0.6.3 does with the v2 API.
 
 The v1 API of Chroma 0.6.3 fails on most requests, and Chroma 1.5.9 answers it with `410 Gone`: use the v2 API there.
 

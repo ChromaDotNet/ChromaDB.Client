@@ -439,7 +439,8 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task QueryWithMissingIdThrows()
 	{
 		var client = await Init(withThird: true);
-		await Assert.ThatAsync(() => client.Query(new ChromaQuery([Embeddings1]) { Ids = [Id1, "missing"] }), Throws.InstanceOf<ChromaException>());
+		await Assert.ThatAsync(() => client.Query(new ChromaQuery([Embeddings1]) { Ids = [Id1, "missing"] }),
+			Throws.InstanceOf<ChromaException>().With.Message.Contains(IdsInQuerySupported ? "Error finding id" : "outside the ids"));
 	}
 
 	static readonly string Id1 = "id1";
