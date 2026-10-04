@@ -89,6 +89,32 @@ var results = await collectionClient.Query(new ChromaQuery([new([1f, 0.5f, 0f])]
 
 `ChromaQuery` holds the query embeddings, the number of results, the filters, what to include and the ids to search among. Chroma 1.0.0 and later search only the records with those ids. Chroma 0.x ignores them and searches all the records: when a result falls outside the ids, `Query` throws a `ChromaException` instead of returning it.
 
+## Metadata values
+
+By default a string in metadata that looks like a date comes back as a `DateTime`, and a list as a `JsonElement`. With `ChromaMetadataValues.Exact` strings stay strings, and lists come back as `List<object>` of `string`, `long`, `double` and `bool`, like the single values:
+
+```csharp
+var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithMetadataValues(ChromaMetadataValues.Exact);
+
+await collectionClient.Add(new ChromaRecords(["a"]) { Embeddings = [new([1f, 0.5f, 0f])], Metadatas = [new() { ["tags"] = new[] { "red", "blue" } }] });
+var tagged = await collectionClient.Get(where: ChromaWhereOperator.Contains("tags", "red"));
+```
+
+Chroma 1.5.0 and later store lists in metadata and filter them with `Contains` and `NotContains`. Chroma 1.0.0 to 1.4.1 reject them. Chroma 0.x accepts them but drops them without an error, so `Add`, `Update` and `Upsert` throw a `ChromaException` before sending them: the client asks the server its version once, only when a record has a list.
+
+## Errors
+
+A failed request throws a `ChromaException`. Its `StatusCode` is the status code of the answer of the server, or null when there was no answer, like on a timeout.
+
+```csharp
+if (!await client.CollectionExists("my_collection"))
+{
+	await client.CreateCollection("my_collection");
+}
+```
+
+`CollectionExists` tells a missing collection from the other errors on every tested server: Chroma 1.x answers `404`, the 0.x servers `400` or `500` with "does not exist" in the message.
+
 ## Tenants and databases
 
 ```csharp
