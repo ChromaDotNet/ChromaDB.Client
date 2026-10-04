@@ -133,6 +133,12 @@ Console.WriteLine(where); // {"$and":[{"year":{"$eq":2026}},{"lang":{"$in":["en"
 
 `In` and `NotIn` without values throw an `ArgumentException`: every tested Chroma rejects `$in` and `$nin` without values.
 
+`ChromaWhereDocumentOperator.Regex` and `NotRegex` filter the documents with a regular expression, from Chroma 1.0.12; the earlier versions fail on them.
+
+```csharp
+var apples = await collectionClient.Get(whereDocument: ChromaWhereDocumentOperator.Regex("^apple"));
+```
+
 ## Large writes
 
 ```csharp
@@ -148,6 +154,14 @@ var options = new ChromaConfigurationOptions(uri: "https://api.trychroma.com").W
 	.WithTenant(tenant).WithDatabase(database)
 	.WithBatchSplitting(maxBatchSize: 300);
 ```
+
+## Deleting records
+
+```csharp
+var deleted = await collectionClient.Delete(new ChromaDelete { WhereDocument = ChromaWhereDocumentOperator.Contains("draft"), Limit = 100 });
+```
+
+`ChromaDelete` holds the ids, the filters and the limit of a delete. Without ids it deletes by the filters only; without ids and filters it throws an `ArgumentException`, since it would select every record. Chroma 1.5.3 and later apply `Limit` and answer how many records they deleted, which `Delete` returns; on the earlier servers it returns null. Those servers ignore the limit and would delete every matching record: before a delete with a limit the client reads the OpenAPI description of the server, once, and throws a `ChromaException` without sending the delete if it does not declare the limit.
 
 ## Embeddings in base64
 
@@ -201,6 +215,51 @@ Console.WriteLine(collection.Space);
 ```
 
 `ChromaSpace` is `L2` (the default of Chroma), `Cosine` or `InnerProduct`. The client sends it as the `hnsw:space` metadata, which every tested Chroma applies; `GetOrCreateCollection` takes a `ChromaCollectionDefinition` too. `ChromaCollection.Space` reads it back from that metadata, or from the configuration that Chroma 1.0.6 and later and Chroma Cloud send; it is null for a collection created without a space on the older servers, which do not report it reliably. `ChromaCollection.ConfigurationJson` holds the configuration as the server sends it.
+
+## Settings of the index
+
+```csharp
+await collectionClient.ModifyConfiguration(new() { Hnsw = new() { EfSearch = 200 } });
+```
+
+`ModifyConfiguration` changes the settings of the index that Chroma lets change after the creation: those of HNSW, like `EfSearch`, and those of the SPANN index of Chroma Cloud, `EfSearch` and `SearchNprobe`. Chroma 1.0.6 and later apply them. The earlier versions answer without applying them: the client tells them by the configuration they send with the collection, and throws a `ChromaException` without sending the request.
+
+## Health of the server
+
+```csharp
+var health = await client.Healthcheck();
+Console.WriteLine(health.IsExecutorReady);
+```
+
+`Healthcheck` needs Chroma 1.0.0 or later: the 0.x servers answer `404 Not Found`. A server that is not ready answers `503`, a `ChromaException`.
+
+## Chroma Cloud
+
+These operations exist on Chroma Cloud only; a single Chroma server answers them with an error.
+
+```csharp
+var copy = await collectionClient.Fork("my_collection_copy");
+var forks = await collectionClient.ForkCount();
+var status = await collectionClient.GetIndexingStatus();
+var indexed = await collectionClient.Count(ChromaReadLevel.IndexOnly);
+```
+
+`Fork` copies a collection with its records under a new name. `GetIndexingStatus` tells how many writes are indexed. `Count(ChromaReadLevel.IndexOnly)` counts only the records already indexed, so on Chroma Cloud the latest writes can be missing; a single server indexes them at once and gives the same count.
+
+```csharp
+var (attached, created) = await collectionClient.AttachFunction(ChromaFunctions.Statistics, "my_stats", "my_stats_output");
+var function = await collectionClient.GetAttachedFunction("my_stats");
+await collectionClient.DetachFunction("my_stats", deleteOutputCollection: true);
+```
+
+The functions of Chroma Cloud, `ChromaFunctions.Statistics` and `ChromaFunctions.RecordCounter`, run on the records of a collection and write their results to an output collection.
+
+```csharp
+await client.UpdateTenant("my_tenant", resourceName: "my_org");
+var collection = await client.GetCollectionByCrn("my_org:my_database:my_collection");
+```
+
+`UpdateTenant` sets the resource name of a tenant, which `GetTenant` returns as `ResourceName`, and `GetCollectionByCrn` gets a collection by its Chroma Resource Name. A single Chroma server from 1.0.17 accepts `UpdateTenant` but does not keep the name.
 
 ## Authentication
 
