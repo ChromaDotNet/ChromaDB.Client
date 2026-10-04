@@ -152,6 +152,43 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		Assert.That(two[1].Single().Id, Is.EqualTo("b"));
 	}
 
+	// Sparse vector indexes and sparse vectors in metadata exist only on Chroma Cloud. A single server rejects the schema from Chroma 1.3.0,
+	// and the earlier ones create the collection without it: then the client deletes it. Sparse vectors in metadata fail on a single
+	// server; Chroma 0.x would drop them, so the client rejects them first.
+	[Test]
+	public async Task SchemaAndSparseVectors()
+	{
+		var client = new ChromaClient(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact), HttpClient);
+		var name = $"collection{Random.Shared.Next()}";
+		var definition = new ChromaCollectionDefinition(name)
+		{
+			Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, ChromaEmbeddingFunctionReference.ChromaBm25()),
+		};
+		var records = new ChromaRecords(["a", "b"])
+		{
+			Embeddings = [new([1f, 0f]), new([0f, 1f])],
+			Documents = ["apple pie", "banana split"],
+			Metadatas = [new() { ["doc_bm25"] = new ChromaSparseVector([1, 5], [0.5f, 0.7f]) }, new() { ["doc_bm25"] = new ChromaSparseVector([2], [0.9f]) }],
+		};
+		if (!ChromaCloud)
+		{
+			await Assert.ThatAsync(() => client.CreateCollection(definition), Throws.InstanceOf<ChromaException>());
+			Assert.That(await client.CollectionExists(name), Is.False);
+			var plain = client.GetCollectionClient(await client.CreateCollection($"collection{Random.Shared.Next()}"));
+			await Assert.ThatAsync(() => plain.Add(records), Throws.InstanceOf<ChromaException>());
+			return;
+		}
+		var collection = await client.CreateCollection(definition);
+		var index = collection.SparseVectorIndexes.Single();
+		Assert.That((index.Key, index.SourceKey, index.Bm25, index.EmbeddingFunction), Is.EqualTo(("doc_bm25", "#document", true, "chroma_bm25")));
+		var collectionClient = client.GetCollectionClient(collection);
+		await collectionClient.Add(records);
+		var stored = (ChromaSparseVector)(await collectionClient.Get("a", include: ChromaGetInclude.Metadatas))!.Metadata!["doc_bm25"];
+		Assert.That((stored.Indices, stored.Values), Is.EqualTo(((IReadOnlyList<int>)[1, 5], (IReadOnlyList<float>)[0.5f, 0.7f])));
+		var found = await collectionClient.Search(new ChromaSearch { Rank = ChromaRank.SparseKnn(new ChromaSparseVector([1, 5], [1f, 1f]), "doc_bm25"), Limit = 1 });
+		Assert.That(found.Single().Id, Is.EqualTo("a"));
+	}
+
 	async Task<ChromaCollectionClient> Init()
 	{
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);

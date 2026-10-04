@@ -27,6 +27,13 @@ public abstract class ChromaRank
 		=> new ChromaKnnRank(query.ToArray(), key, limit, defaultScore, returnRank);
 
 	/// <summary>
+	/// The same as <c>Knn</c> with a sparse vector as the query, on a metadata key that has a sparse vector index, like the BM25 vectors
+	/// of a text: <c>$knn</c> with the sparse vector in <c>query</c>. A name of its own, so that <c>Knn(new(...), key)</c> stays unambiguous.
+	/// </summary>
+	public static ChromaRank SparseKnn(Models.ChromaSparseVector query, string key, int limit = 16, double? defaultScore = null, bool returnRank = false)
+		=> new ChromaKnnRank(query, key, limit, defaultScore, returnRank);
+
+	/// <summary>
 	/// A constant, with <c>$val</c>.
 	/// </summary>
 	public static ChromaRank Value(double value)
@@ -151,7 +158,8 @@ public abstract class ChromaRank
 		=> rank is ChromaListRank list && list.Operator == @operator ? list.Ranks : [rank];
 }
 
-internal sealed class ChromaKnnRank(float[] query, string key, int limit, double? defaultScore, bool returnRank) : ChromaRank
+// The query is a float[] or a ChromaSparseVector.
+internal sealed class ChromaKnnRank(object query, string key, int limit, double? defaultScore, bool returnRank) : ChromaRank
 {
 	// Like the Python client of Chroma: "default" and "return_rank" only when set.
 	internal override Dictionary<string, object> ToRank()

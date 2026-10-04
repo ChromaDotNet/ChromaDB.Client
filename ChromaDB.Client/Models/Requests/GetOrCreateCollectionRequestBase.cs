@@ -10,6 +10,11 @@ internal abstract class GetOrCreateCollectionRequestBase
 	[JsonPropertyName("metadata")]
 	public Dictionary<string, object>? Metadata { get; init; }
 
+	// Sent only when set: the request stays as before for the servers that do not know it.
+	[JsonPropertyName("schema")]
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public Dictionary<string, object>? Schema { get; init; }
+
 	// Public, so that the generated serialization sees it.
 	[JsonPropertyName("get_or_create")]
 	public abstract bool GetOrCreate { get; }

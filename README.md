@@ -319,6 +319,39 @@ var many = await collectionClient.Search([new ChromaSearch { Rank = fused, Limit
 
 `ChromaSearchGroupBy` keeps, for each value of the metadata keys, the records the aggregate chooses. Several searches go in one request, and their results come in order. `ToString()` of a `ChromaRank` gives its JSON.
 
+## Sparse vectors and schema
+
+Chroma Cloud keeps sparse vectors, like the BM25 vectors of the documents, in a metadata key with a sparse vector index, which the schema of the collection declares:
+
+```csharp
+var collection = await client.CreateCollection(new ChromaCollectionDefinition("articles")
+{
+	Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, ChromaEmbeddingFunctionReference.ChromaBm25()),
+});
+await collectionClient.Add(new ChromaRecords(["a"])
+{
+	Embeddings = [embedding],
+	Documents = ["apple pie"],
+	Metadatas = [new() { ["doc_bm25"] = new ChromaSparseVector([17, 4242], [0.8f, 1.1f]) }],
+});
+var results = await collectionClient.Search(new ChromaSearch { Rank = ChromaRank.SparseKnn(queryVector, "doc_bm25"), Limit = 10 });
+```
+
+- `ChromaSparseVector` holds the indices, in strictly ascending order, and their values, and optionally the tokens. It is a metadata value; it is written as the Python client of Chroma writes it, `{"#type": "sparse_vector", "indices": [...], "values": [...]}`.
+- **Reading it back:** with `ChromaMetadataValues.Exact` a sparse vector comes back as a `ChromaSparseVector`; by default, as before, as a `JsonElement`.
+- **Where it works:**
+  - only Chroma Cloud stores sparse vectors and indexes them;
+  - a single server from Chroma 1.0.0 rejects them;
+  - Chroma 0.x would drop them without an error, so the client throws a `ChromaException` before sending them.
+- **`ChromaCollectionSchema`** declares the indexes of a new collection:
+  - With `bm25` the server applies the inverse document frequency of BM25.
+  - `ChromaEmbeddingFunctionReference.ChromaBm25()` declares the BM25 function of Chroma with the settings of its Python client, so that the clients that know it compute the vectors.
+  - `ChromaCollection.SparseVectorIndexes` and `ChromaCollection.SchemaJson` read it back.
+- **Where the schema works:**
+  - Chroma 1.3.0 and later apply it;
+  - a single server rejects a sparse vector index;
+  - Chroma 1.0.0 to 1.2.2 and 0.6.3 create the collection without the schema: `CreateCollection` then deletes it and throws a `ChromaException`, and `GetOrCreateCollection` throws and keeps it, since it may have existed before.
+
 ## Authentication
 
 ```csharp

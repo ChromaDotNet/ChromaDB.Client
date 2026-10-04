@@ -3,7 +3,8 @@ using System.Text.Json.Serialization;
 
 namespace ChromaDB.Client.Common;
 
-// Reads the values of metadata as they are: strings stay strings, and lists become lists of the same types as the single values.
+// Reads the values of metadata as they are: strings stay strings, lists become lists of the same types as the single values, and
+// a sparse vector, {"#type": "sparse_vector", ...}, becomes a ChromaSparseVector.
 internal class ObjectToExactTypesJsonConverter : JsonConverter<object>
 {
 	public override object Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -32,6 +33,9 @@ internal class ObjectToExactTypesJsonConverter : JsonConverter<object>
 					list.Add(ReadValue(ref reader)!);
 				}
 				return list;
+			case JsonTokenType.StartObject:
+				var element = JsonDocument.ParseValue(ref reader).RootElement.Clone();
+				return (object?)ChromaSparseVectorConverter.FromTaggedJson(element) ?? element;
 			default:
 				return JsonDocument.ParseValue(ref reader).RootElement.Clone();
 		}

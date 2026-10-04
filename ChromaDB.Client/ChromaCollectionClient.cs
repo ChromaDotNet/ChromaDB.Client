@@ -256,12 +256,18 @@ public class ChromaCollectionClient
 	}
 
 	// The 0.x servers accept lists in metadata but drop them without an error; Chroma 1.0 to 1.4 reject them, 1.5.0 stores them.
+	// Sparse vectors too: Chroma 0.6.3 accepts them and stores the metadata as null.
 	private async Task CheckListsInMetadata(ChromaRecords records, CancellationToken cancellationToken)
 	{
 		if (records.Metadatas?.Any(metadata => metadata?.Values.Any(IsList) == true) == true
 			&& await _httpClient.IsChroma0(cancellationToken))
 		{
 			throw new ChromaException("Chroma 0.x drops the lists in metadata without an error: they need Chroma 1.5.0 or later.");
+		}
+		if (records.Metadatas?.Any(metadata => metadata?.Values.Any(value => value is ChromaSparseVector) == true) == true
+			&& await _httpClient.IsChroma0(cancellationToken))
+		{
+			throw new ChromaException("Chroma 0.x drops the sparse vectors in metadata without an error: only Chroma Cloud stores them.");
 		}
 	}
 

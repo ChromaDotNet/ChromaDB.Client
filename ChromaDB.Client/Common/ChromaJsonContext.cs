@@ -23,6 +23,7 @@ namespace ChromaDB.Client.Common;
 [JsonSerializable(typeof(CreateTenantRequest))]
 [JsonSerializable(typeof(GetOrCreateCollectionRequest))]
 [JsonSerializable(typeof(ResetRequest))]
+[JsonSerializable(typeof(ChromaSparseVector))]
 [JsonSerializable(typeof(CollectionSearchRequest))]
 [JsonSerializable(typeof(CollectionSearchResponse))]
 [JsonSerializable(typeof(UpdateTenantRequest))]

@@ -218,9 +218,17 @@ public class ChromaClient
 		var request = new CreateCollectionRequest()
 		{
 			Name = definition.Name,
-			Metadata = definition.ToRequestMetadata()
+			Metadata = definition.ToRequestMetadata(),
+			Schema = definition.Schema?.ToSchema(),
 		};
-		return await _httpClient.Post<CreateCollectionRequest, ChromaCollection>(_httpClient.Routes.Collections, request, requestParams, cancellationToken);
+		var collection = await _httpClient.Post<CreateCollectionRequest, ChromaCollection>(_httpClient.Routes.Collections, request, requestParams, cancellationToken);
+		// Chroma 1.0.0 to 1.2.2 create the collection without the schema and without an error: the collection just created goes.
+		if (definition.Schema is not null && collection.SchemaJson is not { ValueKind: System.Text.Json.JsonValueKind.Object })
+		{
+			await DeleteCollection(collection.Name, tenant, database, cancellationToken);
+			throw new ChromaException("The server creates the collection without its schema: Chroma 1.3.0 and later apply it. The collection was deleted.");
+		}
+		return collection;
 	}
 
 	/// <summary>
@@ -244,9 +252,16 @@ public class ChromaClient
 		var request = new GetOrCreateCollectionRequest()
 		{
 			Name = definition.Name,
-			Metadata = definition.ToRequestMetadata()
+			Metadata = definition.ToRequestMetadata(),
+			Schema = definition.Schema?.ToSchema(),
 		};
-		return await _httpClient.Post<GetOrCreateCollectionRequest, ChromaCollection>(_httpClient.Routes.Collections, request, requestParams, cancellationToken);
+		var collection = await _httpClient.Post<GetOrCreateCollectionRequest, ChromaCollection>(_httpClient.Routes.Collections, request, requestParams, cancellationToken);
+		// As in CreateCollection, but the collection stays: it may have existed before.
+		if (definition.Schema is not null && collection.SchemaJson is not { ValueKind: System.Text.Json.JsonValueKind.Object })
+		{
+			throw new ChromaException("The server answers without the schema of the collection: Chroma 1.3.0 and later apply it.");
+		}
+		return collection;
 	}
 
 	/// <summary>
