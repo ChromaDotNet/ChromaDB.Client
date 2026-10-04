@@ -24,7 +24,7 @@ The package targets .NET 8 and .NET Standard 2.0; the tests run against both bui
 dotnet add package ChromaDotNet.Client
 ```
 
-`ChromaDotNet.Client.DependencyInjection` adds the registration for `Microsoft.Extensions.DependencyInjection`: `AddChromaClient`, and `AddKeyedChromaClient` for more than one server, tenant or database under different keys. Every change merged into `main` is also published as a preview version, installed with `--prerelease`.
+`ChromaDotNet.Client.DependencyInjection` adds the registration for `Microsoft.Extensions.DependencyInjection`: `AddChromaClient`, and `AddKeyedChromaClient` for more than one server, tenant or database under different keys. Both register the `ChromaClient` as a singleton, so also singletons can take it, with an `HttpClient` from `IHttpClientFactory`; on .NET its connections are renewed every two minutes, so that a change of the address of the server in the DNS is seen. Every change merged into `main` is also published as a preview version, installed with `--prerelease`.
 
 ## Example
 
@@ -101,6 +101,13 @@ var tagged = await collectionClient.Get(where: ChromaWhereOperator.Contains("tag
 ```
 
 Chroma 1.5.0 and later store lists in metadata and filter them with `Contains` and `NotContains`. Chroma 1.0.0 to 1.4.1 reject them. Chroma 0.x accepts them but drops them without an error, so `Add`, `Update` and `Upsert` throw a `ChromaException` before sending them: the client asks the server its version once, only when a record has a list.
+
+A `ChromaClient` that already exists, for example from dependency injection, gives one that reads the other way, with the same `HttpClient`, options and what it learned about the server; `Options` returns the options of a client:
+
+```csharp
+var exact = client.WithMetadataValues(ChromaMetadataValues.Exact);
+Console.WriteLine(exact.Options.MetadataValues); // Exact
+```
 
 ## Errors
 
