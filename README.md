@@ -1,8 +1,12 @@
+[![ChromaDotNet](https://raw.githubusercontent.com/ChromaDotNet/.github/main/assets/logo-64.png)](https://chromadotnet.org)
+
 # ChromaDB.Client
 
 _ChromaDB.Client_, published on NuGet as `ChromaDotNet.Client`, is a .NET client for Chroma and Chroma Cloud. It creates and manages collections, tenants and databases, writes and reads records, runs nearest neighbor queries with filters and the Search API of Chroma Cloud with hybrid BM25 search, and has traces and metrics for OpenTelemetry.
 
 > This is a community project, the continuation of [ssone95/ChromaDB.Client](https://github.com/ssone95/ChromaDB.Client), kept up to date with current Chroma versions. It is not affiliated with or endorsed by Chroma. See [About this fork](#about-this-fork).
+
+Website: [chromadotnet.org](https://chromadotnet.org)
 
 ## Compatibility
 
