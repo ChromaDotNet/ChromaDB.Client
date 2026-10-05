@@ -77,6 +77,11 @@ Reproduced with plain HTTP, without the client, on 5 October 2026. The client ca
 | The same query returns no record | 0.6.3, in 1 run out of 10 |
 | A list of `$and` or `$or` becomes an SQLite expression as deep as the list: from 988 filters in one list Chroma 1.5.9 answers `500`, and from about 4,400 it crashes. The client splits long lists, as the README says; beyond 8,167 filters Chroma 1.5.9 answers `500` with `too many SQL variables` | single servers 1.0.0 – 1.5.9; 0.6.3 answers `500` from about 490 filters however they go |
 
+| `$contains` and `$not_contains` on documents do not see the text after a NUL character (`\u0000`): `Contains("after")` does not find `"before\u0000after"`, which comes back whole | all the tested versions from 0.4.24 to 1.5.9 |
+| A float compared with int metadata is truncated: `GreaterThanOrEqual("a", 2.25)` also finds `a = 2`, and `GreaterThan("a", -1.5)` leaves out `a = -1` | 1.0.0 – 1.5.9; right on 0.4.24 – 0.6.3 |
+| Some doubles are read with an error in the last digit: `-95.41757424465169`, the shortest text of the double, comes back `-95.41757424465168`, and `1e-28` comes back `9.999999999999999e-29`; `Equal("x", 1e-30)` does not find the record stored with `1e-30`. The client sends the shortest text that reads back as the same double | 1.0.0 – 1.5.9; right on 0.4.24 – 0.6.3 |
+| The embeddings of a collection with the `cosine` space come back different in the last bit: `0.91782147` as `0.9178214`, `-0.4` as `-0.39999998` | 1.0.0 – 1.5.9; identical on 0.4.24 – 0.6.3, and with the other spaces |
+
 The query of the second and third rows returned 3 records in every run on Chroma 0.5.20, 1.0.0 and 1.5.9, 10 runs each on a server just started.
 
 ## Chroma Cloud
