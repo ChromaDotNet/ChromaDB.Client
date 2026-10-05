@@ -12,8 +12,8 @@
 		<!-- -p:PackageIdPrefix=Name publishes the package as Name.Client. -->
 		<PackageId Condition="'$(PackageIdPrefix)' != ''">$(PackageIdPrefix).Client</PackageId>
 		<Authors>ssone95, cincuranet, ChromaDotNet contributors</Authors>
-		<PackageDescription>.NET client for Chroma, the vector database: tested with Chroma 0.4.10 to 1.5.9 and with Chroma Cloud.</PackageDescription>
-		<PackageTags>chroma chromadb vector database</PackageTags>
+		<PackageDescription>.NET client for Chroma and Chroma Cloud, tested with Chroma 0.4.10 to 1.5.9. Community project, not affiliated with Chroma.</PackageDescription>
+		<PackageTags>chroma chromadb vector database chroma-cloud</PackageTags>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<RepositoryType>git</RepositoryType>
