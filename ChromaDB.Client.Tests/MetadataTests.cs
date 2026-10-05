@@ -21,9 +21,17 @@ public class MetadataTests : ChromaTestsBase
 	}
 
 	[Test]
-	public async Task DatesAreInferredByDefault()
+	public async Task DatesStayStringsByDefault()
 	{
 		var client = await Init(BaseConfigurationOptions);
+		await client.Add(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [new() { ["date"] = "2026-10-04" }] });
+		Assert.That((await client.Get("a", include: ChromaGetInclude.Metadatas))!.Metadata!["date"], Is.EqualTo("2026-10-04"));
+	}
+
+	[Test]
+	public async Task DatesAreInferredWithInferred()
+	{
+		var client = await Init(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Inferred));
 		await client.Add(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [new() { ["date"] = "2026-10-04" }] });
 		Assert.That((await client.Get("a", include: ChromaGetInclude.Metadatas))!.Metadata!["date"], Is.EqualTo(new DateTime(2026, 10, 4)));
 	}

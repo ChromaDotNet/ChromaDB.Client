@@ -43,9 +43,9 @@ public class ChromaConfigurationOptions
 	/// </summary>
 	public ChromaApiVersion ApiVersion { get; init; }
 	/// <summary>
-	/// How the client reads the values of the metadata: <c>Inferred</c> by default, or <c>Exact</c>.
+	/// How the client reads the values of the metadata: <c>Exact</c> by default, or <c>Inferred</c>.
 	/// </summary>
-	public ChromaMetadataValues MetadataValues { get; init; }
+	public ChromaMetadataValues MetadataValues { get; init; } = ChromaMetadataValues.Exact;
 	/// <summary>
 	/// Whether <c>Add</c>, <c>Update</c>, <c>Upsert</c> and <c>Delete</c> send their records in batches of the
 	/// <c>max_batch_size</c> of the server; off by default.

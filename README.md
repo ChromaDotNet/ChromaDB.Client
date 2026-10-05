@@ -94,11 +94,15 @@ var results = await collectionClient.Query(new ChromaQuery([new([1f, 0.5f, 0f])]
 
 ## Metadata values
 
-By default a string in metadata that looks like a date comes back as a `DateTime`, and a list as a `JsonElement`. With `ChromaMetadataValues.Exact` strings stay strings, and lists come back as `List<object>` of `string`, `long`, `double` and `bool`, like the single values:
+By default, `ChromaMetadataValues.Exact`, strings in metadata stay strings, and lists come back as `List<object>` of `string`, `long`, `double` and `bool`, like the single values. With `ChromaMetadataValues.Inferred`, as before 2.8.0, a string that looks like a date comes back as a `DateTime`, and a list as a `JsonElement`:
 
 ```csharp
-var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithMetadataValues(ChromaMetadataValues.Exact);
+var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithMetadataValues(ChromaMetadataValues.Inferred);
+```
 
+A list in metadata, written and filtered:
+
+```csharp
 await collectionClient.Add(new ChromaRecords(["a"]) { Embeddings = [new([1f, 0.5f, 0f])], Metadatas = [new() { ["tags"] = new[] { "red", "blue" } }] });
 var tagged = await collectionClient.Get(where: ChromaWhereOperator.Contains("tags", "red"));
 ```
@@ -108,8 +112,8 @@ Chroma 1.5.0 and later store lists in metadata and filter them with `Contains` a
 A `ChromaClient` that already exists, for example from dependency injection, gives one that reads the other way, with the same `HttpClient`, options and what it learned about the server; `Options` returns the options of a client:
 
 ```csharp
-var exact = client.WithMetadataValues(ChromaMetadataValues.Exact);
-Console.WriteLine(exact.Options.MetadataValues); // Exact
+var inferred = client.WithMetadataValues(ChromaMetadataValues.Inferred);
+Console.WriteLine(inferred.Options.MetadataValues); // Inferred
 ```
 
 ## Errors
@@ -360,7 +364,7 @@ var results = await collectionClient.Search(new ChromaSearch { Rank = ChromaRank
 ```
 
 - `ChromaSparseVector` holds the indices, in strictly ascending order, and their values, and optionally the tokens. It is a metadata value; it is written as the Python client of Chroma writes it, `{"#type": "sparse_vector", "indices": [...], "values": [...]}`.
-- **Reading it back:** with `ChromaMetadataValues.Exact` a sparse vector comes back as a `ChromaSparseVector`; by default, as before, as a `JsonElement`.
+- **Reading it back:** a sparse vector comes back as a `ChromaSparseVector`; with `ChromaMetadataValues.Inferred`, as a `JsonElement`.
 - **Where it works:**
   - only Chroma Cloud stores sparse vectors and indexes them;
   - a single server from Chroma 1.0.0 rejects them;

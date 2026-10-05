@@ -12,9 +12,19 @@ public class MetadataAndErrorsTests
 	const string Metadata = """{"ids":["a"],"metadatas":[{"date":"2026-10-04","text":"t","int":1,"float":1.5,"bool":true,"texts":["x","y"],"ints":[1,2],"floats":[1.5,2.25],"bools":[true,false],"empty":[]}]}""";
 
 	[Test]
-	public async Task MetadataValuesAreInferredByDefault()
+	public async Task MetadataValuesAreExactByDefault()
 	{
 		var metadata = (await CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), Respond(Metadata)).Get()).Single().Metadata!;
+		Assert.That(metadata["date"], Is.EqualTo("2026-10-04"));
+		Assert.That(metadata["texts"], Is.EqualTo(new List<object> { "x", "y" }));
+	}
+
+	// As before 2.8.0.
+	[Test]
+	public async Task InferredMetadataValues()
+	{
+		var options = new ChromaConfigurationOptions("http://localhost:8000").WithMetadataValues(ChromaMetadataValues.Inferred);
+		var metadata = (await CollectionClient(options, Respond(Metadata)).Get()).Single().Metadata!;
 		Assert.That(metadata["date"], Is.EqualTo(new DateTime(2026, 10, 4)));
 		Assert.That(metadata["texts"], Is.InstanceOf<JsonElement>());
 	}
@@ -51,12 +61,12 @@ public class MetadataAndErrorsTests
 	public async Task ClientWithMetadataValues()
 	{
 		using var httpClient = new HttpClient(Respond("""{"id":"11111111-2222-3333-4444-555555555555","name":"c","metadata":{"date":"2026-10-04"}}"""));
-		var inferred = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000", defaultTenant: "t"), httpClient);
-		var exact = inferred.WithMetadataValues(ChromaMetadataValues.Exact);
+		var exact = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000", defaultTenant: "t"), httpClient);
+		var inferred = exact.WithMetadataValues(ChromaMetadataValues.Inferred);
 		Assert.That((await exact.GetCollection("c")).Metadata!["date"], Is.EqualTo("2026-10-04"));
 		Assert.That((await inferred.GetCollection("c")).Metadata!["date"], Is.EqualTo(new DateTime(2026, 10, 4)));
 		Assert.That(exact.Options.MetadataValues, Is.EqualTo(ChromaMetadataValues.Exact));
-		Assert.That(exact.Options.Tenant, Is.EqualTo("t"));
+		Assert.That(inferred.Options.Tenant, Is.EqualTo("t"));
 		Assert.That(inferred.Options.MetadataValues, Is.EqualTo(ChromaMetadataValues.Inferred));
 	}
 
