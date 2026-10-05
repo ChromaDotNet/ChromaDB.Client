@@ -23,6 +23,11 @@ Differences between these servers, seen in the tests:
 | Reports the space of a collection created without one (`ChromaCollection.Space`) | 1.0.6 – 1.5.9 report `L2`; 0.5.16 – 1.0.5 send `hnsw_configuration.space`, always "l2", so `Space` is null |
 | Rejects sparse vectors in metadata (only Chroma Cloud stores them) | 1.0.0 – 1.5.9; 1.0.21 – 1.1.1 then fail the next write on the server, also to another collection, with `Error sending message to compactor`, so the tests leave that write out there |
 | Searches only the records with the ids of `ChromaQuery.Ids` | 1.0.0 – 1.5.9, which answer `500` with `Error finding id` when one of the ids does not exist; 0.5.16 – 0.6.3 ignore the ids: `QueryAsync` throws a `ChromaException` when a result falls outside them |
+| Has the healthcheck (`HealthcheckAsync`) | 1.0.0 – 1.5.9; 0.5.16 – 0.6.3 answer `404 Not Found` |
+| Applies a new configuration of the index (`ModifyConfigurationAsync`) | 1.0.6 – 1.5.9; the earlier versions answer without applying it, so the client throws a `ChromaException` |
+| Filters documents with `$regex` and `$not_regex` (`ChromaWhereDocumentOperator.Regex` and `NotRegex`) | 1.0.12 – 1.5.9; the earlier versions fail with a `ChromaException`: 1.0.0 – 1.0.6 reject them, 1.0.10 closes the connection |
+| Applies the space of a collection created with a schema | 1.3.2 – 1.5.9; 1.3.0 accepts it and ignores it; 1.0.0 – 1.2.2 create the collection without the schema |
+| Applies the limit of a delete (`ChromaDelete.Limit`) and answers how many records it deleted | 1.5.3 – 1.5.9; on the earlier versions the client throws a `ChromaException` before a delete with a limit, and `DeleteAsync` returns null |
 
 ## v1 API (`ChromaApiVersion.V1`)
 
