@@ -38,6 +38,43 @@ public class CollectionSettingsTests
 		Assert.That(body.TryGetProperty("schema", out _), Is.False);
 	}
 
+	// Chroma 0.6.3 and 1.5.9 take these settings only as integers, and reject 100.0: a whole double goes as an integer.
+	[Test]
+	public async Task IntegerSettingsInTheMetadata()
+	{
+		var server = Server();
+		await Client(server).CreateCollectionAsync(new ChromaCollectionDefinition("c")
+		{
+			Metadata = new Dictionary<string, object>
+			{
+				["hnsw:construction_ef"] = 100.0, ["hnsw:search_ef"] = 50f, ["hnsw:M"] = 16m, ["hnsw:batch_size"] = JsonDocument.Parse("200").RootElement,
+				["hnsw:sync_threshold"] = 1000, ["hnsw:resize_factor"] = 2.0, ["topic"] = 3.0,
+			},
+		});
+		Assert.That(Create(server).GetProperty("metadata").GetRawText(), Is.EqualTo("""
+			{"hnsw:construction_ef":100,"hnsw:search_ef":50,"hnsw:M":16,"hnsw:batch_size":200,"hnsw:sync_threshold":1000,"hnsw:resize_factor":2.0,"topic":3.0}
+			"""));
+	}
+
+	[Test]
+	public void SettingsThatChromaTakesOnlyAsIntegers()
+	{
+		var server = Server();
+		foreach (var (key, value) in new (string, object)[]
+		{
+			("hnsw:construction_ef", 100.5),
+			("hnsw:search_ef", JsonDocument.Parse("100.0").RootElement),
+			("hnsw:M", JsonDocument.Parse("1.999999999999999999999999999999999").RootElement),
+			("hnsw:M", 1.9999999999999999999999999m),
+			("hnsw:num_threads", double.NaN),
+		})
+		{
+			Assert.That(() => Client(server).CreateCollectionAsync(new ChromaCollectionDefinition("c") { Metadata = new Dictionary<string, object> { [key] = value } }),
+				Throws.ArgumentException.With.Message.Contains("only as an integer"), $"{key} = {value}");
+		}
+		Assert.That(server.Requests, Is.Empty);
+	}
+
 	// The SPANN settings go in the configuration, with the space: Chroma ignores the hnsw:space metadata of a request with them.
 	[Test]
 	public async Task SpannSettingsInTheConfiguration()

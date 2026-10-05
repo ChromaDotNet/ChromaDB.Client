@@ -55,7 +55,7 @@ public class ChromaCollectionDefinition
 			throw new ArgumentException("A collection has one vector index: set Hnsw for a single Chroma server or Spann for Chroma Cloud, not both, as Chroma rejects them together.", nameof(Configuration));
 		}
 		ChromaHnswConfiguration.CheckMaxNeighbors(Configuration?.Hnsw?.MaxNeighbors, nameof(Configuration));
-		ChromaHnswConfiguration.CheckMaxNeighbors(Metadata is not null && Metadata.TryGetValue("hnsw:M", out var m) ? m : null, nameof(Metadata));
+		ChromaHnswConfiguration.CheckMaxNeighbors(IntegerSettings()?.TryGetValue("hnsw:M", out var m) == true ? m : null, nameof(Metadata));
 		// Chroma ignores the hnsw:space metadata next to SPANN settings, but ChromaCollection.Space would read it back.
 		if (Configuration?.Spann is not null && !SettingsInSchema && Metadata is not null && Metadata.ContainsKey(ChromaSpaceNames.MetadataKey))
 		{
@@ -92,9 +92,10 @@ public class ChromaCollectionDefinition
 	internal IReadOnlyDictionary<string, object>? ToRequestMetadata()
 	{
 		Common.ChromaRequestChecks.NoLists(Metadata, nameof(Metadata));
+		var integerSettings = IntegerSettings();
 		if (SettingsInSchema)
 		{
-			return Metadata;
+			return integerSettings;
 		}
 		var settings = new List<KeyValuePair<string, object>>();
 		if (Configuration?.Space is { } space && Configuration.Spann is null)
@@ -107,9 +108,9 @@ public class ChromaCollectionDefinition
 		}
 		if (settings.Count == 0)
 		{
-			return Metadata;
+			return integerSettings;
 		}
-		var metadata = Metadata?.ToDictionary(x => x.Key, x => x.Value) ?? [];
+		var metadata = integerSettings?.ToDictionary(x => x.Key, x => x.Value) ?? [];
 		foreach (var setting in settings)
 		{
 			if (metadata.TryGetValue(setting.Key, out var existing) && !SameValue(existing, setting.Value))
@@ -120,6 +121,12 @@ public class ChromaCollectionDefinition
 		}
 		return metadata;
 	}
+
+	// The metadata with the "hnsw:" settings that Chroma takes only as integers written as integers.
+	private IReadOnlyDictionary<string, object>? IntegerSettings()
+		=> Metadata is not null && ChromaHnswConfiguration.IntegerMetadataKeys.Any(Metadata.ContainsKey)
+			? Metadata.ToDictionary(x => x.Key, x => ChromaHnswConfiguration.IntegerMetadataKeys.Contains(x.Key) ? ChromaHnswConfiguration.IntegerMetadata(x.Key, x.Value, nameof(Metadata)) : x.Value)
+			: Metadata;
 
 	// 2 and 2L, or 1.5f and 1.5, are the same setting, also in a JsonElement.
 	private static bool SameValue(object existing, object value)

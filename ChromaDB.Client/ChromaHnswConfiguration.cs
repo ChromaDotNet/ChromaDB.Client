@@ -46,12 +46,28 @@ public class ChromaHnswConfiguration
 	// records: the client rejects them before the request, wherever they come from.
 	internal static void CheckMaxNeighbors(object? maxNeighbors, string paramName)
 	{
-		maxNeighbors = Common.ChromaRequestChecks.Scalar(maxNeighbors);
 		if (maxNeighbors is IConvertible and not string and not bool && System.Convert.ToDouble(maxNeighbors, System.Globalization.CultureInfo.InvariantCulture) < 2)
 		{
 			throw new ArgumentException($"The HNSW index needs at least 2 neighbors, not {maxNeighbors}: Chroma crashes on the first write with 0 and misses the nearest records with 1.", paramName);
 		}
 	}
+
+	// The "hnsw:" metadata that Chroma takes only as integers: 0.6.3 and 1.5.9 reject 100.0 for them.
+	internal static readonly string[] IntegerMetadataKeys = ["hnsw:M", "hnsw:construction_ef", "hnsw:search_ef", "hnsw:num_threads", "hnsw:batch_size", "hnsw:sync_threshold"];
+
+	// A whole double, float or decimal goes as an integer, which the client would write as 100.0. A JsonElement goes as it is
+	// written, so it must hold an integer. Any other number throws here rather than on the server.
+	internal static object IntegerMetadata(string key, object value, string paramName)
+		=> value switch
+		{
+			double d when Math.Floor(d) == d && Math.Abs(d) < 9e18 => (long)d,
+			float f when Math.Floor(f) == f && Math.Abs(f) < 9e18 => (long)f,
+			decimal m when decimal.Truncate(m) == m && Math.Abs(m) < 9e18m => (long)m,
+			System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Number } element when element.TryGetInt64(out var integer) => integer,
+			double or float or decimal or System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Number }
+				=> throw new ArgumentException($"Chroma takes {key} only as an integer, not {value}.", paramName),
+			_ => value,
+		};
 
 	// The "hnsw:" metadata of the settings, which every tested Chroma applies, as the space.
 	internal IEnumerable<KeyValuePair<string, object>> ToMetadata()

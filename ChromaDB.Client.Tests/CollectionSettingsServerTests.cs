@@ -36,6 +36,27 @@ public class CollectionSettingsServerTests : ChromaTestsBase
 		}
 	}
 
+	// Chroma rejects 100.0 for the HNSW settings that are integers: a whole double goes as an integer.
+	[Test]
+	public async Task WholeDoublesInTheHnswMetadata()
+	{
+		if (ChromaCloud)
+		{
+			Assert.Ignore("Chroma Cloud has no HNSW index.");
+		}
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var collection = await client.CreateCollectionAsync(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}")
+		{
+			Metadata = new Dictionary<string, object> { ["hnsw:construction_ef"] = 100.0, ["hnsw:M"] = 16.0, ["hnsw:resize_factor"] = 2.0 },
+		});
+		Assert.That(Convert.ToInt64(collection.Metadata!["hnsw:construction_ef"]), Is.EqualTo(100));
+		if (ConfigurationSpaceReported)
+		{
+			var hnsw = collection.ConfigurationJson!.Value.GetProperty("hnsw");
+			Assert.That((hnsw.GetProperty("ef_construction").GetInt32(), hnsw.GetProperty("max_neighbors").GetInt32(), hnsw.GetProperty("resize_factor").GetDouble()), Is.EqualTo((100, 16, 2.0)));
+		}
+	}
+
 	[Test]
 	public async Task SpannSettings()
 	{
