@@ -7,8 +7,9 @@ namespace ChromaDB.Client.Models;
 /// </summary>
 public sealed class ChromaSparseVectorIndex
 {
-	internal ChromaSparseVectorIndex(string key, string? sourceKey, bool bm25, string? embeddingFunction, JsonElement? embeddingFunctionConfig)
+	internal ChromaSparseVectorIndex(string key, string? sourceKey, bool bm25, string? embeddingFunction, JsonElement? embeddingFunctionConfig, ChromaSparseIndexAlgorithm algorithm = ChromaSparseIndexAlgorithm.Wand)
 	{
+		Algorithm = algorithm;
 		Key = key;
 		SourceKey = sourceKey;
 		Bm25 = bm25;
@@ -31,6 +32,11 @@ public sealed class ChromaSparseVectorIndex
 	/// Whether the server applies the inverse document frequency of BM25 to the vectors.
 	/// </summary>
 	public bool Bm25 { get; }
+
+	/// <summary>
+	/// The algorithm of the index: <c>Wand</c>, the default, when the schema names none.
+	/// </summary>
+	public ChromaSparseIndexAlgorithm Algorithm { get; }
 
 	/// <summary>
 	/// The name of the embedding function the schema declares, like <c>chroma_bm25</c>, when it declares a known one.

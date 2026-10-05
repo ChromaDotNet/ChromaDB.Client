@@ -16,8 +16,9 @@ public class ChromaCollectionDefinition
 	/// </summary>
 	public IReadOnlyDictionary<string, object>? Metadata { get; init; }
 	/// <summary>
-	/// The settings of the collection, like its space. The client sends the space as the <c>hnsw:space</c> metadata,
-	/// which every tested Chroma applies.
+	/// The settings of the collection: its space, the settings of its vector index and its embedding function. The space and the HNSW
+	/// settings go as the <c>hnsw:</c> metadata, which every tested Chroma applies; the SPANN settings and the embedding function in the
+	/// configuration of the request; with a schema, all of them in the schema.
 	/// </summary>
 	public ChromaCollectionConfiguration? Configuration { get; init; }
 
@@ -36,26 +37,86 @@ public class ChromaCollectionDefinition
 		Name = name;
 	}
 
-	// The space goes in the "hnsw:space" metadata: every tested Chroma applies it from there, while the configuration
-	// field of the request is ignored by 0.4.10 to 0.5.3 and fails on 0.5.4 to 0.6.3. With a schema it goes in the schema:
-	// Chroma rejects the two together ("Cannot set both collection config and schema simultaneously").
+	// Where the settings go. With a schema, or with SPANN settings that only a schema takes, they all go in the schema: Chroma rejects
+	// a configuration together with a schema ("Cannot set both collection config and schema simultaneously"). Otherwise the space and the
+	// HNSW settings go in the "hnsw:" metadata, which every tested Chroma applies, while the configuration field of the request is ignored
+	// by 0.4.10 to 0.5.3 and fails on 0.5.4 to 0.6.3; the SPANN settings and the embedding function, which only the configuration takes
+	// besides a schema, go in the configuration, with the space in the SPANN settings: Chroma ignores the "hnsw:space" metadata of a
+	// request with SPANN settings.
+	internal bool SettingsInSchema => Schema is not null || Configuration?.Spann?.HasSchemaOnlySettings == true;
+
+	internal bool SettingsInConfiguration => !SettingsInSchema && (Configuration?.Spann is not null || Configuration?.EmbeddingFunction is not null);
+
+	// Chroma rejects the two indexes together: "Multiple vector index configurations provided".
+	internal void Validate()
+	{
+		if (Configuration is { Hnsw: not null, Spann: not null })
+		{
+			throw new ArgumentException("A collection has one vector index: set Hnsw for a single Chroma server or Spann for Chroma Cloud, not both, as Chroma rejects them together.", nameof(Configuration));
+		}
+	}
+
 	internal Dictionary<string, object>? ToRequestSchema()
-		=> Schema?.ToSchema(Configuration?.Space);
+		=> SettingsInSchema ? (Schema ?? new ChromaCollectionSchema()).ToSchema(Configuration) : null;
+
+	internal Dictionary<string, object>? ToRequestConfiguration()
+	{
+		if (!SettingsInConfiguration)
+		{
+			return null;
+		}
+		var configuration = new Dictionary<string, object>();
+		if (Configuration!.EmbeddingFunction is { } embeddingFunction)
+		{
+			configuration["embedding_function"] = embeddingFunction.ToJson();
+		}
+		if (Configuration.Spann is { } spann)
+		{
+			var settings = spann.ToJson();
+			if (Configuration.Space is { } space)
+			{
+				settings["space"] = ChromaSpaceNames.ToName(space);
+			}
+			configuration["spann"] = settings;
+		}
+		return configuration;
+	}
 
 	internal IReadOnlyDictionary<string, object>? ToRequestMetadata()
 	{
 		Common.ChromaRequestChecks.NoLists(Metadata, nameof(Metadata));
-		if (Configuration?.Space is not { } space || Schema is not null)
+		if (SettingsInSchema)
 		{
 			return Metadata;
 		}
-		var value = ChromaSpaceNames.ToName(space);
-		if (Metadata is not null && Metadata.TryGetValue(ChromaSpaceNames.MetadataKey, out var existing) && !Equals(existing, value))
+		var settings = new List<KeyValuePair<string, object>>();
+		if (Configuration?.Space is { } space && Configuration.Spann is null)
 		{
-			throw new ArgumentException($"The metadata sets {ChromaSpaceNames.MetadataKey} to '{existing}', the configuration to '{value}'.", nameof(Metadata));
+			settings.Add(new(ChromaSpaceNames.MetadataKey, ChromaSpaceNames.ToName(space)));
+		}
+		if (Configuration?.Hnsw is { } hnsw)
+		{
+			settings.AddRange(hnsw.ToMetadata());
+		}
+		if (settings.Count == 0)
+		{
+			return Metadata;
 		}
 		var metadata = Metadata?.ToDictionary(x => x.Key, x => x.Value) ?? [];
-		metadata[ChromaSpaceNames.MetadataKey] = value;
+		foreach (var setting in settings)
+		{
+			if (metadata.TryGetValue(setting.Key, out var existing) && !SameValue(existing, setting.Value))
+			{
+				throw new ArgumentException($"The metadata sets {setting.Key} to '{existing}', the configuration to '{setting.Value}'.", nameof(Metadata));
+			}
+			metadata[setting.Key] = setting.Value;
+		}
 		return metadata;
 	}
+
+	// 2 and 2L, or 1.5f and 1.5, are the same setting.
+	private static bool SameValue(object existing, object value)
+		=> Equals(existing, value)
+			|| existing is IConvertible && value is IConvertible && existing is not string && value is not string
+				&& Convert.ToDouble(existing, System.Globalization.CultureInfo.InvariantCulture) == Convert.ToDouble(value, System.Globalization.CultureInfo.InvariantCulture);
 }

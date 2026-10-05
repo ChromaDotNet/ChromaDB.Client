@@ -40,6 +40,25 @@ public class ChromaCollection
 	public string? Database { get; init; }
 
 	/// <summary>
+	/// The number of dimensions of the embeddings of the collection, set by the first write: null before it, and from Chroma 0.5.0
+	/// and earlier, which do not send it.
+	/// </summary>
+	[JsonPropertyName("dimension")]
+	public int? Dimension { get; init; }
+
+	/// <summary>
+	/// The version of the collection, as the server counts it: null from Chroma 0.5.0 and earlier, which do not send it.
+	/// </summary>
+	[JsonPropertyName("version")]
+	public int? Version { get; init; }
+
+	/// <summary>
+	/// The position of the collection in the log of the server: null from Chroma 0.5.7 and earlier, which do not send it.
+	/// </summary>
+	[JsonPropertyName("log_position")]
+	public long? LogPosition { get; init; }
+
+	/// <summary>
 	/// The configuration as the server sends it: Chroma 0.4.10 to 0.5.3 send none.
 	/// </summary>
 	[JsonPropertyName("configuration_json")]
@@ -79,7 +98,8 @@ public class ChromaCollection
 						StringProperty(config, "source_key"),
 						config.ValueKind == JsonValueKind.Object && config.TryGetProperty("bm25", out var bm25) && bm25.ValueKind == JsonValueKind.True,
 						StringProperty(function, "name"),
-						function.ValueKind == JsonValueKind.Object && function.TryGetProperty("config", out var settings) && settings.ValueKind != JsonValueKind.Null ? settings.Clone() : null));
+						function.ValueKind == JsonValueKind.Object && function.TryGetProperty("config", out var settings) && settings.ValueKind != JsonValueKind.Null ? settings.Clone() : null,
+						StringProperty(config, "algorithm") == "max_score" ? ChromaSparseIndexAlgorithm.MaxScore : ChromaSparseIndexAlgorithm.Wand));
 				}
 			}
 			return indexes;

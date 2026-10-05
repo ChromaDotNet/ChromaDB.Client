@@ -262,13 +262,37 @@ Console.WriteLine(collection.Space);
 
 `ChromaSpace` is `L2` (the default of Chroma), `Cosine` or `InnerProduct`. The client sends it as the `hnsw:space` metadata, which every tested Chroma applies; `GetOrCreateCollectionAsync` takes a `ChromaCollectionDefinition` too. `ChromaCollection.Space` reads it back from that metadata, or from the configuration that Chroma 1.0.6 and later and Chroma Cloud send; it is null for a collection created without a space on the older servers, which do not report it reliably. `ChromaCollection.ConfigurationJson` holds the configuration as the server sends it.
 
+The configuration of a new collection also takes the settings of its vector index and the embedding function it declares:
+
+```csharp
+var local = await client.CreateCollectionAsync(new ChromaCollectionDefinition("articles")
+{
+	Configuration = new() { Space = ChromaSpace.Cosine, Hnsw = new() { EfConstruction = 200, MaxNeighbors = 32 } },
+});
+var cloud = await cloudClient.CreateCollectionAsync(new ChromaCollectionDefinition("articles")
+{
+	Configuration = new() { Space = ChromaSpace.Cosine, Spann = new() { SearchNprobe = 32, WriteNprobe = 16 }, EmbeddingFunction = ChromaEmbeddingFunctionReference.Known("openai", new Dictionary<string, object> { ["model_name"] = "text-embedding-3-small" }) },
+});
+```
+
+- **`Hnsw`**, the index of a single Chroma server: `EfConstruction`, `EfSearch`, `MaxNeighbors`, `ResizeFactor`, `SyncThreshold`, `BatchSize` and `NumThreads`. They go as the `hnsw:` metadata, like the space, which every tested Chroma applies; Chroma 1.0.6 and later report them in the configuration.
+- **`Spann`**, the index of Chroma Cloud: `SearchNprobe`, `WriteNprobe`, `EfConstruction`, `EfSearch`, `MaxNeighbors`, `SplitThreshold`, `MergeThreshold` and `ReassignNeighborCount` go in the `configuration` of the request, with the space, since Chroma ignores the `hnsw:space` metadata next to SPANN settings. `SearchRngEpsilon`, `WriteRngEpsilon`, `NreplicaCount`, `NumSamplesKmeans`, `NumCentersToMergeTo` and `CenterDriftThreshold` go in a schema, the only place Chroma takes them. Chroma Cloud keeps the other settings of SPANN fixed: the RNG factors at 1, `initial_lambda` at 100, and the quantization is not set by the user.
+- **`EmbeddingFunction`** goes in the `configuration` of the request, which Chroma 1.0.0 and later take; Chroma 1.0.6 and later report it.
+- **What the client checks:**
+  - A collection has one vector index: `Hnsw` and `Spann` together throw an `ArgumentException`, as Chroma rejects them.
+  - Chroma Cloud ignores `Hnsw`, a single server ignores `Spann`: `CreateCollectionAsync` then deletes the collection and throws a `ChromaException`, and `GetOrCreateCollectionAsync` throws and keeps it. Chroma 1.0.0 to 1.0.5 report no configuration, so there the client cannot tell.
+  - Chroma 0.x fails on the `configuration` of the request or ignores it: with `Spann` or `EmbeddingFunction` the client throws a `ChromaException` before sending it.
+- **With a schema** every setting goes in the schema, on the vector index of `#embedding`, as `create_index(VectorIndexConfig(...))` of the Python client writes them.
+
+`ChromaCollection.Dimension` is the number of dimensions of the embeddings, set by the first write; `Version` and `LogPosition` are the version and the position in the log of the collection, as the server reports them. Chroma 0.5.0 and earlier send no dimension and no version, 0.5.7 and earlier no log position.
+
 ## Settings of the index
 
 ```csharp
 await collectionClient.ModifyConfigurationAsync(new() { Hnsw = new() { EfSearch = 200 } });
 ```
 
-`ModifyConfigurationAsync` changes the settings of the index that Chroma lets change after the creation: those of HNSW, like `EfSearch`, and those of the SPANN index of Chroma Cloud, `EfSearch` and `SearchNprobe`. Chroma 1.0.6 and later apply them. The earlier versions answer without applying them: the client tells them by the configuration they send with the collection, and throws a `ChromaException` without sending the request.
+`ModifyConfigurationAsync` changes the settings of the index that Chroma lets change after the creation: those of HNSW, like `EfSearch`, and those of the SPANN index of Chroma Cloud, `EfSearch` and `SearchNprobe`, and the embedding function the collection declares, `EmbeddingFunction`. Chroma 1.0.6 and later apply them. The earlier versions answer without applying them: the client tells them by the configuration they send with the collection, and throws a `ChromaException` without sending the request.
 
 The settings must be those of the index of the collection: `Hnsw` on a single Chroma server, `Spann` on Chroma Cloud. Chroma Cloud answers `500` to `Hnsw` settings, and a single server answers without applying `Spann` settings: for the settings of the other index the client throws a `ChromaException` without sending them. On Chroma Cloud:
 
@@ -418,6 +442,14 @@ var results = await collectionClient.SearchAsync(new ChromaSearch { Rank = Chrom
   - `ChromaEmbeddingFunctionReference.ChromaBm25()` declares the BM25 function of Chroma with the settings of its Python client, so that the clients that know it compute the vectors.
   - `ChromaCollection.SparseVectorIndexes` and `ChromaCollection.SchemaJson` read it back. `EmbeddingFunctionConfig` of an index holds the settings of its function, and `Bm25Function` the `ChromaBm25` with those settings.
   - `ToString()` gives the JSON the client sends.
+- **The indexes of the values**, as `create_index` and `delete_index` of the Python client: `WithIndex` and `WithoutIndex` turn on or off the index of the string, integer, floating-point or Boolean values (`ChromaSchemaIndex.StringInverted`, `IntInverted`, `FloatInverted`, `BoolInverted`) of a metadata key, or of every key without one, and the full-text search index of the documents (`FullTextSearch`), on `#document` only. They are all on by default; a filter on a key without its index finds nothing.
+
+  ```csharp
+  var schema = new ChromaCollectionSchema()
+  	.WithoutIndex(ChromaSchemaIndex.StringInverted, "body")
+  	.WithoutIndex(ChromaSchemaIndex.FullTextSearch);
+  ```
+- **On Chroma Cloud only:** the algorithm of a sparse vector index, `WithSparseVectorIndex(key, ChromaSparseIndexAlgorithm.MaxScore, ...)`, which `ChromaSparseVectorIndex.Algorithm` reads back, for the tenants that have it; and a customer-managed key of Google Cloud KMS, `WithGcpCmek("projects/.../locations/.../keyRings/.../cryptoKeys/...")`, as `set_cmek` of the Python client.
 - **The space with a schema:** `Configuration = new() { Space = ... }` goes in the schema, on `#embedding`, as `create_index(VectorIndexConfig(space=...))` of the Python client writes it, and not in the `hnsw:space` metadata. Chroma rejects the two together: "Cannot set both collection config and schema simultaneously".
 - **Where the schema works:**
   - Chroma 1.3.0 and later apply it;

@@ -4,7 +4,8 @@ namespace ChromaDB.Client.Models;
 
 /// <summary>
 /// The settings of a collection that can change after it is created, <c>new_configuration</c> in Chroma: the HNSW index
-/// of a single server, the SPANN index of Chroma Cloud. Chroma 1.0.6 and later apply them. The space cannot change.
+/// of a single server, the SPANN index of Chroma Cloud, and the embedding function the collection declares. Chroma 1.0.6 and later
+/// apply them. The space cannot change.
 /// </summary>
 public class ChromaCollectionConfigurationUpdate
 {
@@ -21,4 +22,11 @@ public class ChromaCollectionConfigurationUpdate
 	[JsonPropertyName("spann")]
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
 	public ChromaSpannConfigurationUpdate? Spann { get; init; }
+
+	/// <summary>
+	/// The embedding function the collection declares, so that the clients of Chroma that know it compute the embeddings. The client
+	/// only declares it.
+	/// </summary>
+	[JsonIgnore]
+	public ChromaEmbeddingFunctionReference? EmbeddingFunction { get; init; }
 }

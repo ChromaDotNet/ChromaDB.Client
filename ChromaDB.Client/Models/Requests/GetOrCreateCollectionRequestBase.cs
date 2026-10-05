@@ -11,6 +11,11 @@ internal abstract class GetOrCreateCollectionRequestBase
 	public IReadOnlyDictionary<string, object>? Metadata { get; init; }
 
 	// Sent only when set: the request stays as before for the servers that do not know it.
+	[JsonPropertyName("configuration")]
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+	public Dictionary<string, object>? Configuration { get; init; }
+
+	// Sent only when set: the request stays as before for the servers that do not know it.
 	[JsonPropertyName("schema")]
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
 	public Dictionary<string, object>? Schema { get; init; }

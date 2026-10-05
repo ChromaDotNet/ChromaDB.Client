@@ -7,18 +7,24 @@ namespace ChromaDB.Client.Models;
 /// </summary>
 public sealed class ChromaCollectionSchema
 {
-	private readonly Dictionary<string, object> _keys;
+	// Key, then value type, then index: { "title": { "string": { "string_inverted_index": { "enabled": false, "config": {} } } } }.
+	private readonly Dictionary<string, Dictionary<string, Dictionary<string, object>>> _keys;
+	// Value type, then index, for the keys not named in _keys.
+	private readonly Dictionary<string, Dictionary<string, object>> _defaults;
+	private readonly string? _gcpCmek;
 
 	/// <summary>
 	/// An empty schema.
 	/// </summary>
 	public ChromaCollectionSchema()
-		: this([])
+		: this([], [], null)
 	{ }
 
-	private ChromaCollectionSchema(Dictionary<string, object> keys)
+	private ChromaCollectionSchema(Dictionary<string, Dictionary<string, Dictionary<string, object>>> keys, Dictionary<string, Dictionary<string, object>> defaults, string? gcpCmek)
 	{
 		_keys = keys;
+		_defaults = defaults;
+		_gcpCmek = gcpCmek;
 	}
 
 	/// <summary>
@@ -34,6 +40,19 @@ public sealed class ChromaCollectionSchema
 	/// <param name="embeddingFunction">The function that computes the vectors, or null for none; a source key needs one.</param>
 	/// <returns>The new schema; this one does not change.</returns>
 	public ChromaCollectionSchema WithSparseVectorIndex(string key, string? sourceKey = null, bool bm25 = false, ChromaEmbeddingFunctionReference? embeddingFunction = null)
+		=> WithSparseVectorIndex(key, ChromaSparseIndexAlgorithm.Wand, sourceKey, bm25, embeddingFunction);
+
+	/// <summary>
+	/// The same as the overload without <c>algorithm</c>, with the algorithm of the index: <c>MaxScore</c> is on Chroma Cloud for the
+	/// tenants that have it, <c>Wand</c> is the default.
+	/// </summary>
+	/// <param name="key">The metadata key that holds the sparse vectors.</param>
+	/// <param name="algorithm">The algorithm of the index.</param>
+	/// <param name="sourceKey">The key of the text the vectors come from, like <c>#document</c>, or null for none.</param>
+	/// <param name="bm25">Whether the server applies the inverse document frequency of BM25.</param>
+	/// <param name="embeddingFunction">The function that computes the vectors, or null for none; a source key needs one.</param>
+	/// <returns>The new schema; this one does not change.</returns>
+	public ChromaCollectionSchema WithSparseVectorIndex(string key, ChromaSparseIndexAlgorithm algorithm, string? sourceKey = null, bool bm25 = false, ChromaEmbeddingFunctionReference? embeddingFunction = null)
 	{
 		if (sourceKey is not null && embeddingFunction is null)
 		{
@@ -52,43 +71,149 @@ public sealed class ChromaCollectionSchema
 		{
 			config["bm25"] = true;
 		}
-		var keys = new Dictionary<string, object>(_keys)
+		// As the Python client of Chroma: the default algorithm is left out, which the servers that do not know it read too.
+		if (algorithm != ChromaSparseIndexAlgorithm.Wand)
 		{
-			[key] = new Dictionary<string, object>
+			config["algorithm"] = algorithm switch
 			{
-				["sparse_vector"] = new Dictionary<string, object>
-				{
-					["sparse_vector_index"] = new Dictionary<string, object> { ["enabled"] = true, ["config"] = config },
-				},
-			},
-		};
-		return new(keys);
+				ChromaSparseIndexAlgorithm.MaxScore => "max_score",
+				_ => throw new ArgumentOutOfRangeException(nameof(algorithm)),
+			};
+		}
+		return WithKeyIndex(key, "sparse_vector", "sparse_vector_index", true, config);
 	}
 
 	/// <summary>
-	/// The JSON of the schema, as the client sends it. With <c>ChromaCollectionConfiguration.Space</c> in the definition of the collection,
-	/// the client adds the space to it.
+	/// A copy of the schema with the index turned on, as <c>create_index</c> of the Python client of Chroma: on the metadata key, or on
+	/// every key without one. The full-text search index is on the documents only, <c>#document</c>: another key throws an
+	/// <c>ArgumentException</c>.
+	/// </summary>
+	/// <param name="index">The index.</param>
+	/// <param name="key">The metadata key, or null for every key.</param>
+	/// <returns>The new schema; this one does not change.</returns>
+	public ChromaCollectionSchema WithIndex(ChromaSchemaIndex index, string? key = null)
+		=> WithValueIndex(index, key, true);
+
+	/// <summary>
+	/// A copy of the schema with the index turned off, as <c>delete_index</c> of the Python client of Chroma: on the metadata key, or on
+	/// every key without one. A filter on a key without its index finds nothing. The full-text search index is on the documents only,
+	/// <c>#document</c>: another key throws an <c>ArgumentException</c>.
+	/// </summary>
+	/// <param name="index">The index.</param>
+	/// <param name="key">The metadata key, or null for every key.</param>
+	/// <returns>The new schema; this one does not change.</returns>
+	public ChromaCollectionSchema WithoutIndex(ChromaSchemaIndex index, string? key = null)
+		=> WithValueIndex(index, key, false);
+
+	/// <summary>
+	/// A copy of the schema whose collection is encrypted with a customer-managed key of Google Cloud KMS, as <c>set_cmek</c> of the
+	/// Python client of Chroma: Chroma Cloud only. A resource that is not
+	/// <c>projects/{project}/locations/{location}/keyRings/{key ring}/cryptoKeys/{key}</c> throws an <c>ArgumentException</c>.
+	/// </summary>
+	/// <param name="resource">The resource name of the key.</param>
+	/// <returns>The new schema; this one does not change.</returns>
+	public ChromaCollectionSchema WithGcpCmek(string resource)
+	{
+		if (!GcpKey.IsMatch(resource))
+		{
+			throw new ArgumentException("A key of Google Cloud KMS is projects/{project}/locations/{location}/keyRings/{key ring}/cryptoKeys/{key}.", nameof(resource));
+		}
+		return new(_keys, _defaults, resource);
+	}
+
+	private static readonly System.Text.RegularExpressions.Regex GcpKey = new("^projects/.+/locations/.+/keyRings/.+/cryptoKeys/.+$");
+
+	/// <summary>
+	/// The JSON of the schema, as the client sends it. With the space, the index settings or the embedding function of
+	/// <c>ChromaCollectionConfiguration</c> in the definition of the collection, the client adds them to it.
 	/// </summary>
 	/// <returns>The JSON.</returns>
 	public override string ToString()
-		=> System.Text.Json.JsonSerializer.Serialize(ToSchema(), Common.HttpClientHelpers.TypeInfo<Dictionary<string, object>>(Common.HttpClientHelpers.PostJsonSerializerOptions));
+		=> System.Text.Json.JsonSerializer.Serialize(ToSchema(null), Common.HttpClientHelpers.TypeInfo<Dictionary<string, object>>(Common.HttpClientHelpers.PostJsonSerializerOptions));
 
-	// With a space, the vector index gets it as create_index(VectorIndexConfig(space=...)) of the Python client writes it: in the
-	// defaults and on #embedding. Chroma rejects a configuration, like the hnsw:space metadata, together with a schema.
-	internal Dictionary<string, object> ToSchema(ChromaSpace? space = null)
+	private ChromaCollectionSchema WithValueIndex(ChromaSchemaIndex index, string? key, bool enabled)
 	{
-		if (space is not { } value)
+		var (valueType, name) = index switch
 		{
-			return new() { ["defaults"] = new Dictionary<string, object>(), ["keys"] = _keys };
-		}
-		var name = Common.ChromaSpaceNames.ToName(value);
-		Dictionary<string, object> VectorIndex(bool enabled) => new()
-		{
-			["float_list"] = new Dictionary<string, object>
-			{
-				["vector_index"] = new Dictionary<string, object> { ["enabled"] = enabled, ["config"] = new Dictionary<string, object> { ["space"] = name } },
-			},
+			ChromaSchemaIndex.FullTextSearch => ("string", "fts_index"),
+			ChromaSchemaIndex.StringInverted => ("string", "string_inverted_index"),
+			ChromaSchemaIndex.IntInverted => ("int", "int_inverted_index"),
+			ChromaSchemaIndex.FloatInverted => ("float", "float_inverted_index"),
+			ChromaSchemaIndex.BoolInverted => ("bool", "bool_inverted_index"),
+			_ => throw new ArgumentOutOfRangeException(nameof(index)),
 		};
-		return new() { ["defaults"] = VectorIndex(false), ["keys"] = new Dictionary<string, object>(_keys) { [ChromaSearchKeys.Embedding] = VectorIndex(true) } };
+		// As the Python client: the full-text search index is on #document, the default of Chroma, and only there.
+		if (index == ChromaSchemaIndex.FullTextSearch)
+		{
+			if (key is not null && key != ChromaSearchKeys.Document)
+			{
+				throw new ArgumentException($"The full-text search index is on the documents only, {ChromaSearchKeys.Document}.", nameof(key));
+			}
+			key = ChromaSearchKeys.Document;
+		}
+		if (key is null)
+		{
+			var defaults = Copy(_defaults);
+			defaults[valueType] = new Dictionary<string, object>(defaults.TryGetValue(valueType, out var indexes) ? indexes : []) { [name] = Index(enabled, []) };
+			return new(_keys, defaults, _gcpCmek);
+		}
+		return WithKeyIndex(key, valueType, name, enabled, []);
+	}
+
+	private ChromaCollectionSchema WithKeyIndex(string key, string valueType, string name, bool enabled, Dictionary<string, object> config)
+	{
+		var keys = _keys.ToDictionary(x => x.Key, x => Copy(x.Value));
+		var types = keys.TryGetValue(key, out var existing) ? existing : [];
+		types[valueType] = new Dictionary<string, object>(types.TryGetValue(valueType, out var indexes) ? indexes : []) { [name] = Index(enabled, config) };
+		keys[key] = types;
+		return new(keys, _defaults, _gcpCmek);
+	}
+
+	private static Dictionary<string, object> Index(bool enabled, Dictionary<string, object> config)
+		=> new() { ["enabled"] = enabled, ["config"] = config };
+
+	private static Dictionary<string, Dictionary<string, object>> Copy(Dictionary<string, Dictionary<string, object>> types)
+		=> types.ToDictionary(x => x.Key, x => new Dictionary<string, object>(x.Value));
+
+	// The settings of the vector index go as create_index(VectorIndexConfig(...)) of the Python client writes them: in the defaults
+	// and on #embedding. Chroma rejects a configuration, like the hnsw:space metadata, together with a schema.
+	internal Dictionary<string, object> ToSchema(ChromaCollectionConfiguration? configuration)
+	{
+		var defaults = Copy(_defaults);
+		var keys = _keys.ToDictionary(x => x.Key, x => Copy(x.Value));
+		var vector = new Dictionary<string, object>();
+		if (configuration?.Space is { } space)
+		{
+			vector["space"] = Common.ChromaSpaceNames.ToName(space);
+		}
+		if (configuration?.Hnsw is { } hnsw)
+		{
+			vector["hnsw"] = hnsw.ToJson();
+		}
+		if (configuration?.Spann is { } spann)
+		{
+			vector["spann"] = spann.ToJson();
+		}
+		if (configuration?.EmbeddingFunction is { } embeddingFunction)
+		{
+			vector["embedding_function"] = embeddingFunction.ToJson();
+		}
+		if (vector.Count > 0)
+		{
+			defaults["float_list"] = new() { ["vector_index"] = Index(false, vector) };
+			var embedding = keys.TryGetValue(ChromaSearchKeys.Embedding, out var existing) ? existing : [];
+			embedding["float_list"] = new() { ["vector_index"] = Index(true, new Dictionary<string, object>(vector)) };
+			keys[ChromaSearchKeys.Embedding] = embedding;
+		}
+		var schema = new Dictionary<string, object>
+		{
+			["defaults"] = defaults.ToDictionary(x => x.Key, x => (object)x.Value),
+			["keys"] = keys.ToDictionary(x => x.Key, x => (object)x.Value.ToDictionary(y => y.Key, y => (object)y.Value)),
+		};
+		if (_gcpCmek is not null)
+		{
+			schema["cmek"] = new Dictionary<string, object> { ["gcp"] = _gcpCmek };
+		}
+		return schema;
 	}
 }

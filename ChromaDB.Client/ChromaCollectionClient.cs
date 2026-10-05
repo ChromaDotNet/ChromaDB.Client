@@ -919,7 +919,12 @@ public class ChromaCollectionClient
 				.Insert("{collection_id}", _collection.Id);
 			var request = new CollectionModifyRequest()
 			{
-				Configuration = configuration,
+				Configuration = new CollectionConfigurationUpdateRequest()
+				{
+					Hnsw = configuration.Hnsw,
+					Spann = configuration.Spann,
+					EmbeddingFunction = configuration.EmbeddingFunction?.ToJson(),
+				},
 			};
 			await _httpClient.Put(_httpClient.Routes.Collection, request, requestParams, cancellationToken);
 		});

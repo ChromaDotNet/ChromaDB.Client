@@ -128,11 +128,35 @@ public class ChromaClient : IDisposable
 	private Task DatabaseOperation(string name, string? collection, string? tenant, string? database, Func<Task> body)
 		=> ChromaInstrumentation.Run(name, collection, $"{TenantName(tenant)}|{DatabaseName(database)}", _options.Uri, body);
 
-	// The message when the collection has another space than the one the schema gave it, which the server reports.
-	private static string? SpaceIgnored(ChromaCollectionDefinition definition, ChromaCollection collection)
-		=> definition.Schema is not null && definition.Configuration?.Space is { } space && collection.Space is { } actual && actual != space
-			? $"The collection has the space {ChromaSpaceNames.ToName(actual)}, not {ChromaSpaceNames.ToName(space)}: Chroma 1.3.2 and later apply the space with a schema."
-			: null;
+	// The message when the server ignored settings of the definition, which it tells in the collection it answers with: another space
+	// than the one the schema gave it, or an index other than the one the settings are for. Chroma 1.0.5 and earlier send no
+	// configuration to tell it by.
+	private static string? SettingsIgnored(ChromaCollectionDefinition definition, ChromaCollection collection)
+	{
+		if (definition.Configuration is not { } settings)
+		{
+			return null;
+		}
+		if (definition.SettingsInSchema && settings.Space is { } space && collection.Space is { } actual && actual != space)
+		{
+			return $"The collection has the space {ChromaSpaceNames.ToName(actual)}, not {ChromaSpaceNames.ToName(space)}: Chroma 1.3.2 and later apply the space with a schema.";
+		}
+		if (collection.ConfigurationJson is not { ValueKind: System.Text.Json.JsonValueKind.Object } configuration)
+		{
+			return null;
+		}
+		var hasHnsw = configuration.TryGetProperty("hnsw", out var hnsw) && hnsw.ValueKind == System.Text.Json.JsonValueKind.Object;
+		var hasSpann = configuration.TryGetProperty("spann", out var spann) && spann.ValueKind == System.Text.Json.JsonValueKind.Object;
+		if (settings.Hnsw is not null && !hasHnsw && hasSpann)
+		{
+			return "The collection has a SPANN index, as on Chroma Cloud, which ignores HNSW settings: set Spann instead.";
+		}
+		if (settings.Spann is not null && !hasSpann && hasHnsw)
+		{
+			return "The collection has an HNSW index, as on a single Chroma server, which ignores SPANN settings: set Hnsw instead.";
+		}
+		return null;
+	}
 
 	private string TenantName(string? tenant)
 		=> tenant is not null and not [] ? tenant : _currentTenant.Name;
@@ -373,8 +397,10 @@ public class ChromaClient : IDisposable
 		=> CreateCollectionAsync(new ChromaCollectionDefinition(name) { Metadata = metadata }, tenant, database, cancellationToken);
 
 	/// <summary>
-	/// Creates a collection from its definition, with its name, metadata and configuration, in the tenant and database of the
-	/// options, or in the ones it is given. The space of the configuration goes in the <c>hnsw:space</c> metadata.
+	/// Creates a collection from its definition, with its name, metadata, configuration and schema, in the tenant and database of the
+	/// options, or in the ones it is given. The space and the HNSW settings go as the <c>hnsw:</c> metadata, the SPANN settings and the
+	/// embedding function in the configuration of the request. When the server ignores settings it reports, it deletes the collection
+	/// and throws a <c>ChromaException</c>.
 	/// </summary>
 	/// <param name="definition">The collection: name, metadata, configuration and schema.</param>
 	/// <param name="tenant">The tenant, or null for the one of the options.</param>
@@ -389,15 +415,22 @@ public class ChromaClient : IDisposable
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", tenant)
 				.Insert("{database}", database);
+			definition.Validate();
+			// Chroma 0.5.4 to 0.6.3 fail on the configuration of the request, and 0.4.10 to 0.5.3 ignore it.
+			if (definition.SettingsInConfiguration && await _httpClient.IsChroma0(cancellationToken))
+			{
+				throw new ChromaException("The SPANN settings and the embedding function of a new collection need Chroma 1.0.0 or later: Chroma 0.x does not apply them.");
+			}
 			var request = new CreateCollectionRequest()
 			{
 				Name = definition.Name,
 				Metadata = definition.ToRequestMetadata(),
+				Configuration = definition.ToRequestConfiguration(),
 				Schema = definition.ToRequestSchema(),
 			};
 			var collection = await _httpClient.Post<CreateCollectionRequest, ChromaCollection>(_httpClient.Routes.Collections, request, requestParams, cancellationToken);
 			// Chroma 1.0.0 to 1.2.2 create the collection without the schema and without an error: the collection just created goes.
-			if (definition.Schema is not null && collection.SchemaJson is not { ValueKind: System.Text.Json.JsonValueKind.Object })
+			if (definition.SettingsInSchema && collection.SchemaJson is not { ValueKind: System.Text.Json.JsonValueKind.Object })
 			{
 				// Not canceled with the call: the answer arrived, so the collection is created, and it must go. A call canceled before the
 				// answer leaves nothing to tell whether the collection was created, so nothing is deleted then.
@@ -405,7 +438,7 @@ public class ChromaClient : IDisposable
 				throw new ChromaException("The server creates the collection without its schema: Chroma 1.3.0 and later apply it. The collection was deleted.");
 			}
 			// Chroma 1.3.0 creates the collection with the space of the schema ignored: l2.
-			if (SpaceIgnored(definition, collection) is { } ignored)
+			if (SettingsIgnored(definition, collection) is { } ignored)
 			{
 				await DeleteCollectionAsync(collection.Name, tenant, database, CancellationToken.None);
 				throw new ChromaException($"{ignored} The collection was deleted.");
@@ -428,7 +461,7 @@ public class ChromaClient : IDisposable
 
 	/// <summary>
 	/// The collection with the name of the definition, created from the definition when it does not exist, in the tenant and
-	/// database of the options, or in the ones it is given. The space of the configuration goes in the <c>hnsw:space</c> metadata.
+	/// database of the options, or in the ones it is given, with the settings of the configuration as <c>CreateCollectionAsync</c> sends them.
 	/// </summary>
 	/// <param name="definition">The collection: name, metadata, configuration and schema.</param>
 	/// <param name="tenant">The tenant, or null for the one of the options.</param>
@@ -443,19 +476,26 @@ public class ChromaClient : IDisposable
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", tenant)
 				.Insert("{database}", database);
+			definition.Validate();
+			// Chroma 0.5.4 to 0.6.3 fail on the configuration of the request, and 0.4.10 to 0.5.3 ignore it.
+			if (definition.SettingsInConfiguration && await _httpClient.IsChroma0(cancellationToken))
+			{
+				throw new ChromaException("The SPANN settings and the embedding function of a new collection need Chroma 1.0.0 or later: Chroma 0.x does not apply them.");
+			}
 			var request = new GetOrCreateCollectionRequest()
 			{
 				Name = definition.Name,
 				Metadata = definition.ToRequestMetadata(),
+				Configuration = definition.ToRequestConfiguration(),
 				Schema = definition.ToRequestSchema(),
 			};
 			var collection = await _httpClient.Post<GetOrCreateCollectionRequest, ChromaCollection>(_httpClient.Routes.Collections, request, requestParams, cancellationToken);
 			// As in CreateCollection, but the collection stays: it may have existed before.
-			if (definition.Schema is not null && collection.SchemaJson is not { ValueKind: System.Text.Json.JsonValueKind.Object })
+			if (definition.SettingsInSchema && collection.SchemaJson is not { ValueKind: System.Text.Json.JsonValueKind.Object })
 			{
 				throw new ChromaException("The server answers without the schema of the collection: Chroma 1.3.0 and later apply it.");
 			}
-			if (SpaceIgnored(definition, collection) is { } ignored)
+			if (SettingsIgnored(definition, collection) is { } ignored)
 			{
 				throw new ChromaException(ignored);
 			}
