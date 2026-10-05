@@ -16,7 +16,7 @@ public class CollectionConfigurationTests
 	public async Task CreateSendsTheSpaceInTheMetadata(ChromaSpace space, string expected)
 	{
 		var handler = new RecordingHandler(Created);
-		await Client(handler).CreateCollectionAsync(new ChromaCollectionDefinition("c") { Metadata = new() { ["key"] = "value" }, Configuration = new() { Space = space } });
+		await Client(handler).CreateCollectionAsync(new ChromaCollectionDefinition("c") { Metadata = new Dictionary<string, object> { ["key"] = "value" }, Configuration = new() { Space = space } });
 		Assert.That(handler.Body.GetProperty("metadata").GetRawText(), Is.EqualTo($$"""{"key":"value","hnsw:space":"{{expected}}"}"""));
 	}
 
@@ -53,19 +53,19 @@ public class CollectionConfigurationTests
 	public async Task CreateWithoutConfigurationSendsTheMetadataAsItIs()
 	{
 		var handler = new RecordingHandler(Created);
-		await Client(handler).CreateCollectionAsync(new ChromaCollectionDefinition("c") { Metadata = new() { ["hnsw:space"] = "ip" } });
+		await Client(handler).CreateCollectionAsync(new ChromaCollectionDefinition("c") { Metadata = new Dictionary<string, object> { ["hnsw:space"] = "ip" } });
 		Assert.That(handler.Body.GetProperty("metadata").GetRawText(), Is.EqualTo("""{"hnsw:space":"ip"}"""));
 	}
 
 	[Test]
 	public void CreateWithTwoDifferentSpacesThrows()
-		=> Assert.ThrowsAsync<ArgumentException>(() => Client(new RecordingHandler(Created)).CreateCollectionAsync(new ChromaCollectionDefinition("c") { Metadata = new() { ["hnsw:space"] = "ip" }, Configuration = new() { Space = ChromaSpace.Cosine } }));
+		=> Assert.ThrowsAsync<ArgumentException>(() => Client(new RecordingHandler(Created)).CreateCollectionAsync(new ChromaCollectionDefinition("c") { Metadata = new Dictionary<string, object> { ["hnsw:space"] = "ip" }, Configuration = new() { Space = ChromaSpace.Cosine } }));
 
 	[Test]
 	public async Task CreateWithTheSameSpaceTwiceIsAccepted()
 	{
 		var handler = new RecordingHandler(Created);
-		await Client(handler).CreateCollectionAsync(new ChromaCollectionDefinition("c") { Metadata = new() { ["hnsw:space"] = "cosine" }, Configuration = new() { Space = ChromaSpace.Cosine } });
+		await Client(handler).CreateCollectionAsync(new ChromaCollectionDefinition("c") { Metadata = new Dictionary<string, object> { ["hnsw:space"] = "cosine" }, Configuration = new() { Space = ChromaSpace.Cosine } });
 		Assert.That(handler.Body.GetProperty("metadata").GetRawText(), Is.EqualTo("""{"hnsw:space":"cosine"}"""));
 	}
 
@@ -123,7 +123,7 @@ public class CollectionConfigurationTests
 		var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
 		foreach (var name in new[] { "a", "b", "c" })
 		{
-			await client.GetCollectionClient(Guid.NewGuid(), name).AddAsync(new ChromaRecords(["x"]) { Embeddings = [new([1f, 0f])], Metadatas = [new() { ["tags"] = new[] { "y" } }] });
+			await client.GetCollectionClient(Guid.NewGuid(), name).AddAsync(new ChromaRecords(["x"]) { Embeddings = [new([1f, 0f])], Metadatas = [new Dictionary<string, object> { ["tags"] = new[] { "y" } }] });
 		}
 		Assert.That(handler.VersionRequests, Is.EqualTo(1));
 		Assert.That(handler.AddRequests, Is.EqualTo(3));

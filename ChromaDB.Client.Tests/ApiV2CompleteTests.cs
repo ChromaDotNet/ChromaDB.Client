@@ -168,7 +168,7 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		{
 			Embeddings = [new([1f, 0f]), new([0f, 1f])],
 			Documents = ["apple pie", "banana split"],
-			Metadatas = [new() { ["doc_bm25"] = new ChromaSparseVector([1, 5], [0.5f, 0.7f]) }, new() { ["doc_bm25"] = new ChromaSparseVector([2], [0.9f]) }],
+			Metadatas = [new Dictionary<string, object> { ["doc_bm25"] = new ChromaSparseVector([1, 5], [0.5f, 0.7f]) }, new Dictionary<string, object> { ["doc_bm25"] = new ChromaSparseVector([2], [0.9f]) }],
 		};
 		if (!ChromaCloud)
 		{

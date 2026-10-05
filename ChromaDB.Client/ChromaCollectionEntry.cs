@@ -16,7 +16,7 @@ public class ChromaCollectionEntry
 	/// <summary>
 	/// The metadata of the record, when the get included the metadatas.
 	/// </summary>
-	public Dictionary<string, object>? Metadata { get; init; }
+	public IReadOnlyDictionary<string, object>? Metadata { get; init; }
 	/// <summary>
 	/// The document of the record, when the get included the documents.
 	/// </summary>

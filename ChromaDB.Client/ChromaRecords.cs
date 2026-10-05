@@ -17,7 +17,7 @@ public class ChromaRecords
 	/// <summary>
 	/// The metadatas of the records, in the order of the ids.
 	/// </summary>
-	public IReadOnlyList<Dictionary<string, object>>? Metadatas { get; init; }
+	public IReadOnlyList<IReadOnlyDictionary<string, object>>? Metadatas { get; init; }
 	/// <summary>
 	/// The documents of the records, in the order of the ids.
 	/// </summary>

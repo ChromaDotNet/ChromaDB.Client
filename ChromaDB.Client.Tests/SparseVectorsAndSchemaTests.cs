@@ -56,7 +56,7 @@ public class SparseVectorsAndSchemaTests
 			var path when path.EndsWith("/add") => (HttpStatusCode.Created, "{}"),
 			_ => (HttpStatusCode.NotFound, ""),
 		});
-		await CollectionClient(server).AddAsync(new ChromaRecords(["a"]) { Metadatas = [new() { ["doc_bm25"] = new ChromaSparseVector([1], [0.5f]), ["x"] = 1 }] });
+		await CollectionClient(server).AddAsync(new ChromaRecords(["a"]) { Metadatas = [new Dictionary<string, object> { ["doc_bm25"] = new ChromaSparseVector([1], [0.5f]), ["x"] = 1 }] });
 		var add = server.Requests.Single(x => x.Path.EndsWith("/add"));
 		Assert.That(add.Body.GetProperty("metadatas")[0].GetRawText(), Is.EqualTo("""{"doc_bm25":{"#type":"sparse_vector","indices":[1],"values":[0.5]},"x":1}"""));
 	}
@@ -71,7 +71,7 @@ public class SparseVectorsAndSchemaTests
 		object vector = asJsonElement
 			? JsonDocument.Parse("""{"#type":"sparse_vector","indices":[1],"values":[0.5],"tokens":null}""").RootElement.Clone()
 			: new ChromaSparseVector([1], [0.5f]);
-		await Assert.ThatAsync(() => CollectionClient(server).AddAsync(new ChromaRecords(["a"]) { Embeddings = [new([1f])], Metadatas = [new() { ["v"] = vector }] }),
+		await Assert.ThatAsync(() => CollectionClient(server).AddAsync(new ChromaRecords(["a"]) { Embeddings = [new([1f])], Metadatas = [new Dictionary<string, object> { ["v"] = vector }] }),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains("sparse vectors"));
 		Assert.That(server.Requests.Any(x => x.Path.EndsWith("/add")), Is.False);
 	}
@@ -116,7 +116,7 @@ public class SparseVectorsAndSchemaTests
 		var server = new FakeServer(_ => (HttpStatusCode.OK, $$$"""{"id":"11111111-2222-3333-4444-555555555555","name":"c","configuration_json":{"hnsw":null,"spann":{"space":"cosine"}},"schema":{{{Bm25Schema}}}}"""));
 		var definition = new ChromaCollectionDefinition("c")
 		{
-			Metadata = new() { ["x"] = 1 },
+			Metadata = new Dictionary<string, object> { ["x"] = 1 },
 			Configuration = new() { Space = ChromaSpace.Cosine },
 			Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, ChromaEmbeddingFunctionReference.ChromaBm25()),
 		};
@@ -322,7 +322,7 @@ public class SparseVectorsAndSchemaTests
 		await Assert.ThatAsync(() => client.AddAsync(new ChromaRecords(["a"]) { Documents = ["apple pie"] }),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains("\"doc_splade\"").And.Message.Contains("\"splade\""));
 		Assert.That(server.Requests, Is.Empty);
-		await client.AddAsync(new ChromaRecords(["a"]) { Documents = ["apple pie"], Metadatas = [new() { ["doc_splade"] = new ChromaSparseVector([1], [0.5f]) }] });
+		await client.AddAsync(new ChromaRecords(["a"]) { Documents = ["apple pie"], Metadatas = [new Dictionary<string, object> { ["doc_splade"] = new ChromaSparseVector([1], [0.5f]) }] });
 		Assert.That(server.Requests.Count(x => x.Path.EndsWith("/add")), Is.EqualTo(1));
 	}
 

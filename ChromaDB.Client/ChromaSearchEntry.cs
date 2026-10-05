@@ -31,7 +31,7 @@ public class ChromaSearchEntry
 	/// <summary>
 	/// The metadata: all of it with <c>ChromaSearchKeys.Metadata</c>, or only the selected fields.
 	/// </summary>
-	public Dictionary<string, object>? Metadata { get; init; }
+	public IReadOnlyDictionary<string, object>? Metadata { get; init; }
 
 	/// <summary>
 	/// The score of the ranking, when selected: the lower, the better.

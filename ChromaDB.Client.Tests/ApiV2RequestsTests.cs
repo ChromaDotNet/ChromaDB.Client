@@ -224,7 +224,7 @@ public class ApiV2RequestsTests
 	public async Task AttachFunction()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"attached_function":{"id":"33333333-2222-3333-4444-555555555555","name":"stats","function_name":"statistics"},"created":true}"""));
-		var (attached, created) = await CollectionClient(server).AttachFunctionAsync(ChromaFunctions.Statistics, "stats", "stats_output", new() { ["k"] = 1 });
+		var (attached, created) = await CollectionClient(server).AttachFunctionAsync(ChromaFunctions.Statistics, "stats", "stats_output", new Dictionary<string, object> { ["k"] = 1 });
 		var request = server.Requests.Single();
 		Assert.That(request.Line, Is.EqualTo($"POST {CollectionPath}/functions/attach"));
 		Assert.That(request.Body.GetRawText(), Is.EqualTo("""{"name":"stats","function_id":"statistics","output_collection":"stats_output","params":{"k":1}}"""));

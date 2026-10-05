@@ -305,7 +305,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// Creates a collection with the given name and metadata, in the tenant and database of the options, or in the ones it is given.
 	/// </summary>
-	public Task<ChromaCollection> CreateCollectionAsync(string name, Dictionary<string, object>? metadata = null, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public Task<ChromaCollection> CreateCollectionAsync(string name, IReadOnlyDictionary<string, object>? metadata = null, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> CreateCollectionAsync(new ChromaCollectionDefinition(name) { Metadata = metadata }, tenant, database, cancellationToken);
 
 	/// <summary>
@@ -348,7 +348,7 @@ public class ChromaClient : IDisposable
 	/// The collection with the given name, created when it does not exist, in the tenant and database of the options, or in
 	/// the ones it is given.
 	/// </summary>
-	public Task<ChromaCollection> GetOrCreateCollectionAsync(string name, Dictionary<string, object>? metadata = null, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public Task<ChromaCollection> GetOrCreateCollectionAsync(string name, IReadOnlyDictionary<string, object>? metadata = null, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> GetOrCreateCollectionAsync(new ChromaCollectionDefinition(name) { Metadata = metadata }, tenant, database, cancellationToken);
 
 	/// <summary>

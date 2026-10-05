@@ -15,5 +15,5 @@ internal class AttachFunctionRequest
 	public required string OutputCollection { get; init; }
 
 	[JsonPropertyName("params")]
-	public Dictionary<string, object>? Params { get; init; }
+	public IReadOnlyDictionary<string, object>? Params { get; init; }
 }

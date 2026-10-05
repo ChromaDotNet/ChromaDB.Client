@@ -17,7 +17,7 @@ public class ChromaCollectionQueryEntry
 	/// <summary>
 	/// The metadata of the record, when the query included the metadatas.
 	/// </summary>
-	public Dictionary<string, object>? Metadata { get; init; }
+	public IReadOnlyDictionary<string, object>? Metadata { get; init; }
 	/// <summary>
 	/// The embedding of the record, when the query included the embeddings.
 	/// </summary>

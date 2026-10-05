@@ -14,7 +14,7 @@ public class ChromaCollectionDefinition
 	/// <summary>
 	/// The metadata of the collection.
 	/// </summary>
-	public Dictionary<string, object>? Metadata { get; init; }
+	public IReadOnlyDictionary<string, object>? Metadata { get; init; }
 	/// <summary>
 	/// The settings of the collection, like its space. The client sends the space as the <c>hnsw:space</c> metadata,
 	/// which every tested Chroma applies.
@@ -41,7 +41,7 @@ public class ChromaCollectionDefinition
 	internal Dictionary<string, object>? ToRequestSchema()
 		=> Schema?.ToSchema(Configuration?.Space);
 
-	internal Dictionary<string, object>? ToRequestMetadata()
+	internal IReadOnlyDictionary<string, object>? ToRequestMetadata()
 	{
 		if (Configuration?.Space is not { } space || Schema is not null)
 		{
@@ -52,6 +52,8 @@ public class ChromaCollectionDefinition
 		{
 			throw new ArgumentException($"The metadata sets {ChromaSpaceNames.MetadataKey} to '{existing}', the configuration to '{value}'.", nameof(Metadata));
 		}
-		return new Dictionary<string, object>(Metadata ?? []) { [ChromaSpaceNames.MetadataKey] = value };
+		var metadata = Metadata?.ToDictionary(x => x.Key, x => x.Value) ?? [];
+		metadata[ChromaSpaceNames.MetadataKey] = value;
+		return metadata;
 	}
 }

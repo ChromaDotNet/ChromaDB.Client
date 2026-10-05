@@ -197,7 +197,7 @@ public class ClientTests : ChromaTestsBase
 		var name = $"collection{Random.Shared.Next()}";
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		var collection = await client.CreateCollectionAsync(name, metadata: new() { ["key"] = "value" });
+		var collection = await client.CreateCollectionAsync(name, metadata: new Dictionary<string, object> { ["key"] = "value" });
 		var result = await client.GetCollectionByIdAsync(collection.Id);
 		Assert.That(result.Id, Is.EqualTo(collection.Id));
 		Assert.That(result.Name, Is.EqualTo(name));

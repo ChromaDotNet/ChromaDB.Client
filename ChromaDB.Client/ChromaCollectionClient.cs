@@ -181,7 +181,7 @@ public class ChromaCollectionClient
 	/// Adds the records with the ids, embeddings, metadatas and documents. Since Chroma 1.0.16 the server requires the
 	/// embeddings: the client does not compute them.
 	/// </summary>
-	public Task AddAsync(IReadOnlyList<string> ids, IReadOnlyList<ReadOnlyMemory<float>>? embeddings = null, IReadOnlyList<Dictionary<string, object>>? metadatas = null, IReadOnlyList<string>? documents = null, CancellationToken cancellationToken = default)
+	public Task AddAsync(IReadOnlyList<string> ids, IReadOnlyList<ReadOnlyMemory<float>>? embeddings = null, IReadOnlyList<IReadOnlyDictionary<string, object>>? metadatas = null, IReadOnlyList<string>? documents = null, CancellationToken cancellationToken = default)
 		=> AddAsync(new ChromaRecords(ids) { Embeddings = embeddings, Metadatas = metadatas, Documents = documents }, cancellationToken);
 
 	/// <summary>
@@ -216,7 +216,7 @@ public class ChromaCollectionClient
 	/// <summary>
 	/// Updates the embeddings, metadatas and documents of the records with the ids.
 	/// </summary>
-	public Task UpdateAsync(IReadOnlyList<string> ids, IReadOnlyList<ReadOnlyMemory<float>>? embeddings = null, IReadOnlyList<Dictionary<string, object>>? metadatas = null, IReadOnlyList<string>? documents = null, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(IReadOnlyList<string> ids, IReadOnlyList<ReadOnlyMemory<float>>? embeddings = null, IReadOnlyList<IReadOnlyDictionary<string, object>>? metadatas = null, IReadOnlyList<string>? documents = null, CancellationToken cancellationToken = default)
 		=> UpdateAsync(new ChromaRecords(ids) { Embeddings = embeddings, Metadatas = metadatas, Documents = documents }, cancellationToken);
 
 	/// <summary>
@@ -252,7 +252,7 @@ public class ChromaCollectionClient
 	/// Adds the records with the ids, or updates the ones that already exist. Since Chroma 1.0.16 the server requires
 	/// the embeddings: the client does not compute them.
 	/// </summary>
-	public Task UpsertAsync(IReadOnlyList<string> ids, IReadOnlyList<ReadOnlyMemory<float>>? embeddings = null, IReadOnlyList<Dictionary<string, object>>? metadatas = null, IReadOnlyList<string>? documents = null, CancellationToken cancellationToken = default)
+	public Task UpsertAsync(IReadOnlyList<string> ids, IReadOnlyList<ReadOnlyMemory<float>>? embeddings = null, IReadOnlyList<IReadOnlyDictionary<string, object>>? metadatas = null, IReadOnlyList<string>? documents = null, CancellationToken cancellationToken = default)
 		=> UpsertAsync(new ChromaRecords(ids) { Embeddings = embeddings, Metadatas = metadatas, Documents = documents }, cancellationToken);
 
 	/// <summary>
@@ -299,7 +299,7 @@ public class ChromaCollectionClient
 		{
 			return records;
 		}
-		var metadatas = records.Metadatas?.ToList() ?? records.Ids.Select(_ => (Dictionary<string, object>)null!).ToList();
+		var metadatas = records.Metadatas?.ToList() ?? records.Ids.Select(_ => (IReadOnlyDictionary<string, object>)null!).ToList();
 		var copied = new bool[metadatas.Count];
 		foreach (var index in indexes)
 		{
@@ -318,12 +318,10 @@ public class ChromaCollectionClient
 					continue;
 				}
 				var function = index.Bm25Function ?? throw CannotEmbed(index);
-				if (!copied[i])
-				{
-					metadatas[i] = metadata = metadata is null ? [] : new Dictionary<string, object>(metadata, metadata.Comparer);
-					copied[i] = true;
-				}
-				metadata![index.Key] = function.Embed(text);
+				var copy = copied[i] ? (Dictionary<string, object>)metadata! : metadata?.ToDictionary(x => x.Key, x => x.Value) ?? [];
+				copy[index.Key] = function.Embed(text);
+				metadatas[i] = copy;
+				copied[i] = true;
 			}
 		}
 		return !copied.Contains(true) ? records : new ChromaRecords(records.Ids)
@@ -681,7 +679,7 @@ public class ChromaCollectionClient
 	/// results go to the output collection. <c>Created</c> is false when a function with that name was already
 	/// attached.
 	/// </summary>
-	public Task<(ChromaAttachedFunction AttachedFunction, bool Created)> AttachFunctionAsync(string function, string name, string outputCollection, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
+	public Task<(ChromaAttachedFunction AttachedFunction, bool Created)> AttachFunctionAsync(string function, string name, string outputCollection, IReadOnlyDictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
 		=> Operation("attach_function", async () =>
 		{
 			var requestParams = new RequestQueryParams()
@@ -754,7 +752,7 @@ public class ChromaCollectionClient
 	/// <summary>
 	/// Changes the name or the metadata of the collection.
 	/// </summary>
-	public Task ModifyAsync(string? name = null, Dictionary<string, object>? metadata = null, CancellationToken cancellationToken = default)
+	public Task ModifyAsync(string? name = null, IReadOnlyDictionary<string, object>? metadata = null, CancellationToken cancellationToken = default)
 		=> Operation("modify", async () =>
 		{
 			var requestParams = new RequestQueryParams()

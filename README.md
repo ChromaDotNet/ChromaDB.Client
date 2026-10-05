@@ -103,7 +103,7 @@ var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithM
 A list in metadata, written and filtered:
 
 ```csharp
-await collectionClient.AddAsync(new ChromaRecords(["a"]) { Embeddings = [new([1f, 0.5f, 0f])], Metadatas = [new() { ["tags"] = new[] { "red", "blue" } }] });
+await collectionClient.AddAsync(new ChromaRecords(["a"]) { Embeddings = [new([1f, 0.5f, 0f])], Metadatas = [new Dictionary<string, object> { ["tags"] = new[] { "red", "blue" } }] });
 var tagged = await collectionClient.GetAsync(where: ChromaWhereOperator.Contains("tags", "red"));
 ```
 
@@ -366,7 +366,7 @@ await collectionClient.AddAsync(new ChromaRecords(["a"])
 {
 	Embeddings = [embedding],
 	Documents = ["apple pie"],
-	Metadatas = [new() { ["doc_bm25"] = new ChromaSparseVector([17, 4242], [0.8f, 1.1f]) }],
+	Metadatas = [new Dictionary<string, object> { ["doc_bm25"] = new ChromaSparseVector([17, 4242], [0.8f, 1.1f]) }],
 });
 var results = await collectionClient.SearchAsync(new ChromaSearch { Rank = ChromaRank.SparseKnn(queryVector, "doc_bm25"), Limit = 10 });
 ```

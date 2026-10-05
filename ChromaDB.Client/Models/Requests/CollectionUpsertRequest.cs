@@ -11,7 +11,7 @@ internal class CollectionUpsertRequest
 	public Common.ChromaEmbeddings? Embeddings { get; init; }
 
 	[JsonPropertyName("metadatas")]
-	public IReadOnlyList<Dictionary<string, object>>? Metadatas { get; init; }
+	public IReadOnlyList<IReadOnlyDictionary<string, object>>? Metadatas { get; init; }
 
 	[JsonPropertyName("documents")]
 	public IReadOnlyList<string>? Documents { get; init; }

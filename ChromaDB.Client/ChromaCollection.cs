@@ -25,7 +25,7 @@ public class ChromaCollection
 	/// The metadata of the collection.
 	/// </summary>
 	[JsonPropertyName("metadata")]
-	public Dictionary<string, object>? Metadata { get; init; }
+	public IReadOnlyDictionary<string, object>? Metadata { get; init; }
 
 	/// <summary>
 	/// The tenant of the collection.

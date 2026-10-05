@@ -41,7 +41,7 @@ await Check("GetVersion", async () => version = await client.GetVersionAsync());
 await Check("GetPreFlightChecks", async () => (await client.GetPreFlightChecksAsync()).MaxBatchSize.ToString());
 await Check("CreateCollection", async () =>
 {
-	var collection = await client.CreateCollectionAsync(new ChromaCollectionDefinition(name) { Metadata = new() { ["owner"] = "trimming", ["level"] = 1 }, Configuration = new() { Space = ChromaSpace.Cosine } });
+	var collection = await client.CreateCollectionAsync(new ChromaCollectionDefinition(name) { Metadata = new Dictionary<string, object> { ["owner"] = "trimming", ["level"] = 1 }, Configuration = new() { Space = ChromaSpace.Cosine } });
 	collectionClient = client.GetCollectionClient(collection);
 	return Expect($"{collection.Name} {collection.Space}", collection.Space == ChromaSpace.Cosine, "Cosine");
 });
@@ -53,7 +53,7 @@ await Check("Add", async () =>
 	await collectionClient.AddAsync(new ChromaRecords(["a", "b"])
 	{
 		Embeddings = embeddings,
-		Metadatas = [new() { ["text"] = "x", ["int"] = 1, ["long"] = 2L, ["double"] = 1.5, ["float"] = 2.5f, ["bool"] = true }, new() { ["text"] = "y", ["int"] = 2 }],
+		Metadatas = [new Dictionary<string, object> { ["text"] = "x", ["int"] = 1, ["long"] = 2L, ["double"] = 1.5, ["float"] = 2.5f, ["bool"] = true }, new Dictionary<string, object> { ["text"] = "y", ["int"] = 2 }],
 		Documents = ["first", "second"],
 		Uris = ["file://a", null],
 	});
@@ -93,7 +93,7 @@ await Check("Query", async () =>
 await Check("Exact metadata", async () =>
 {
 	var exact = client.WithMetadataValues(ChromaMetadataValues.Exact).GetCollectionClient(collectionClient.Collection);
-	await exact.UpsertAsync(new ChromaRecords(["c"]) { Embeddings = [new([0f, 0f, 1f])], Metadatas = [new() { ["date"] = "2026-10-04" }] });
+	await exact.UpsertAsync(new ChromaRecords(["c"]) { Embeddings = [new([0f, 0f, 1f])], Metadatas = [new Dictionary<string, object> { ["date"] = "2026-10-04" }] });
 	var value = (await exact.GetAsync("c", include: ChromaGetInclude.Metadatas))?.Metadata?["date"];
 	return Expect($"{value?.GetType().Name} {value}", value is string, "a string");
 });
@@ -138,7 +138,7 @@ await Check("Update and Delete", async () =>
 });
 await Check("Modify", async () =>
 {
-	await collectionClient.ModifyAsync(metadata: new() { ["owner"] = "trimming2" });
+	await collectionClient.ModifyAsync(metadata: new Dictionary<string, object> { ["owner"] = "trimming2" });
 	return (await client.GetCollectionAsync(name)).Metadata?["owner"]?.ToString() ?? "null";
 });
 await Check("Filters as JSON", async () =>

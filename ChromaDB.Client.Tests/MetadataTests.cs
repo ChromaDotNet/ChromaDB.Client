@@ -14,7 +14,7 @@ public class MetadataTests : ChromaTestsBase
 	public async Task StringsStayStrings()
 	{
 		var client = await Init(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact));
-		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [new() { ["date"] = "2026-10-04", ["text"] = "t" }] });
+		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [new Dictionary<string, object> { ["date"] = "2026-10-04", ["text"] = "t" }] });
 		var metadata = (await client.GetAsync("a", include: ChromaGetInclude.Metadatas))!.Metadata!;
 		Assert.That(metadata["date"], Is.EqualTo("2026-10-04"));
 		Assert.That(metadata["text"], Is.EqualTo("t"));
@@ -24,7 +24,7 @@ public class MetadataTests : ChromaTestsBase
 	public async Task DatesStayStringsByDefault()
 	{
 		var client = await Init(BaseConfigurationOptions);
-		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [new() { ["date"] = "2026-10-04" }] });
+		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [new Dictionary<string, object> { ["date"] = "2026-10-04" }] });
 		Assert.That((await client.GetAsync("a", include: ChromaGetInclude.Metadatas))!.Metadata!["date"], Is.EqualTo("2026-10-04"));
 	}
 
@@ -32,7 +32,7 @@ public class MetadataTests : ChromaTestsBase
 	public async Task DatesAreInferredWithInferred()
 	{
 		var client = await Init(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Inferred));
-		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [new() { ["date"] = "2026-10-04" }] });
+		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [new Dictionary<string, object> { ["date"] = "2026-10-04" }] });
 		Assert.That((await client.GetAsync("a", include: ChromaGetInclude.Metadatas))!.Metadata!["date"], Is.EqualTo(new DateTime(2026, 10, 4)));
 	}
 
@@ -43,7 +43,7 @@ public class MetadataTests : ChromaTestsBase
 		var records = new ChromaRecords(["a"])
 		{
 			Embeddings = [Embedding1],
-			Metadatas = [new() { ["texts"] = new List<string> { "x", "y" }, ["array"] = new[] { "z" }, ["ints"] = new List<int> { 1, 2 }, ["floats"] = new List<double> { 1.5, 2.25 }, ["bools"] = new List<bool> { true, false } }],
+			Metadatas = [new Dictionary<string, object> { ["texts"] = new List<string> { "x", "y" }, ["array"] = new[] { "z" }, ["ints"] = new List<int> { 1, 2 }, ["floats"] = new List<double> { 1.5, 2.25 }, ["bools"] = new List<bool> { true, false } }],
 		};
 		if (IsChroma0)
 		{
@@ -73,8 +73,8 @@ public class MetadataTests : ChromaTestsBase
 	{
 		Assume.That(MetadataListsSupported, Is.True, "Chroma 1.4.1 and earlier do not store lists in metadata.");
 		var client = await Init(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact));
-		await client.UpsertAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [new() { ["texts"] = new[] { "x" } }] });
-		await client.UpdateAsync(new ChromaRecords(["a"]) { Metadatas = [new() { ["texts"] = new[] { "y", "z" } }] });
+		await client.UpsertAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [new Dictionary<string, object> { ["texts"] = new[] { "x" } }] });
+		await client.UpdateAsync(new ChromaRecords(["a"]) { Metadatas = [new Dictionary<string, object> { ["texts"] = new[] { "y", "z" } }] });
 		Assert.That((await client.GetAsync("a", include: ChromaGetInclude.Metadatas))!.Metadata!["texts"], Is.EqualTo(new List<object> { "y", "z" }));
 	}
 
@@ -86,7 +86,7 @@ public class MetadataTests : ChromaTestsBase
 		await client.AddAsync(new ChromaRecords(["a", "b"])
 		{
 			Embeddings = [Embedding1, Embedding2],
-			Metadatas = [new() { ["texts"] = new[] { "x", "y" }, ["ints"] = new[] { 1, 2 } }, new() { ["texts"] = new[] { "z" }, ["ints"] = new[] { 3 } }],
+			Metadatas = [new Dictionary<string, object> { ["texts"] = new[] { "x", "y" }, ["ints"] = new[] { 1, 2 } }, new Dictionary<string, object> { ["texts"] = new[] { "z" }, ["ints"] = new[] { 3 } }],
 		});
 		Assert.That((await client.GetAsync(where: ChromaWhereOperator.Contains("texts", "x"))).Select(x => x.Id), Is.EqualTo(new[] { "a" }));
 		Assert.That((await client.GetAsync(where: ChromaWhereOperator.NotContains("texts", "x"))).Select(x => x.Id), Is.EqualTo(new[] { "b" }));
@@ -100,7 +100,7 @@ public class MetadataTests : ChromaTestsBase
 	{
 		Assume.That(IsChroma0, Is.True, "Chroma 1.x has $contains in metadata filters.");
 		var client = await Init(BaseConfigurationOptions);
-		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [new() { ["text"] = "x" }] });
+		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [new Dictionary<string, object> { ["text"] = "x" }] });
 		var ex = Assert.ThrowsAsync<ChromaException>(() => client.GetAsync(where: ChromaWhereOperator.Contains("text", "x")));
 		Assert.That(ex!.Message, Does.Contain("$contains"));
 	}
