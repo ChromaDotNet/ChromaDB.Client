@@ -15,7 +15,8 @@ public class ChromaRecords
 	/// </summary>
 	public IReadOnlyList<ReadOnlyMemory<float>>? Embeddings { get; init; }
 	/// <summary>
-	/// The metadatas of the records, in the order of the ids.
+	/// The metadatas of the records, in the order of the ids. In <c>UpdateAsync</c> and <c>UpsertAsync</c> a null value deletes the
+	/// key, written <c>null!</c> as the type does not allow it; <c>AddAsync</c> rejects it.
 	/// </summary>
 	public IReadOnlyList<IReadOnlyDictionary<string, object>>? Metadatas { get; init; }
 	/// <summary>

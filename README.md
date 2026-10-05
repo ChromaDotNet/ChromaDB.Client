@@ -119,7 +119,7 @@ var same = await collectionClient.QueryAsync(new ChromaQuery([new([1f, 0.5f, 0f]
 
 ## Metadata values
 
-By default, `ChromaMetadataValues.Exact`, strings in metadata stay strings, and lists come back as `List<object>` of `string`, `long`, `double` and `bool`, like the single values. A `double`, `float` or `decimal` comes back as a `double`, also when it is whole: the client writes `2.0`, as the Python client does, and Chroma keeps it a float. With `ChromaMetadataValues.Inferred`, as before 2.8.0, a string that looks like a date comes back as a `DateTime`, and a list as a `JsonElement`:
+By default, `ChromaMetadataValues.Exact`, strings in metadata stay strings, and lists come back as `List<object>` of `string`, `long`, `double` and `bool`, like the single values. A `double`, `float` or `decimal` comes back as a `double`, also when it is whole: the client writes `2.0`, as the Python client does, and Chroma keeps it a float; the values that 2.8.0 and earlier wrote as `2` stay integers in Chroma, so `LessThan("d", 2.2)` does not find them until they are written again. With `ChromaMetadataValues.Inferred`, as before 2.8.0, a string that looks like a date comes back as a `DateTime`, and a list as a `JsonElement`:
 
 ```csharp
 var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithMetadataValues(ChromaMetadataValues.Inferred);
@@ -131,6 +131,8 @@ A list in metadata, written and filtered:
 await collectionClient.AddAsync(new ChromaRecords(["a"]) { Embeddings = [new([1f, 0.5f, 0f])], Metadatas = [new Dictionary<string, object> { ["tags"] = new[] { "red", "blue" } }] });
 var tagged = await collectionClient.GetAsync(where: ChromaWhereOperator.Contains("tags", "red"));
 ```
+
+In `UpdateAsync` and `UpsertAsync` a null value deletes the key on every tested Chroma; the type does not allow it, so write it `null!`. `AddAsync` throws an `ArgumentException` for it: Chroma 0.x would drop the key, and 1.x rejects the request. A record without metadata keys comes back with `Metadata` null.
 
 Chroma 1.5.0 and later store lists in metadata and filter them with `Contains` and `NotContains`. Chroma 1.0.0 to 1.4.1 reject them. Chroma 0.x accepts them but drops them without an error, so `AddAsync`, `UpdateAsync` and `UpsertAsync` throw a `ChromaException` before sending them: the client asks the server its version once, only when a record has a list.
 

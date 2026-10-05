@@ -237,7 +237,7 @@ public class ChromaCollectionClient
 	/// </summary>
 	/// <param name="ids">The ids of the records.</param>
 	/// <param name="embeddings">The embeddings, one for each id, or null for none.</param>
-	/// <param name="metadatas">The metadata, one for each id, or null for none.</param>
+	/// <param name="metadatas">The metadata, one for each id, or null for none. A null value throws an <c>ArgumentException</c>.</param>
 	/// <param name="documents">The documents, one for each id, or null for none.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task AddAsync(IReadOnlyList<string> ids, IReadOnlyList<ReadOnlyMemory<float>>? embeddings = null, IReadOnlyList<IReadOnlyDictionary<string, object>>? metadatas = null, IReadOnlyList<string>? documents = null, CancellationToken cancellationToken = default)
@@ -247,12 +247,14 @@ public class ChromaCollectionClient
 	/// Adds the records; by default, unless <c>WithBatchSplitting(false)</c>, they go in batches of the <c>max_batch_size</c> of
 	/// the server. Since Chroma 1.0.16 the server requires the embeddings: the client does not compute them. It computes the sparse
 	/// vectors of the <c>chroma_bm25</c> indexes of the schema that have a source key, as the Python client of Chroma does.
+	/// A null value in the metadata throws an <c>ArgumentException</c>: Chroma 0.x would drop the key, and 1.x rejects the request.
 	/// </summary>
 	/// <param name="records">The records: ids, and embeddings, metadatas, documents and URIs when given.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task AddAsync(ChromaRecords records, CancellationToken cancellationToken = default)
 		=> Operation("add", async () =>
 		{
+			ChromaRequestChecks.NoNullValues(records.Metadatas, nameof(records));
 			records = WithSparseVectors(records);
 			await CheckListsInMetadata(records, cancellationToken);
 			var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
@@ -279,7 +281,8 @@ public class ChromaCollectionClient
 	/// </summary>
 	/// <param name="ids">The ids of the records.</param>
 	/// <param name="embeddings">The embeddings, one for each id, or null for none.</param>
-	/// <param name="metadatas">The metadata, one for each id, or null for none.</param>
+	/// <param name="metadatas">The metadata, one for each id, or null for none. A null value deletes the key on every tested Chroma:
+	/// write it <c>null!</c>, as the type does not allow it.</param>
 	/// <param name="documents">The documents, one for each id, or null for none.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task UpdateAsync(IReadOnlyList<string> ids, IReadOnlyList<ReadOnlyMemory<float>>? embeddings = null, IReadOnlyList<IReadOnlyDictionary<string, object>>? metadatas = null, IReadOnlyList<string>? documents = null, CancellationToken cancellationToken = default)
@@ -288,7 +291,8 @@ public class ChromaCollectionClient
 	/// <summary>
 	/// Updates the records with the ids; by default, unless <c>WithBatchSplitting(false)</c>, they go in batches of the
 	/// <c>max_batch_size</c> of the server. The client computes the sparse vectors of the <c>chroma_bm25</c> indexes of the schema
-	/// that have a source key, as the Python client of Chroma does.
+	/// that have a source key, as the Python client of Chroma does. A null value in the metadata deletes the key on every tested
+	/// Chroma: write it <c>null!</c>, as the type does not allow it.
 	/// </summary>
 	/// <param name="records">The records: ids, and embeddings, metadatas, documents and URIs when given.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
@@ -322,7 +326,8 @@ public class ChromaCollectionClient
 	/// </summary>
 	/// <param name="ids">The ids of the records.</param>
 	/// <param name="embeddings">The embeddings, one for each id, or null for none.</param>
-	/// <param name="metadatas">The metadata, one for each id, or null for none.</param>
+	/// <param name="metadatas">The metadata, one for each id, or null for none. A null value deletes the key on every tested Chroma:
+	/// write it <c>null!</c>, as the type does not allow it.</param>
 	/// <param name="documents">The documents, one for each id, or null for none.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task UpsertAsync(IReadOnlyList<string> ids, IReadOnlyList<ReadOnlyMemory<float>>? embeddings = null, IReadOnlyList<IReadOnlyDictionary<string, object>>? metadatas = null, IReadOnlyList<string>? documents = null, CancellationToken cancellationToken = default)
@@ -332,7 +337,8 @@ public class ChromaCollectionClient
 	/// Adds the records, or updates the ones that already exist; by default, unless <c>WithBatchSplitting(false)</c>, they go in
 	/// batches of the <c>max_batch_size</c> of the server. Since Chroma 1.0.16 the server requires the embeddings: the client does
 	/// not compute them. It computes the sparse vectors of the <c>chroma_bm25</c> indexes of the schema that have a source key, as
-	/// the Python client of Chroma does.
+	/// the Python client of Chroma does. A null value in the metadata deletes the key of a record that exists, on every tested
+	/// Chroma, and a new record is added without it: write it <c>null!</c>, as the type does not allow it.
 	/// </summary>
 	/// <param name="records">The records: ids, and embeddings, metadatas, documents and URIs when given.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>

@@ -15,7 +15,8 @@ public class ChromaCollectionQueryEntry
 	/// </summary>
 	public float? Distance { get; init; }
 	/// <summary>
-	/// The metadata of the record, when the query included the metadatas.
+	/// The metadata of the record, when the query included the metadatas. Null also for a record without metadata keys, as every
+	/// tested Chroma returns it.
 	/// </summary>
 	public IReadOnlyDictionary<string, object>? Metadata { get; init; }
 	/// <summary>

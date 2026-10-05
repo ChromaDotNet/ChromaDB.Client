@@ -42,6 +42,25 @@ public class MetadataTests : ChromaTestsBase
 		Assert.That(found.Select(e => e.Id), Is.EqualTo(new[] { "a" }));
 	}
 
+	// A null deletes the key in an update and in an upsert on every tested Chroma, and a record left without keys comes back with
+	// Metadata null; AddAsync rejects a null before the request.
+	[Test]
+	public async Task NullValuesDeleteKeys()
+	{
+		var client = await Init(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact));
+		await client.AddAsync(new ChromaRecords(["a", "b"])
+		{
+			Embeddings = [Embedding1, Embedding2],
+			Metadatas = [new Dictionary<string, object> { ["x"] = 1L, ["y"] = 2L }, new Dictionary<string, object> { ["x"] = 1L }],
+		});
+		await client.UpdateAsync(new ChromaRecords(["a"]) { Metadatas = [new Dictionary<string, object> { ["x"] = null! }] });
+		await client.UpsertAsync(new ChromaRecords(["b"]) { Embeddings = [Embedding2], Metadatas = [new Dictionary<string, object> { ["x"] = null! }] });
+		var records = (await client.GetAsync(["a", "b"], include: ChromaGetInclude.Metadatas)).ToDictionary(x => x.Id, x => x.Metadata);
+		Assert.That(records["a"], Is.EquivalentTo(new Dictionary<string, object> { ["y"] = 2L }));
+		Assert.That(records["b"], Is.Null);
+		Assert.That(() => client.AddAsync(new ChromaRecords(["c"]) { Embeddings = [Embedding1], Metadatas = [new Dictionary<string, object> { ["x"] = null! }] }), Throws.ArgumentException);
+	}
+
 	[Test]
 	public async Task DatesStayStringsByDefault()
 	{

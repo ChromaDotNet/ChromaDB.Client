@@ -58,6 +58,18 @@ public class RequestValuesTests
 		Assert.That(() => collection.UpdateAsync(["a"], metadatas: [new Dictionary<string, object> { ["n"] = Array.Empty<long>() }]), Throws.ArgumentException);
 	}
 
+	// A null value deletes the key in an update or an upsert, on every tested Chroma; a new record has none to delete: Chroma 0.x
+	// drops the key and 1.x rejects the request, so AddAsync rejects it before.
+	[Test]
+	public void NullValuesInRecords()
+	{
+		var withNull = new Dictionary<string, object> { ["a"] = null!, ["b"] = 1L };
+		Assert.That(() => Collection(new NoRequests()).AddAsync(["a"], [Embedding], [withNull]), Throws.ArgumentException.With.Message.Contains("\"a\""));
+		var collection = Collection(new PreFlightOnly());
+		Assert.That(() => collection.UpdateAsync(["a"], metadatas: [withNull]), Throws.InvalidOperationException.With.Message.Contains("/update"));
+		Assert.That(() => collection.UpsertAsync(["a"], [Embedding], [withNull]), Throws.InvalidOperationException.With.Message.Contains("/upsert"));
+	}
+
 	// No Chroma stores a list in the metadata of a collection: 0.x and 1.0 to 1.4 reject it, Chroma Cloud answers 500
 	// and 1.5.9 closes the connection.
 	[Test]

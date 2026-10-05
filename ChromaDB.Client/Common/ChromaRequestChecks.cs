@@ -31,6 +31,30 @@ internal static class ChromaRequestChecks
 		}
 	}
 
+	// A null value in the metadata of a new record: Chroma 0.x drops the key without an error, and 1.x rejects the request with
+	// 422. In an update or an upsert a null deletes the key on every tested Chroma, so only AddAsync rejects it.
+	public static void NoNullValues(IReadOnlyList<IReadOnlyDictionary<string, object>?>? metadatas, string paramName)
+	{
+		if (metadatas is null)
+		{
+			return;
+		}
+		foreach (var metadata in metadatas)
+		{
+			if (metadata is null)
+			{
+				continue;
+			}
+			foreach (var pair in metadata)
+			{
+				if (pair.Value is null)
+				{
+					throw new ArgumentException($"The metadata key \"{pair.Key}\" is null: a null deletes a key in UpdateAsync and UpsertAsync, and a new record has none to delete; Chroma 0.x would drop the key, and 1.x rejects the request.", paramName);
+				}
+			}
+		}
+	}
+
 	// No Chroma stores a list in the metadata of a collection: 0.x and 1.0 to 1.4 reject it, Chroma Cloud answers 500
 	// and 1.5.9 closes the connection.
 	public static void NoLists(IReadOnlyDictionary<string, object>? metadata, string paramName)
