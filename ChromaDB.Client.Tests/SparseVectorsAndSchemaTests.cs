@@ -310,7 +310,7 @@ public class SparseVectorsAndSchemaTests
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, "true"));
 		await CollectionClient(server, schema).Add(new ChromaRecords(["a"]) { Documents = ["apple pie"] });
-		Assert.That(server.Requests.Single().Body.TryGetProperty("metadatas", out var metadatas) ? metadatas.ValueKind : JsonValueKind.Undefined, Is.AnyOf(JsonValueKind.Null, JsonValueKind.Undefined));
+		Assert.That(server.Requests.Single(x => x.Path.EndsWith("/add")).Body.TryGetProperty("metadatas", out var metadatas) ? metadatas.ValueKind : JsonValueKind.Undefined, Is.AnyOf(JsonValueKind.Null, JsonValueKind.Undefined));
 	}
 
 	// Another function: the client cannot compute its vectors, so it throws before sending, unless the metadata has them.

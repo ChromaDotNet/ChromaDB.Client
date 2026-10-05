@@ -110,9 +110,19 @@ internal sealed class ChromaHttpClient
 		return path.EndsWith("/") ? uri : new Uri(path + "/");
 	}
 
-	// From pre-flight-checks, asked like the version. Null for Chroma 0.4.10, which has no pre-flight-checks.
+	// From pre-flight-checks, asked like the version. Null for Chroma 0.4.10, which has no pre-flight-checks, and when the server
+	// cannot tell: batch splitting is on by default, and the records then go in one request, as without it.
 	public async Task<int?> GetMaxBatchSize(CancellationToken cancellationToken)
-		=> (await GetPreFlightChecks(cancellationToken))?.MaxBatchSize is > 0 and var limit ? limit : null;
+	{
+		try
+		{
+			return (await GetPreFlightChecks(cancellationToken))?.MaxBatchSize is > 0 and var limit ? limit : null;
+		}
+		catch (ChromaException)
+		{
+			return null;
+		}
+	}
 
 	// Chroma 1.0.13 and later declare that add, update and upsert take embeddings as base64 strings; the earlier ones reject them.
 	// Base64 only makes requests smaller: when the server cannot tell, the embeddings go as numbers, which every server takes.

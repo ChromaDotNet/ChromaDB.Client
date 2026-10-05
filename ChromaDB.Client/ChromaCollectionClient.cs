@@ -69,14 +69,15 @@ public class ChromaCollectionClient
 		=> (await Get([id], where: where, whereDocument: whereDocument, include: include, cancellationToken: cancellationToken)).FirstOrDefault();
 
 	/// <summary>
-	/// Gets the records selected by the ids and the filters, a page at a time with <c>limit</c> and <c>offset</c>.
-	/// Without <c>include</c>, the metadatas and the documents are included. With <c>WithBatchSplitting</c>, more records than
-	/// the batch size are read in pages, ids beyond it in batches: Chroma Cloud answers at most 300 records, without an error.
+	/// Gets the records selected by the ids and the filters, a page at a time with <c>limit</c> and <c>offset</c>. Without
+	/// <c>include</c>, the metadatas and the documents are included. By default, unless <c>WithBatchSplitting(false)</c>, more
+	/// records than the batch size are read in pages, ids beyond it in batches: Chroma Cloud answers at most 300 records, without
+	/// an error.
 	/// </summary>
 	public Task<List<ChromaCollectionEntry>> Get(List<string>? ids = null, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, int? limit = null, int? offset = null, ChromaGetInclude? include = null, CancellationToken cancellationToken = default)
 		=> Operation("get", async () =>
 		{
-			// With WithBatchSplitting, more records than the batch size come in pages: Chroma Cloud answers at most 300 records, without
+			// With batch splitting, on by default, more records than the batch size come in pages: Chroma Cloud answers at most 300 records, without
 			// an error. The ids go in batches, each read whole, and the limit and the offset apply to all of them together; without ids
 			// beyond the batch size, pages of the batch size follow the offset until the limit or a page that is not full.
 			if (!_httpClient.BatchSplitting || await BatchSize(cancellationToken) is not { } size
@@ -184,9 +185,9 @@ public class ChromaCollectionClient
 		=> Add(new ChromaRecords(ids) { Embeddings = embeddings, Metadatas = metadatas, Documents = documents }, cancellationToken);
 
 	/// <summary>
-	/// Adds the records; with <c>WithBatchSplitting</c> they go in batches of the <c>max_batch_size</c> of the server.
-	/// Since Chroma 1.0.16 the server requires the embeddings: the client does not compute them. It computes the sparse vectors
-	/// of the <c>chroma_bm25</c> indexes of the schema that have a source key, as the Python client of Chroma does.
+	/// Adds the records; by default, unless <c>WithBatchSplitting(false)</c>, they go in batches of the <c>max_batch_size</c> of
+	/// the server. Since Chroma 1.0.16 the server requires the embeddings: the client does not compute them. It computes the sparse
+	/// vectors of the <c>chroma_bm25</c> indexes of the schema that have a source key, as the Python client of Chroma does.
 	/// </summary>
 	public Task Add(ChromaRecords records, CancellationToken cancellationToken = default)
 		=> Operation("add", async () =>
@@ -219,9 +220,9 @@ public class ChromaCollectionClient
 		=> Update(new ChromaRecords(ids) { Embeddings = embeddings, Metadatas = metadatas, Documents = documents }, cancellationToken);
 
 	/// <summary>
-	/// Updates the records with the ids; with <c>WithBatchSplitting</c> they go in batches of the <c>max_batch_size</c>
-	/// of the server. The client computes the sparse vectors of the <c>chroma_bm25</c> indexes of the schema that have a source
-	/// key, as the Python client of Chroma does.
+	/// Updates the records with the ids; by default, unless <c>WithBatchSplitting(false)</c>, they go in batches of the
+	/// <c>max_batch_size</c> of the server. The client computes the sparse vectors of the <c>chroma_bm25</c> indexes of the schema
+	/// that have a source key, as the Python client of Chroma does.
 	/// </summary>
 	public Task Update(ChromaRecords records, CancellationToken cancellationToken = default)
 		=> Operation("update", async () =>
@@ -255,10 +256,10 @@ public class ChromaCollectionClient
 		=> Upsert(new ChromaRecords(ids) { Embeddings = embeddings, Metadatas = metadatas, Documents = documents }, cancellationToken);
 
 	/// <summary>
-	/// Adds the records, or updates the ones that already exist; with <c>WithBatchSplitting</c> they go in batches of
-	/// the <c>max_batch_size</c> of the server. Since Chroma 1.0.16 the server requires the embeddings: the client does
-	/// not compute them. It computes the sparse vectors of the <c>chroma_bm25</c> indexes of the schema that have a source
-	/// key, as the Python client of Chroma does.
+	/// Adds the records, or updates the ones that already exist; by default, unless <c>WithBatchSplitting(false)</c>, they go in
+	/// batches of the <c>max_batch_size</c> of the server. Since Chroma 1.0.16 the server requires the embeddings: the client does
+	/// not compute them. It computes the sparse vectors of the <c>chroma_bm25</c> indexes of the schema that have a source key, as
+	/// the Python client of Chroma does.
 	/// </summary>
 	public Task Upsert(ChromaRecords records, CancellationToken cancellationToken = default)
 		=> Operation("upsert", async () =>
@@ -345,7 +346,7 @@ public class ChromaCollectionClient
 	private static ChromaException CannotEmbed(ChromaSparseVectorIndex index)
 		=> new($"The sparse vectors of \"{index.Key}\" come from the embedding function \"{index.EmbeddingFunction}\" of the schema, which the client cannot compute: it computes chroma_bm25. Give the sparse vectors yourself.");
 
-	// With ChromaConfigurationOptions.WithBatchSplitting, records beyond the max_batch_size of the server go in more requests.
+	// With batch splitting, on by default, records beyond the max_batch_size of the server go in more requests.
 	// Up to Chroma 1.0.13 a request beyond it fails; later versions accept it, but still declare the limit.
 	private async Task<List<ChromaRecords>> Batches(ChromaRecords records, CancellationToken cancellationToken)
 	{
@@ -398,8 +399,8 @@ public class ChromaCollectionClient
 			or System.Collections.IEnumerable and not string and not System.Collections.IDictionary;
 
 	/// <summary>
-	/// Deletes the records with the ids, sending the filters with them when given; with <c>WithBatchSplitting</c> the
-	/// ids go in batches of the <c>max_batch_size</c> of the server.
+	/// Deletes the records with the ids, sending the filters with them when given; by default, unless
+	/// <c>WithBatchSplitting(false)</c>, the ids go in batches of the <c>max_batch_size</c> of the server.
 	/// </summary>
 	public Task Delete(List<string> ids, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, CancellationToken cancellationToken = default)
 		=> Operation("delete", async () =>

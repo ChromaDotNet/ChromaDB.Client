@@ -60,7 +60,7 @@ public class Base64AndLimitsTests
 	public async Task NoPreFlightChecksWithoutEmbeddings()
 	{
 		var handler = new Handler(WithBase64);
-		await Client(Options, handler).Update(["a"], documents: ["d"]);
+		await Client(Options.WithBatchSplitting(false), handler).Update(["a"], documents: ["d"]);
 		Assert.That(handler.Paths.Select(Last), Is.EqualTo(new[] { "update" }));
 	}
 

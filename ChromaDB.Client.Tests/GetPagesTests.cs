@@ -18,12 +18,12 @@ public class GetPagesTests
 		Assert.That(server.Pages, Is.EqualTo(new (int?, int?, int?)[] { (null, 3, 0), (null, 3, 3), (null, 3, 6) }));
 	}
 
-	// Without WithBatchSplitting, one request, and the server leaves records out.
+	// With WithBatchSplitting(false), one request, and the server leaves records out.
 	[Test]
 	public async Task OneRequestWithoutBatchSplitting()
 	{
 		var server = new Server(records: 7, cap: 3);
-		var entries = await new ChromaCollectionClient(Guid.Empty, "c", new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(server)).Get();
+		var entries = await new ChromaCollectionClient(Guid.Empty, "c", new ChromaConfigurationOptions("http://localhost:8000").WithBatchSplitting(false), new HttpClient(server)).Get();
 		Assert.That(entries.Select(x => x.Id), Is.EqualTo(Ids(0, 3)));
 		Assert.That(server.Pages, Is.EqualTo(new (int?, int?, int?)[] { (null, null, null) }));
 	}

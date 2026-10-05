@@ -150,11 +150,11 @@ var apples = await collectionClient.Get(whereDocument: ChromaWhereDocumentOperat
 
 ## Large writes
 
-```csharp
-var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithBatchSplitting();
-```
+By default `Add`, `Update`, `Upsert` and `Delete` send their records in batches of the `max_batch_size` of the server, one request after the other; the client asks `pre-flight-checks` once. If a batch fails, the earlier ones stay written. Chroma 0.4.10 has no `pre-flight-checks`, and a server whose answer the client cannot read gets the records in one request too. `WithBatchSplitting(false)` sends them in one request, as before 2.8.0: up to Chroma 1.0.13 a request beyond the limit fails, later versions accept it.
 
-With `WithBatchSplitting`, `Add`, `Update`, `Upsert` and `Delete` send their records in batches of the `max_batch_size` of the server, one request after the other; the client asks `pre-flight-checks` once. If a batch fails, the earlier ones stay written. Without it, as by default, the records go in one request: up to Chroma 1.0.13 a request beyond the limit fails, later versions accept it. Chroma 0.4.10 has no `pre-flight-checks`, so its records always go in one request.
+```csharp
+var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithBatchSplitting(false);
+```
 
 `Get` reads more records than the batch size in pages: pages of the batch size from the offset, until the limit or the last record, and ids beyond the batch size in batches, with the limit and the offset applied to all of them together. The pages are separate requests: records written in between can be read twice or missed.
 

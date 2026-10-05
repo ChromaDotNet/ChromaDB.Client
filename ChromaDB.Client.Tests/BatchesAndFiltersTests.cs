@@ -19,14 +19,23 @@ public class BatchesAndFiltersTests
 		Uris = ["u1", null, "u3", null, "u5"],
 	};
 
-	// Without the option the records go in one request, as before; pre-flight-checks is asked only for the base64 of the embeddings.
+	// With WithBatchSplitting(false) the records go in one request; pre-flight-checks is asked only for the base64 of the embeddings.
 	[Test]
-	public async Task OneRequestByDefault()
+	public async Task OneRequestWithoutBatchSplitting()
 	{
 		var handler = new Handler("""{"max_batch_size":2}""");
-		await Client(Options, handler).Add(FiveRecords());
+		await Client(Options.WithBatchSplitting(false), handler).Add(FiveRecords());
 		Assert.That(handler.Paths.Select(Last), Is.EqualTo(new[] { "pre-flight-checks", "add" }));
 		Assert.That(handler.Bodies.Single().GetProperty("ids").GetArrayLength(), Is.EqualTo(5));
+	}
+
+	// Batch splitting is on by default.
+	[Test]
+	public async Task BatchesByDefault()
+	{
+		var handler = new Handler("""{"max_batch_size":2}""");
+		await Client(new ChromaConfigurationOptions("http://localhost:8000"), handler).Add(FiveRecords());
+		Assert.That(handler.Bodies.Select(b => b.GetProperty("ids").GetArrayLength()), Is.EqualTo(new[] { 2, 2, 1 }));
 	}
 
 	[Test]
