@@ -1,6 +1,6 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
+		<TargetFrameworks>netstandard2.0;net462;net8.0</TargetFrameworks>
 		<LangVersion>latest</LangVersion>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
@@ -39,14 +39,19 @@
 		<None Include="..\LICENSE" Pack="true" PackagePath="\" />
 		<None Include="..\THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
-	<ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
+	<ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0' Or '$(TargetFramework)'=='net462'">
 		<PackageReference Include="PolySharp" Version="1.14.1">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="System.Memory" Version="4.5.5" />
+		<PackageReference Include="System.Memory" Version="4.6.3" />
 		<!-- ActivitySource and Meter, in the runtime from .NET 5. -->
-		<PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
-		<PackageReference Include="System.Text.Json" Version="8.0.5" />
+		<PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.0.12" />
+		<PackageReference Include="System.Text.Json" Version="10.0.12" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)'=='net462'">
+		<Reference Include="System.Net.Http" />
+		<!-- The implicit usings of .NET Framework do not have it. -->
+		<Using Include="System.Net.Http" />
 	</ItemGroup>
 </Project>

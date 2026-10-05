@@ -178,7 +178,7 @@ internal static partial class HttpClientHelpers
 		{
 			var deserialized = JsonSerializer.Deserialize(errorMessageBody, DeserializerJsonSerializerOptions.TypeInfo<GeneralError>())!;
 			// v1 API: {"error": "ValueError('...')"}: the kind and the message in one string.
-#if NETSTANDARD2_0
+#if !NET
 			var match = ParseErrorMessageBodyRegex.Match(deserialized?.Error ?? string.Empty);
 #else
 			var match = ParseErrorMessageBodyRegex().Match(deserialized?.Error ?? string.Empty);
@@ -221,7 +221,7 @@ internal static partial class HttpClientHelpers
 
 	private static List<string> PrepareQueryParams(string input)
 	{
-#if NETSTANDARD2_0
+#if !NET
 		return PrepareQueryParamsRegex.Matches(input)
 			.Cast<Match>()
 			.Select(x => x.Value)
@@ -233,14 +233,14 @@ internal static partial class HttpClientHelpers
 #endif
 	}
 
-#if NETSTANDARD2_0
+#if !NET
 	private static readonly Regex ParseErrorMessageBodyRegex = new(@"^(?<errorType>\w*)\('(?<errorMessage>.*)'\)", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 #else
 	[GeneratedRegex(@"^(?<errorType>\w*)\('(?<errorMessage>.*)'\)", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant)]
 	private static partial Regex ParseErrorMessageBodyRegex();
 #endif
 
-#if NETSTANDARD2_0
+#if !NET
 		private static readonly Regex PrepareQueryParamsRegex = new(@"{[a-zA-Z0-9\-_]+}", RegexOptions.CultureInvariant | RegexOptions.Compiled);
 #else
 	[GeneratedRegex(@"{[a-zA-Z0-9\-_]+}", RegexOptions.CultureInvariant)]
