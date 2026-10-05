@@ -1,8 +1,8 @@
-# Migration Guide: v1.x to v2.0
+# Migration Guide: 1.x to 2.x
 
 ## Overview
 
-ChromaDB.Client v2.0 has been updated to support the ChromaDB v2 API. This is a **breaking change** that requires updating your base URI configuration.
+ChromaDotNet.Client 2.x uses the v2 API of Chroma, and from 2.8.0 its API follows the .NET conventions. Both are **breaking changes**: the URI, the package id and the method names change.
 
 This fork publishes the package as `ChromaDotNet.Client`; the namespaces stay `ChromaDB.Client`.
 
@@ -40,7 +40,7 @@ Change your `ChromaConfigurationOptions` URI from `/api/v1/` to `/api/v2/`:
 var configOptions = new ChromaConfigurationOptions(uri: "http://localhost:8000/api/v1/");
 ```
 
-**After (v2.0):**
+**After (2.x):**
 ```csharp
 var configOptions = new ChromaConfigurationOptions(uri: "http://localhost:8000/api/v2/");
 ```
@@ -79,7 +79,7 @@ await collectionClient.Add(
 );
 ```
 
-**After (v2.0):**
+**After (2.8.0 and later):**
 ```csharp
 using ChromaDB.Client;
 
@@ -126,11 +126,14 @@ Console.WriteLine($"ChromaDB Server Version: {version}");
 | URL structure | None | Handled internally by the client |
 | Request/response | Low | `ChromaCollectionQueryEntry.Distance` is `float?`, `null` when the query does not include `ChromaQueryInclude.Distances` |
 | Method names | Medium | Add `Async` to the name of each asynchronous method: `GetOrCreateCollection` → `GetOrCreateCollectionAsync`, `Add` → `AddAsync`, `Query` → `QueryAsync` |
-| Cancellation | Low | Every async method takes an optional `CancellationToken`: rebuild, and turn a method group like `client.HeartbeatAsync` passed as a `Func<Task>` into `() => client.HeartbeatAsync()` |
+| Cancellation | Low | Every async method takes an optional `CancellationToken`: rebuild, and turn a method group like `client.Heartbeat` passed as a `Func<Task>` into `() => client.HeartbeatAsync()` |
 | Lists and dictionaries | Low | Parameters and results are `IReadOnlyList<T>` and `IReadOnlyDictionary<string, object>`: a `List<T>` or a collection expression still goes in, and metadata are written `new Dictionary<string, object> { ["key"] = value }` |
-| Records | Low | The embedding of a record is `Embedding`, its URI `Uri` |
+| Records | Low | The embedding of a record is `Embedding`, its URI `Uri`; `Data` is gone, as no Chroma server fills it |
 | Metadata values | Low | Strings come back as strings, lists as `List<object>`: `WithMetadataValues(ChromaMetadataValues.Inferred)` reads them as 1.x, dates as `DateTime` |
-| Filters | Low | `ChromaWhereOperator` and `ChromaWhereDocumentOperator`, as the methods take them |
+| Filters | Low | `ChromaWhere` and `ChromaWhereDocument` are gone: use `ChromaWhereOperator` and `ChromaWhereDocumentOperator`, the types the methods take |
+| Options constructor | Low | `defaultTenant:` and `defaultDatabase:` are now `tenant:` and `database:`: `new ChromaConfigurationOptions(uri, tenant: ..., database: ...)` |
+| Batches | Low | Writes go in batches of the `max_batch_size` of the server and `GetAsync` reads in pages; `WithBatchSplitting(false)` sends each of them in one request |
+| Errors | Low | Network errors, answers that are not the expected JSON and timeouts throw a `ChromaException`, with the original exception as `InnerException` |
 
 ## Need Help?
 

@@ -469,13 +469,20 @@ Each fixture deletes the collections and the databases its requests created, and
 
 ## Migrating from ChromaDB.Client 1.x
 
-- Use the `/api/v2/` URI, or just the address of the server. Chroma 1.x answers the v1 routes with `410 Gone`.
-- Namespaces do not change: the code keeps `using ChromaDB.Client;`, and `using ChromaDB.Client.Models;` for the models.
 - Replace the `ChromaDB.Client` package reference with `ChromaDotNet.Client`.
+- Namespaces do not change: the code keeps `using ChromaDB.Client;`, and `using ChromaDB.Client.Models;` for the models.
+- Use the `/api/v2/` URI, or just the address of the server. Chroma 1.x answers the v1 routes with `410 Gone`.
+- The asynchronous methods end in `Async`: `GetOrCreateCollection` → `GetOrCreateCollectionAsync`, `Add` → `AddAsync`, `Query` → `QueryAsync`, and so on.
+- Every async method takes an optional `CancellationToken` as its last parameter. Code compiled against 1.x has to be rebuilt, and a method group like `client.Heartbeat` passed as a `Func<Task>` becomes `() => client.HeartbeatAsync()`.
+- Parameters and results are `IReadOnlyList<T>` and `IReadOnlyDictionary<string, object>`: a `List<T>` or a collection expression still goes in, and metadata are written `new Dictionary<string, object> { ["key"] = value }`.
+- A record has `Embedding` and `Uri` instead of `Embeddings` and `Uris`; `Data` is gone.
 - `ChromaCollectionQueryEntry.Distance` is a `float?`: it is `null` when the query does not include `ChromaQueryInclude.Distances`.
-- Every async method takes an optional `CancellationToken` as its last parameter. Code compiled against 1.x has to be rebuilt, and a method group like `client.HeartbeatAsync` passed as a `Func<Task>` becomes `() => client.Heartbeat()`.
+- `new ChromaConfigurationOptions(uri, tenant: ..., database: ...)` replaces `defaultTenant:` and `defaultDatabase:`.
+- Strings in metadata stay strings and lists are `List<object>`: `WithMetadataValues(ChromaMetadataValues.Inferred)` reads them as 1.x, dates as `DateTime`.
+- `ChromaWhere` and `ChromaWhereDocument` are gone: use `ChromaWhereOperator` and `ChromaWhereDocumentOperator`.
+- Writes go in batches and `GetAsync` reads in pages: `WithBatchSplitting(false)` sends each of them in one request, as 1.x.
 
-The [migration guide](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/v2-migration/MIGRATION_GUIDE_V2.md) has the details.
+The [migration guide](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/v2-migration/MIGRATION_GUIDE_V2.md) has the details. From ChromaDotNet.Client 2.7.x, the changes of 2.8.0 are in the [release notes](https://github.com/ChromaDotNet/ChromaDB.Client/releases/tag/v2.8.0).
 
 ## Status
 
