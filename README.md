@@ -87,7 +87,8 @@ Console.WriteLine(entries[0].Uri);
 ## Querying some records only
 
 ```csharp
-var results = await collectionClient.QueryAsync(new ChromaQuery([new([1f, 0.5f, 0f])]) { Ids = ["a", "c"], NResults = 1 });
+var results = await collectionClient.QueryAsync(new ReadOnlyMemory<float>([1f, 0.5f, 0f]), nResults: 1, ids: ["a", "c"]);
+var same = await collectionClient.QueryAsync(new ChromaQuery([new([1f, 0.5f, 0f])]) { Ids = ["a", "c"], NResults = 1 });
 ```
 
 `ChromaQuery` holds the query embeddings, the number of results, the filters, what to include and the ids to search among. Chroma 1.0.0 and later search only the records with those ids. Chroma 0.x ignores them and searches all the records: when a result falls outside the ids, `QueryAsync` throws a `ChromaException` instead of returning it.
@@ -130,6 +131,18 @@ if (!await client.CollectionExistsAsync("my_collection"))
 When the 0.x servers reject a request with validation errors, the message lists them, like `body.n_results: Input should be a valid integer`.
 
 `CollectionExistsAsync` tells a missing collection from the other errors on every tested server: Chroma 1.x answers `404`, the 0.x servers `400` or `500`, always with "does not exist" in the message. Any other error, like a bare `404` from a wrong address, throws.
+
+## Mocks in tests
+
+`ChromaClient` and `ChromaCollectionClient` can be mocked, as in the Azure SDKs: their members are virtual, and a protected constructor makes a client without a server, for a subclass or a mocking library. Only the members it overrides work.
+
+```csharp
+sealed class FakeClient : ChromaClient
+{
+	public override Task<ChromaCollection> GetCollectionAsync(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+		=> Task.FromResult(new ChromaCollection(name));
+}
+```
 
 ## Filters
 

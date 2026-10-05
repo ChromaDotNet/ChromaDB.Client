@@ -21,7 +21,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// The options of this client, as it was created with them.
 	/// </summary>
-	public ChromaConfigurationOptions Options => _options;
+	public virtual ChromaConfigurationOptions Options => _options;
 
 	/// <summary>
 	/// A client that sends its requests with the given <c>HttpClient</c>, to the server of the options. It adds the credentials
@@ -49,6 +49,18 @@ public class ChromaClient : IDisposable
 		: this(options, CreateHttpClient(options, out var ownHttpClient))
 	{
 		_ownHttpClient = ownHttpClient;
+	}
+
+	/// <summary>
+	/// For a mock in tests, made by a subclass or by a mocking library, as in the Azure SDKs: a client without options and
+	/// without an <c>HttpClient</c>, whose members are all virtual. It sends no request: only the members it overrides work.
+	/// </summary>
+	protected ChromaClient()
+	{
+		_options = null!;
+		_httpClient = null!;
+		_currentTenant = null!;
+		_currentDatabase = null!;
 	}
 
 	// An HttpClient of its own, closed when the options are rejected, like basic authentication with a token in the Authorization header.
@@ -138,7 +150,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// The collections in the tenant and database of the options, or in the ones it is given.
 	/// </summary>
-	public Task<IReadOnlyList<ChromaCollection>> ListCollectionsAsync(string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public virtual Task<IReadOnlyList<ChromaCollection>> ListCollectionsAsync(string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation<IReadOnlyList<ChromaCollection>>("list_collections", null, tenant, database, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
@@ -152,7 +164,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// One page of the collections, in the order of the server.
 	/// </summary>
-	public Task<IReadOnlyList<ChromaCollection>> ListCollectionsAsync(int limit, int offset = 0, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public virtual Task<IReadOnlyList<ChromaCollection>> ListCollectionsAsync(int limit, int offset = 0, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation<IReadOnlyList<ChromaCollection>>("list_collections", null, tenant, database, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
@@ -170,7 +182,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// The collection with the given name, in the tenant and database of the options, or in the ones it is given.
 	/// </summary>
-	public Task<ChromaCollection> GetCollectionAsync(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public virtual Task<ChromaCollection> GetCollectionAsync(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("get_collection", name, tenant, database, () => GetCollectionCore(name, tenant, database, cancellationToken));
 
 	// Without a span of its own: CollectionExists has one, where a missing collection is not an error.
@@ -190,7 +202,7 @@ public class ChromaClient : IDisposable
 	/// servers, always with "does not exist" in the message, also when the tenant or the database is missing. Any other error,
 	/// like a bare <c>404</c> from a wrong address, still throws.
 	/// </summary>
-	public Task<bool> CollectionExistsAsync(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public virtual Task<bool> CollectionExistsAsync(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("collection_exists", name, tenant, database, async () =>
 		{
 			try
@@ -209,7 +221,7 @@ public class ChromaClient : IDisposable
 	/// The same client, reading metadata values another way: same <c>HttpClient</c> and options, and what it learned about the
 	/// server. No request is sent, and this client does not change.
 	/// </summary>
-	public ChromaClient WithMetadataValues(ChromaMetadataValues metadataValues)
+	public virtual ChromaClient WithMetadataValues(ChromaMetadataValues metadataValues)
 		=> new(_options.WithMetadataValues(metadataValues), _httpClient.WithMetadataValues(metadataValues));
 
 	/// <summary>
@@ -221,7 +233,7 @@ public class ChromaClient : IDisposable
 	/// the one of the options stays as it is, as in the Python client. The same <c>HttpClient</c> and what this client learned about
 	/// the server are kept, and this client does not change.
 	/// </summary>
-	public async Task<ChromaClient> WithTenantAndDatabaseFromIdentityAsync(CancellationToken cancellationToken = default)
+	public virtual async Task<ChromaClient> WithTenantAndDatabaseFromIdentityAsync(CancellationToken cancellationToken = default)
 	{
 		var identity = await GetUserIdentityAsync(cancellationToken);
 		var tenant = identity.Tenant is { Length: > 0 } and not "*" ? identity.Tenant : null;
@@ -243,21 +255,21 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// A client for the records of the collection, with the options and the <c>HttpClient</c> of this client: no request is sent.
 	/// </summary>
-	public ChromaCollectionClient GetCollectionClient(ChromaCollection collection)
+	public virtual ChromaCollectionClient GetCollectionClient(ChromaCollection collection)
 		=> new(collection, _options, _httpClient);
 
 	/// <summary>
 	/// The same as the overload that takes a <c>ChromaCollection</c>, without getting the collection first: the requests on
 	/// a collection need only its id.
 	/// </summary>
-	public ChromaCollectionClient GetCollectionClient(Guid collectionId, string collectionName)
+	public virtual ChromaCollectionClient GetCollectionClient(Guid collectionId, string collectionName)
 		=> new(new ChromaCollection(collectionName) { Id = collectionId }, _options, _httpClient);
 
 	/// <summary>
 	/// The collection with the given id, in the tenant and database of the options, or in the ones it is given. It needs the v2 API
 	/// of Chroma 1.5.7 or later: the older servers answer <c>404 Not Found</c>.
 	/// </summary>
-	public Task<ChromaCollection> GetCollectionByIdAsync(Guid id, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public virtual Task<ChromaCollection> GetCollectionByIdAsync(Guid id, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("get_collection", null, tenant, database, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
@@ -272,7 +284,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// The heartbeat of the server, a time in nanoseconds.
 	/// </summary>
-	public Task<ChromaHeartbeat> HeartbeatAsync(CancellationToken cancellationToken = default)
+	public virtual Task<ChromaHeartbeat> HeartbeatAsync(CancellationToken cancellationToken = default)
 		=> ServerOperation("heartbeat", async () =>
 		{
 			return await _httpClient.Get<ChromaHeartbeat>(_httpClient.Routes.Heartbeat, new RequestQueryParams(), cancellationToken);
@@ -282,7 +294,7 @@ public class ChromaClient : IDisposable
 	/// Whether the server is ready to serve requests, from Chroma 1.0.0; a server that is not ready answers <c>503</c>,
 	/// a <c>ChromaException</c>.
 	/// </summary>
-	public Task<ChromaHealthcheck> HealthcheckAsync(CancellationToken cancellationToken = default)
+	public virtual Task<ChromaHealthcheck> HealthcheckAsync(CancellationToken cancellationToken = default)
 		=> ServerOperation("healthcheck", async () =>
 		{
 			return await _httpClient.Get<ChromaHealthcheck>(_httpClient.Routes.Healthcheck, new RequestQueryParams(), cancellationToken);
@@ -294,7 +306,7 @@ public class ChromaClient : IDisposable
 	/// this request, sent with an API key limited to one database and with an API key for the whole tenant, got <c>403</c>, also for
 	/// a collection of that tenant.
 	/// </summary>
-	public Task<ChromaCollection> GetCollectionByCrnAsync(string crn, CancellationToken cancellationToken = default)
+	public virtual Task<ChromaCollection> GetCollectionByCrnAsync(string crn, CancellationToken cancellationToken = default)
 		=> ServerOperation("get_collection", async () =>
 		{
 			var requestParams = new RequestQueryParams()
@@ -305,14 +317,14 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// Creates a collection with the given name and metadata, in the tenant and database of the options, or in the ones it is given.
 	/// </summary>
-	public Task<ChromaCollection> CreateCollectionAsync(string name, IReadOnlyDictionary<string, object>? metadata = null, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public virtual Task<ChromaCollection> CreateCollectionAsync(string name, IReadOnlyDictionary<string, object>? metadata = null, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> CreateCollectionAsync(new ChromaCollectionDefinition(name) { Metadata = metadata }, tenant, database, cancellationToken);
 
 	/// <summary>
 	/// Creates a collection from its definition, with its name, metadata and configuration, in the tenant and database of the
 	/// options, or in the ones it is given. The space of the configuration goes in the <c>hnsw:space</c> metadata.
 	/// </summary>
-	public Task<ChromaCollection> CreateCollectionAsync(ChromaCollectionDefinition definition, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public virtual Task<ChromaCollection> CreateCollectionAsync(ChromaCollectionDefinition definition, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("create_collection", definition.Name, tenant, database, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
@@ -348,14 +360,14 @@ public class ChromaClient : IDisposable
 	/// The collection with the given name, created when it does not exist, in the tenant and database of the options, or in
 	/// the ones it is given.
 	/// </summary>
-	public Task<ChromaCollection> GetOrCreateCollectionAsync(string name, IReadOnlyDictionary<string, object>? metadata = null, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public virtual Task<ChromaCollection> GetOrCreateCollectionAsync(string name, IReadOnlyDictionary<string, object>? metadata = null, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> GetOrCreateCollectionAsync(new ChromaCollectionDefinition(name) { Metadata = metadata }, tenant, database, cancellationToken);
 
 	/// <summary>
 	/// The collection with the name of the definition, created from the definition when it does not exist, in the tenant and
 	/// database of the options, or in the ones it is given. The space of the configuration goes in the <c>hnsw:space</c> metadata.
 	/// </summary>
-	public Task<ChromaCollection> GetOrCreateCollectionAsync(ChromaCollectionDefinition definition, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public virtual Task<ChromaCollection> GetOrCreateCollectionAsync(ChromaCollectionDefinition definition, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("get_or_create_collection", definition.Name, tenant, database, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
@@ -385,7 +397,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// Deletes the collection with the given name, in the tenant and database of the options, or in the ones it is given.
 	/// </summary>
-	public Task DeleteCollectionAsync(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public virtual Task DeleteCollectionAsync(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("delete_collection", name, tenant, database, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
@@ -400,7 +412,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// The version of the server. The 0.x servers send their own version; every Chroma 1.x answers <c>1.0.0</c>.
 	/// </summary>
-	public Task<string> GetVersionAsync(CancellationToken cancellationToken = default)
+	public virtual Task<string> GetVersionAsync(CancellationToken cancellationToken = default)
 		=> ServerOperation("get_version", async () =>
 		{
 			return await _httpClient.Get<string>(_httpClient.Routes.Version, new RequestQueryParams(), cancellationToken);
@@ -409,7 +421,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// The user the server sees for the credentials of the client, with its tenant and databases.
 	/// </summary>
-	public Task<ChromaUserIdentity> GetUserIdentityAsync(CancellationToken cancellationToken = default)
+	public virtual Task<ChromaUserIdentity> GetUserIdentityAsync(CancellationToken cancellationToken = default)
 		=> ServerOperation("get_user_identity", async () =>
 		{
 			return await _httpClient.Get<ChromaUserIdentity>(_httpClient.Routes.UserIdentity, new RequestQueryParams(), cancellationToken);
@@ -419,7 +431,7 @@ public class ChromaClient : IDisposable
 	/// The limits of the server from <c>pre-flight-checks</c>, like <c>max_batch_size</c>, the most records a single add, update,
 	/// upsert or delete can carry.
 	/// </summary>
-	public Task<ChromaPreFlightChecks> GetPreFlightChecksAsync(CancellationToken cancellationToken = default)
+	public virtual Task<ChromaPreFlightChecks> GetPreFlightChecksAsync(CancellationToken cancellationToken = default)
 		=> ServerOperation("get_pre_flight_checks", async () =>
 		{
 			return await _httpClient.Get<ChromaPreFlightChecks>(_httpClient.Routes.PreFlightChecks, new RequestQueryParams(), cancellationToken);
@@ -428,7 +440,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// Resets the server and returns its answer. Chroma Cloud does not allow it to an API key.
 	/// </summary>
-	public Task<bool> ResetAsync(CancellationToken cancellationToken = default)
+	public virtual Task<bool> ResetAsync(CancellationToken cancellationToken = default)
 		=> ServerOperation("reset", async () =>
 		{
 			return await _httpClient.Post<ResetRequest, bool>(_httpClient.Routes.Reset, null, new RequestQueryParams(), cancellationToken);
@@ -437,7 +449,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// The number of collections in the tenant and database of the options, or in the ones it is given.
 	/// </summary>
-	public Task<int> CountCollectionsAsync(string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public virtual Task<int> CountCollectionsAsync(string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("count_collections", null, tenant, database, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
@@ -451,7 +463,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// Creates a tenant with the given name. Chroma Cloud does not allow it to an API key.
 	/// </summary>
-	public Task CreateTenantAsync(string name, CancellationToken cancellationToken = default)
+	public virtual Task CreateTenantAsync(string name, CancellationToken cancellationToken = default)
 		=> TenantOperation("create_tenant", name, async () =>
 		{
 			var request = new CreateTenantRequest()
@@ -464,7 +476,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// The tenant with the given name, with the resource name that <c>UpdateTenantAsync</c> sets.
 	/// </summary>
-	public Task<ChromaTenant> GetTenantAsync(string name, CancellationToken cancellationToken = default)
+	public virtual Task<ChromaTenant> GetTenantAsync(string name, CancellationToken cancellationToken = default)
 		=> TenantOperation("get_tenant", name, async () =>
 		{
 			var requestParams = new RequestQueryParams()
@@ -475,7 +487,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// Sets the name of the tenant in the resource names of Chroma Cloud, like the CRN of a collection.
 	/// </summary>
-	public Task UpdateTenantAsync(string name, string resourceName, CancellationToken cancellationToken = default)
+	public virtual Task UpdateTenantAsync(string name, string resourceName, CancellationToken cancellationToken = default)
 		=> TenantOperation("update_tenant", name, async () =>
 		{
 			var requestParams = new RequestQueryParams()
@@ -490,7 +502,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// Creates a database with the given name, in the tenant of the options, or in the one it is given.
 	/// </summary>
-	public Task CreateDatabaseAsync(string name, string? tenant = null, CancellationToken cancellationToken = default)
+	public virtual Task CreateDatabaseAsync(string name, string? tenant = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("create_database", null, tenant, name, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
@@ -506,7 +518,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// The database with the given name, in the tenant of the options, or in the one it is given.
 	/// </summary>
-	public Task<ChromaDatabase> GetDatabaseAsync(string name, string? tenant = null, CancellationToken cancellationToken = default)
+	public virtual Task<ChromaDatabase> GetDatabaseAsync(string name, string? tenant = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("get_database", null, tenant, name, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
@@ -520,7 +532,7 @@ public class ChromaClient : IDisposable
 	/// The databases in the tenant of the options, or in the one it is given. It needs the v2 API of Chroma 0.6.3 or later:
 	/// the older servers answer <c>405 Method Not Allowed</c>.
 	/// </summary>
-	public Task<IReadOnlyList<ChromaDatabase>> ListDatabasesAsync(string? tenant = null, CancellationToken cancellationToken = default)
+	public virtual Task<IReadOnlyList<ChromaDatabase>> ListDatabasesAsync(string? tenant = null, CancellationToken cancellationToken = default)
 		=> TenantOperation<IReadOnlyList<ChromaDatabase>>("list_databases", tenant, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
@@ -532,7 +544,7 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// One page of the databases, in the order of the server.
 	/// </summary>
-	public Task<IReadOnlyList<ChromaDatabase>> ListDatabasesAsync(int limit, int offset = 0, string? tenant = null, CancellationToken cancellationToken = default)
+	public virtual Task<IReadOnlyList<ChromaDatabase>> ListDatabasesAsync(int limit, int offset = 0, string? tenant = null, CancellationToken cancellationToken = default)
 		=> TenantOperation<IReadOnlyList<ChromaDatabase>>("list_databases", tenant, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
@@ -549,7 +561,7 @@ public class ChromaClient : IDisposable
 	/// Deletes the database with the given name, in the tenant of the options, or in the one it is given. It needs the v2 API of
 	/// Chroma 0.6.3 or later: the older servers answer <c>405 Method Not Allowed</c>.
 	/// </summary>
-	public Task DeleteDatabaseAsync(string name, string? tenant = null, CancellationToken cancellationToken = default)
+	public virtual Task DeleteDatabaseAsync(string name, string? tenant = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("delete_database", null, tenant, name, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
