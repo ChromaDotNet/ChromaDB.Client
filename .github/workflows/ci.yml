@@ -157,8 +157,25 @@ jobs:
     - name: Run with NativeAOT
       run: ./aot/ChromaDB.Client.TrimmingTest http://localhost:8000 --lists
 
+  framework:
+    # The tests whose outcome depends on the runtime, on .NET Framework 4.8, where the client runs its net462 build and
+    # the runtime formats and parses numbers in its own way: ChromaDB.Client.FrameworkTests, with no server.
+    runs-on: windows-latest
+    name: .NET Framework
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Test on .NET Framework 4.8
+      run: dotnet test ChromaDB.Client.FrameworkTests -c ${{ env.CONFIGURATION }} --verbosity normal
+
   publish:
-    needs: [ci, trimming]
+    needs: [ci, trimming, framework]
     # Publishes the version tags: with the NUGET_API_KEY secret in the original repository, and with NuGet trusted
     # publishing where the NUGET_USER variable is set. The original repository publishes the default branch too; elsewhere
     # its pushes leave the packages as artifacts of the run.

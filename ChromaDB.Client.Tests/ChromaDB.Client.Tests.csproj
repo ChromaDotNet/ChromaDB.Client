@@ -26,9 +26,4 @@
 	  <ProjectReference Include="..\ChromaDB.Client.DependencyInjection\ChromaDB.Client.DependencyInjection.csproj" Condition="'$(ChromaClientTargetFramework)' == ''" />
 	  <ProjectReference Include="..\ChromaDB.Client.DependencyInjection\ChromaDB.Client.DependencyInjection.csproj" Condition="'$(ChromaClientTargetFramework)' != ''" SetTargetFramework="TargetFramework=$(ChromaClientTargetFramework)" />
 	</ItemGroup>
-	<ItemGroup Condition="'$(ChromaClientTargetFramework)' != ''">
-	  <!-- The netstandard2.0 build of the client references these versions, newer than the ones of .NET 8. -->
-	  <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.0.12" />
-	  <PackageReference Include="System.Text.Json" Version="10.0.12" />
-	</ItemGroup>
 </Project>

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<!-- The tests whose outcome depends on the runtime, on .NET Framework: there the client runs its net462 build, and the
+	     runtime parses and formats numbers in its own way. They need no server. Not in the solution, whose tests run on
+	     Linux: the CI runs this project on Windows. -->
+	<PropertyGroup>
+		<TargetFramework>net48</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
+		<PackageReference Include="NUnit" Version="4.1.0" />
+		<PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+		<Reference Include="System.Net.Http" />
+		<Using Include="System.Net.Http" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\ChromaDB.Client\ChromaDB.Client.csproj" />
+		<Compile Include="..\ChromaDB.Client.Tests\NumbersTests.cs" Link="NumbersTests.cs" />
+		<Compile Include="..\ChromaDB.Client.Tests\PathNamesTests.cs" Link="PathNamesTests.cs" />
+		<Compile Include="..\ChromaDB.Client.Tests\RequestValuesTests.cs" Link="RequestValuesTests.cs" />
+	</ItemGroup>
+</Project>
