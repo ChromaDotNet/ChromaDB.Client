@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
@@ -155,12 +156,125 @@ internal static class ChromaNumbers
 
 	private static double Pow10Double(int n) => PowersDouble[n + 55];
 
-	// A number of an answer, with the sign of -0.0, which .NET Framework drops when it parses "-0.0".
+	// A number of an answer, with the sign of -0.0, which .NET Framework drops when it parses "-0.0". On .NET Framework
+	// System.Text.Json parses with the runtime, which reads about one in 250 of the shortest texts of doubles, the ones
+	// Chroma writes, as the double next to it: there the digits are read here.
 	public static double ReadDouble(ref Utf8JsonReader reader)
 	{
+		if (!RuntimeShortest && reader.TokenType == JsonTokenType.Number)
+		{
+			ReadOnlySpan<byte> text = reader.HasValueSequence ? reader.ValueSequence.ToArray() : reader.ValueSpan;
+			return ParseDouble(text);
+		}
 		var value = reader.GetDouble();
 		return value == 0 && StartsWithMinus(ref reader) ? -0.0 : value;
 	}
+
+	// The double nearest to a JSON number, half to even, as the parsers of .NET Core 3.0 and later read it: with doubles
+	// when that is exact (up to 15 digits and 10^22, a single rounding), with exact integers otherwise.
+	internal static double ParseDouble(ReadOnlySpan<byte> text)
+	{
+		var i = 0;
+		var negative = text.Length > 0 && text[0] == (byte)'-';
+		if (negative) i++;
+		var digits = new StringBuilder(24);
+		var exponent = 0;
+		var fraction = false;
+		for (; i < text.Length; i++)
+		{
+			var c = text[i];
+			if (c >= (byte)'0' && c <= (byte)'9')
+			{
+				if (digits.Length > 0 || c != (byte)'0') digits.Append((char)c);
+				if (fraction) exponent--;
+			}
+			else if (c == (byte)'.')
+			{
+				fraction = true;
+			}
+			else
+			{
+				break;
+			}
+		}
+		if (i < text.Length)
+		{
+			i++;
+			var negativeExponent = false;
+			if (i < text.Length && (text[i] == (byte)'+' || text[i] == (byte)'-'))
+			{
+				negativeExponent = text[i] == (byte)'-';
+				i++;
+			}
+			var e = 0;
+			for (; i < text.Length; i++) e = Math.Min(e * 10 + (text[i] - (byte)'0'), 100000);
+			exponent += negativeExponent ? -e : e;
+		}
+		var length = digits.Length;
+		while (length > 0 && digits[length - 1] == '0')
+		{
+			length--;
+			exponent++;
+		}
+		double value;
+		if (length == 0 || length + exponent < -330)
+		{
+			value = 0;
+		}
+		else if (length + exponent > 310)
+		{
+			value = double.PositiveInfinity;
+		}
+		else if (length <= 15 && exponent >= -22 && exponent <= 22)
+		{
+			var mantissa = (double)long.Parse(digits.ToString(0, length), CultureInfo.InvariantCulture);
+			value = exponent >= 0 ? mantissa * ExactPowers[exponent] : mantissa / ExactPowers[-exponent];
+		}
+		else
+		{
+			value = Nearest(BigInteger.Parse(digits.ToString(0, length), CultureInfo.InvariantCulture), exponent);
+		}
+		return negative ? -value : value;
+	}
+
+	private static readonly double[] ExactPowers = [1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22];
+
+	// The double nearest to digits * 10^exponent.
+	private static double Nearest(BigInteger digits, int exponent)
+	{
+		var num = exponent >= 0 ? digits * Pow10(exponent) : digits;
+		var den = exponent >= 0 ? BigInteger.One : Pow10(-exponent);
+		// The power of two of the 53 bits of the mantissa: estimated, then corrected.
+		var e2 = (int)Math.Floor(BigInteger.Log(num, 2) - BigInteger.Log(den, 2)) - 52;
+		while (true)
+		{
+			if (e2 < -1074) e2 = -1074;
+			var q = BigInteger.DivRem(e2 >= 0 ? num : num << -e2, e2 >= 0 ? den << e2 : den, out var r);
+			if (q >= Two53)
+			{
+				e2++;
+				continue;
+			}
+			if (q < Two52 && e2 > -1074)
+			{
+				e2--;
+				continue;
+			}
+			var twice = (r * 2).CompareTo(e2 >= 0 ? den << e2 : den);
+			if (twice > 0 || twice == 0 && !q.IsEven) q++;
+			if (q == Two53)
+			{
+				q = Two52;
+				e2++;
+			}
+			if (e2 > 971) return double.PositiveInfinity;
+			var bits = q < Two52 ? (long)q : ((long)(e2 + 1075) << 52) | (long)(q - Two52);
+			return BitConverter.Int64BitsToDouble(bits);
+		}
+	}
+
+	private static readonly BigInteger Two52 = BigInteger.One << 52;
+	private static readonly BigInteger Two53 = BigInteger.One << 53;
 
 	public static float ReadSingle(ref Utf8JsonReader reader)
 	{

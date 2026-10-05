@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using ChromaDB.Client.Common;
 using ChromaDB.Client.Models;
 using NUnit.Framework;
@@ -51,13 +53,70 @@ public class NumbersTests
 		for (var e = -1074; e <= 1023; e++)
 		{
 			var value = Math.Pow(2, e);
-			Assert.That(double.Parse(ChromaNumbers.Format(value), CultureInfo.InvariantCulture), Is.EqualTo(value), "2^" + e);
+			Assert.That(ReadBack(ChromaNumbers.Format(value)), Is.EqualTo(value), "2^" + e);
 		}
 		for (var e = -149; e <= 127; e++)
 		{
 			var value = (float)Math.Pow(2, e);
 			Assert.That(float.Parse(ChromaNumbers.Format(value), CultureInfo.InvariantCulture), Is.EqualTo(value), "2^" + e);
 		}
+	}
+
+	// "R" writes the shortest digits on .NET Core 3.0 and later, not on .NET Framework.
+	static readonly bool RuntimeShortest = Environment.Version.Major is 3 or >= 5;
+
+	static int Bits(float value) => BitConverter.ToInt32(BitConverter.GetBytes(value), 0);
+
+	// A text read back as the client reads the answers: double.Parse of .NET Framework misreads some of the shortest.
+	static double ReadBack(string text) => RuntimeShortest ? double.Parse(text, CultureInfo.InvariantCulture) : ChromaNumbers.ParseDouble(Encoding.ASCII.GetBytes(text));
+
+	// The shortest texts that .NET Framework, and System.Text.Json on it, read as the double next to them; the bits
+	// are the ones of a parser that rounds right. The client reads them right on every runtime.
+	[TestCase("3.16E-322", 0x0000000000000040L)]
+	[TestCase("5.021723523791529E-285", 0x04E7E548B948ED8DL)]
+	[TestCase("3.915010753235773E-227", 0x10EDADA8022037F4L)]
+	[TestCase("9.002841324384607E-274", 0x073F2B7FA8C10637L)]
+	[TestCase("2.4703282292062328E-324", 0x0000000000000001L)]
+	[TestCase("1.7976931348623157E308", 0x7FEFFFFFFFFFFFFFL)]
+	[TestCase("2.2250738585072011E-308", 0x000FFFFFFFFFFFFFL)]
+	[TestCase("-0.0", unchecked((long)0x8000000000000000UL))]
+	public async Task NumbersInAnswers(string text, long bits)
+	{
+		Assert.That(BitConverter.DoubleToInt64Bits(ChromaNumbers.ParseDouble(Encoding.ASCII.GetBytes(text))), Is.EqualTo(bits));
+		var answer = "{\"ids\":[\"a\"],\"embeddings\":null,\"metadatas\":[{\"v\":" + text + ",\"l\":[" + text + "]}],\"documents\":null,\"uris\":null,\"include\":[\"metadatas\"]}";
+		using var http = new HttpClient(new Answer(answer));
+		var collection = new ChromaCollectionClient(Guid.NewGuid(), "c", new ChromaConfigurationOptions("http://localhost:8000").WithBatchSplitting(false), http);
+		var metadata = (await collection.GetAsync(include: ChromaGetInclude.Metadatas)).Single().Metadata!;
+		Assert.That(BitConverter.DoubleToInt64Bits((double)metadata["v"]), Is.EqualTo(bits));
+		Assert.That(BitConverter.DoubleToInt64Bits((double)((List<object>)metadata["l"])[0]), Is.EqualTo(bits));
+	}
+
+	// The text of 80,000 doubles and floats from a generator that gives the same numbers on every runtime: the same on
+	// .NET 8, where "R" gives the digits, and on .NET Framework, where they come from the exact value and from doubles.
+	[Test]
+	public void SameTextOnEveryRuntime()
+	{
+		ulong state = 20261005;
+		ulong Next()
+		{
+			var z = state += 0x9E3779B97F4A7C15UL;
+			z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL;
+			z = (z ^ (z >> 27)) * 0x94D049BB133111EBUL;
+			return z ^ (z >> 31);
+		}
+		var text = new StringBuilder();
+		for (var i = 0; i < 20000; i++)
+		{
+			var d = BitConverter.Int64BitsToDouble((long)Next());
+			if (!double.IsNaN(d) && !double.IsInfinity(d)) text.Append(ChromaNumbers.Format(d)).Append('\n');
+			var f = BitConverter.ToSingle(BitConverter.GetBytes((uint)Next()), 0);
+			if (!float.IsNaN(f) && !float.IsInfinity(f)) text.Append(ChromaNumbers.Format(f)).Append('\n');
+			text.Append(ChromaNumbers.Format((Next() % 2000001) / 1000.0 - 1000)).Append('\n');
+			text.Append(ChromaNumbers.Format((float)((Next() % 2000001) / 997.0))).Append('\n');
+		}
+		using var sha = SHA256.Create();
+		var hash = BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(text.ToString()))).Replace("-", "");
+		Assert.That(hash, Is.EqualTo("926F425A9739B9FD95D2E357A4CD0301CDF31678407E31DAC9784A185F95D723"));
 	}
 
 	// The digits computed from the exact value, as on .NET Framework, are the ones of "R" on .NET 8 and later where those
@@ -74,18 +133,18 @@ public class NumbersTests
 			if (double.IsNaN(d) || double.IsInfinity(d) || d == 0) continue;
 			ChromaNumbers.ExactDigits(BitConverter.DoubleToInt64Bits(d), 52, 1075, out var digits, out var exponent);
 			var r = d.ToString("R", CultureInfo.InvariantCulture);
-			if (double.Parse(r, CultureInfo.InvariantCulture) == d)
+			if (RuntimeShortest && double.Parse(r, CultureInfo.InvariantCulture) == d)
 			{
 				ChromaNumbers.FromText(r, out var rDigits, out var rExponent);
 				Assert.That((digits, exponent), Is.EqualTo((rDigits, rExponent)), r);
 			}
-			Assert.That(double.Parse(ChromaNumbers.Format(d), CultureInfo.InvariantCulture), Is.EqualTo(d));
+			Assert.That(ReadBack(ChromaNumbers.Format(d)), Is.EqualTo(d));
 
 			var f = Math.Abs(BitConverter.ToSingle(bytes, 0));
 			if (float.IsNaN(f) || float.IsInfinity(f) || f == 0) continue;
 			ChromaNumbers.ExactDigits(BitConverter.ToInt32(BitConverter.GetBytes(f), 0), 23, 150, out digits, out exponent);
 			var fr = f.ToString("R", CultureInfo.InvariantCulture);
-			if (float.Parse(fr, CultureInfo.InvariantCulture) == f)
+			if (RuntimeShortest && float.Parse(fr, CultureInfo.InvariantCulture) == f)
 			{
 				ChromaNumbers.FromText(fr, out var fDigits, out var fExponent);
 				Assert.That((digits, exponent), Is.EqualTo((fDigits, fExponent)), fr);
@@ -125,9 +184,9 @@ public class NumbersTests
 		var options = new ChromaConfigurationOptions("http://localhost:8000").WithBatchSplitting(false);
 		var collection = new ChromaCollectionClient(Guid.NewGuid(), "c", options, http);
 		var entry = (await collection.GetAsync(include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas)).Single();
-		Assert.That(BitConverter.SingleToInt32Bits(entry.Embedding!.Value.Span[0]), Is.LessThan(0));
+		Assert.That(Bits(entry.Embedding!.Value.Span[0]), Is.LessThan(0));
 		Assert.That(BitConverter.DoubleToInt64Bits((double)entry.Metadata!["z"]), Is.LessThan(0));
-		Assert.That(BitConverter.SingleToInt32Bits(((ChromaSparseVector)entry.Metadata["s"]).Values[0]), Is.LessThan(0));
+		Assert.That(Bits(((ChromaSparseVector)entry.Metadata["s"]).Values[0]), Is.LessThan(0));
 	}
 
 	sealed class Answer(string body) : HttpMessageHandler
