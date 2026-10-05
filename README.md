@@ -17,7 +17,7 @@ Each release tested, the differences between them and the versions in the CI are
 
 Since Chroma 1.0.16 the server requires embeddings in `AddAsync` and `UpsertAsync`: the client does not compute them, so pass them explicitly.
 
-The package targets .NET 8 and .NET Standard 2.0; the tests run against both builds.
+The package targets .NET 8, .NET Framework 4.6.2 and .NET Standard 2.0. The tests run against the .NET 8 build on every tested Chroma version, and against the .NET Standard 2.0 build on Chroma 1.5.9. The .NET Framework 4.6.2 build is the same code as the .NET Standard 2.0 one, built against the assemblies a .NET Framework application ships, so that it runs next to OpenTelemetry without binding redirects.
 
 ## Installation
 

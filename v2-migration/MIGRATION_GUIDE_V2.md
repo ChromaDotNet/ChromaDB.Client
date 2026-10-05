@@ -47,23 +47,18 @@ var configOptions = new ChromaConfigurationOptions(uri: "http://localhost:8000/a
 
 ### Step 3: Update Package Reference
 
-Update your NuGet package reference to v2.0.0 or later:
+Reference `ChromaDotNet.Client`, the latest version:
 
-```xml
-<PackageReference Include="ChromaDotNet.Client" Version="2.0.0" />
-```
-
-Or via the .NET CLI:
 ```bash
-dotnet add package ChromaDotNet.Client --version 2.0.0
+dotnet add package ChromaDotNet.Client
 ```
 
-## What Stays the Same?
+## What Else Changes?
 
-✅ **API methods keep their names and existing parameters** - 2.0 adds an optional `CancellationToken` after them, which changes the signatures: see the [Breaking Changes Summary](#breaking-changes-summary)  
-✅ **Request/response models** - The data structures remain the same, except `ChromaCollectionQueryEntry.Distance`, now `float?`  
 ✅ **Namespaces** - The code keeps `using ChromaDB.Client;`  
-✅ **Functionality** - All features work identically  
+✅ **Functionality** - All the features of 1.x work, with many more: see the README  
+🔁 **API methods** - From 2.8.0 they follow the .NET conventions: the names end in `Async` (`GetOrCreateCollectionAsync`, `AddAsync`, `QueryAsync`...), they take an optional `CancellationToken`, and they take and return read-only lists and dictionaries: see the [Breaking Changes Summary](#breaking-changes-summary)  
+🔁 **Request/response models** - The same data, with `ChromaCollectionQueryEntry.Distance` as `float?`, and `Embedding` and `Uri` for the embedding and the URI of a record  
 
 ## Example: Complete Migration
 
@@ -88,16 +83,16 @@ await collectionClient.Add(
 ```csharp
 using ChromaDB.Client;
 
-// Only change: /api/v1/ → /api/v2/
+// /api/v1/ → /api/v2/
 var configOptions = new ChromaConfigurationOptions(uri: "http://localhost:8000/api/v2/");
 using var httpClient = new HttpClient();
 var client = new ChromaClient(configOptions, httpClient);
 
-// Everything else remains the same
-var collection = await client.GetOrCreateCollection("my_collection");
+// The methods end in Async
+var collection = await client.GetOrCreateCollectionAsync("my_collection");
 var collectionClient = new ChromaCollectionClient(collection, configOptions, httpClient);
 
-await collectionClient.Add(
+await collectionClient.AddAsync(
     ["doc1"], 
     embeddings: [new([1f, 0.5f, 0f, -0.5f, -1f])]
 );
@@ -118,7 +113,7 @@ Chroma 1.0 and later answer the v1 routes with `410 Gone` and the message "The v
 The v2 API is supported in ChromaDB server versions 0.5.16 and later. Check your server version:
 
 ```csharp
-var version = await client.GetVersion();
+var version = await client.GetVersionAsync();
 Console.WriteLine($"ChromaDB Server Version: {version}");
 ```
 
@@ -130,7 +125,12 @@ Console.WriteLine($"ChromaDB Server Version: {version}");
 | Package id | High | Reference `ChromaDotNet.Client` instead of `ChromaDB.Client` |
 | URL structure | None | Handled internally by the client |
 | Request/response | Low | `ChromaCollectionQueryEntry.Distance` is `float?`, `null` when the query does not include `ChromaQueryInclude.Distances` |
-| Cancellation | Low | Every async method takes an optional `CancellationToken`: rebuild, and turn a method group like `client.Heartbeat` passed as a `Func<Task>` into `() => client.Heartbeat()` |
+| Method names | Medium | Add `Async` to the name of each asynchronous method: `GetOrCreateCollection` → `GetOrCreateCollectionAsync`, `Add` → `AddAsync`, `Query` → `QueryAsync` |
+| Cancellation | Low | Every async method takes an optional `CancellationToken`: rebuild, and turn a method group like `client.HeartbeatAsync` passed as a `Func<Task>` into `() => client.HeartbeatAsync()` |
+| Lists and dictionaries | Low | Parameters and results are `IReadOnlyList<T>` and `IReadOnlyDictionary<string, object>`: a `List<T>` or a collection expression still goes in, and metadata are written `new Dictionary<string, object> { ["key"] = value }` |
+| Records | Low | The embedding of a record is `Embedding`, its URI `Uri` |
+| Metadata values | Low | Strings come back as strings, lists as `List<object>`: `WithMetadataValues(ChromaMetadataValues.Inferred)` reads them as 1.x, dates as `DateTime` |
+| Filters | Low | `ChromaWhereOperator` and `ChromaWhereDocumentOperator`, as the methods take them |
 
 ## Need Help?
 
