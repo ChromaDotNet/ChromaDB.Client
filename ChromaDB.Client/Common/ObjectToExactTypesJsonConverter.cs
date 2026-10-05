@@ -21,7 +21,7 @@ internal class ObjectToExactTypesJsonConverter : JsonConverter<object>
 			case JsonTokenType.Number when reader.TryGetInt64(out var l):
 				return l;
 			case JsonTokenType.Number:
-				return reader.GetDouble();
+				return ChromaNumbers.ReadDouble(ref reader);
 			case JsonTokenType.String:
 				return reader.GetString()!;
 			case JsonTokenType.Null:

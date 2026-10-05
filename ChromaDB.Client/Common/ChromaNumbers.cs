@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Numerics;
 using System.Text;
+using System.Text.Json;
 
 namespace ChromaDB.Client.Common;
 
@@ -153,6 +154,28 @@ internal static class ChromaNumbers
 	}
 
 	private static double Pow10Double(int n) => PowersDouble[n + 55];
+
+	// A number of an answer, with the sign of -0.0, which .NET Framework drops when it parses "-0.0".
+	public static double ReadDouble(ref Utf8JsonReader reader)
+	{
+		var value = reader.GetDouble();
+		return value == 0 && StartsWithMinus(ref reader) ? -0.0 : value;
+	}
+
+	public static float ReadSingle(ref Utf8JsonReader reader)
+	{
+		var value = reader.GetSingle();
+		return value == 0 && StartsWithMinus(ref reader) ? -0f : value;
+	}
+
+	public static float ReadSingle(JsonElement element)
+	{
+		var value = element.GetSingle();
+		return value == 0 && element.GetRawText().StartsWith("-", StringComparison.Ordinal) ? -0f : value;
+	}
+
+	private static bool StartsWithMinus(ref Utf8JsonReader reader)
+		=> (reader.HasValueSequence ? reader.ValueSequence.First.Span : reader.ValueSpan) is { Length: > 0 } span && span[0] == (byte)'-';
 
 	// "1.2345E-07" or "123.45" into the digits "12345" and the exponent of the first digit, -7 or 2.
 	internal static void FromText(string text, out string digits, out int exponent)

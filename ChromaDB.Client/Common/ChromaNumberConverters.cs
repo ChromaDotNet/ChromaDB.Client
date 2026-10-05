@@ -4,10 +4,11 @@ using System.Text.Json.Serialization;
 
 namespace ChromaDB.Client.Common;
 
-// The numbers of the requests, in the text of ChromaNumbers: the same on every build, and floats stay floats.
+// The numbers of the requests, in the text of ChromaNumbers: the same on every build, and floats stay floats; and the
+// numbers of the answers, -0.0 with its sign on .NET Framework too.
 internal sealed class ChromaDoubleConverter : JsonConverter<double>
 {
-	public override double Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetDouble();
+	public override double Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => ChromaNumbers.ReadDouble(ref reader);
 
 	public override void Write(Utf8JsonWriter writer, double value, JsonSerializerOptions options)
 		=> writer.WriteRawValue(ChromaNumbers.Format(value), skipInputValidation: true);
@@ -15,7 +16,7 @@ internal sealed class ChromaDoubleConverter : JsonConverter<double>
 
 internal sealed class ChromaFloatConverter : JsonConverter<float>
 {
-	public override float Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetSingle();
+	public override float Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => ChromaNumbers.ReadSingle(ref reader);
 
 	public override void Write(Utf8JsonWriter writer, float value, JsonSerializerOptions options)
 		=> writer.WriteRawValue(ChromaNumbers.Format(value), skipInputValidation: true);

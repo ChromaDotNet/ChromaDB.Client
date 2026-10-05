@@ -31,6 +31,8 @@ internal static partial class HttpClientHelpers
 		Converters =
 		{
 			new ObjectToInferredTypesJsonConverter(),
+			new ChromaDoubleConverter(),
+			new ChromaFloatConverter(),
 		},
 		TypeInfoResolver = ChromaJsonResolver.Instance,
 	};
@@ -40,6 +42,8 @@ internal static partial class HttpClientHelpers
 		Converters =
 		{
 			new ObjectToExactTypesJsonConverter(),
+			new ChromaDoubleConverter(),
+			new ChromaFloatConverter(),
 		},
 		TypeInfoResolver = ChromaJsonResolver.Instance,
 	};

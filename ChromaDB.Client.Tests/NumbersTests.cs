@@ -115,6 +115,27 @@ public class NumbersTests
 		Assert.That(decided, Is.GreaterThan(190000));
 	}
 
+	// -0.0 in an answer keeps its sign, which .NET Framework drops when it parses it: in embeddings, metadata and
+	// sparse vectors.
+	[Test]
+	public async Task NegativeZeroInAnswers()
+	{
+		const string answer = """{"ids":["a"],"embeddings":[[-0.0,1.0]],"metadatas":[{"z":-0.0,"s":{"#type":"sparse_vector","indices":[1],"values":[-0.0]}}],"documents":null,"uris":null,"include":["embeddings","metadatas"]}""";
+		using var http = new HttpClient(new Answer(answer));
+		var options = new ChromaConfigurationOptions("http://localhost:8000").WithBatchSplitting(false);
+		var collection = new ChromaCollectionClient(Guid.NewGuid(), "c", options, http);
+		var entry = (await collection.GetAsync(include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas)).Single();
+		Assert.That(BitConverter.SingleToInt32Bits(entry.Embedding!.Value.Span[0]), Is.LessThan(0));
+		Assert.That(BitConverter.DoubleToInt64Bits((double)entry.Metadata!["z"]), Is.LessThan(0));
+		Assert.That(BitConverter.SingleToInt32Bits(((ChromaSparseVector)entry.Metadata["s"]).Values[0]), Is.LessThan(0));
+	}
+
+	sealed class Answer(string body) : HttpMessageHandler
+	{
+		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+			=> Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent(body) });
+	}
+
 	[TestCase(double.NaN)]
 	[TestCase(double.PositiveInfinity)]
 	[TestCase(double.NegativeInfinity)]

@@ -33,7 +33,7 @@ internal sealed class ChromaSparseVectorConverter : JsonConverter<ChromaSparseVe
 			: null;
 		return new ChromaSparseVector(
 			indices.EnumerateArray().Select(x => x.GetUInt32()).ToList(),
-			values.EnumerateArray().Select(x => x.GetSingle()).ToList(),
+			values.EnumerateArray().Select(ChromaNumbers.ReadSingle).ToList(),
 			tokens);
 	}
 
