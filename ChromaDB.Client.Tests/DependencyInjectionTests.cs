@@ -32,6 +32,17 @@ public class DependencyInjectionTests : ChromaTestsBase
 		await Assert.ThatAsync(() => provider.GetRequiredKeyedService<ChromaClient>("second").Heartbeat(), Throws.InstanceOf<ChromaException>());
 	}
 
+	// The registrations return the services, so that more registrations follow.
+	[Test]
+	public void RegistrationsReturnTheServices()
+	{
+		var services = new ServiceCollection();
+		Assert.That(services.AddChromaClient(), Is.SameAs(services));
+		Assert.That(services.AddChromaClient(null, _ => { }), Is.SameAs(services));
+		Assert.That(services.AddKeyedChromaClient("first"), Is.SameAs(services));
+		Assert.That(services.AddKeyedChromaClient("second", null, _ => { }), Is.SameAs(services));
+	}
+
 	[Test]
 	public void KeyedAndDefaultClientsTogether()
 	{

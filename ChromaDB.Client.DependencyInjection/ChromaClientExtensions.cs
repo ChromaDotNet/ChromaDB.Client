@@ -13,16 +13,16 @@ public static class ChromaClientExtensions
 {
 	/// <summary>
 	/// Registers a <c>ChromaClient</c> and its options as singletons. <c>configurationOptions</c> takes the default options,
-	/// for <c>http://localhost:8000</c>, and returns the options of the client.
+	/// for <c>http://localhost:8000</c>, and returns the options of the client. Returns the services, for more registrations.
 	/// </summary>
-	public static void AddChromaClient(this IServiceCollection services, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions = null)
+	public static IServiceCollection AddChromaClient(this IServiceCollection services, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions = null)
 		=> AddChromaClient(services, configurationOptions, _ => { });
 
 	/// <summary>
 	/// Registers a <c>ChromaClient</c> and its options as singletons. <c>configureHttpClient</c> configures the <c>HttpClient</c>
-	/// of the client, like a resilience handler, a proxy or a timeout.
+	/// of the client, like a resilience handler, a proxy or a timeout. Returns the services, for more registrations.
 	/// </summary>
-	public static void AddChromaClient(this IServiceCollection services, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions, Action<IHttpClientBuilder> configureHttpClient)
+	public static IServiceCollection AddChromaClient(this IServiceCollection services, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions, Action<IHttpClientBuilder> configureHttpClient)
 	{
 		configurationOptions ??= DefaultConfigurationOptions;
 
@@ -32,20 +32,22 @@ public static class ChromaClientExtensions
 		services.AddSingleton(options);
 		configureHttpClient(services.AddHttpClient(nameof(ChromaClient)));
 		services.AddSingleton(serviceProvider => new ChromaClient(options, CreateHttpClient(serviceProvider, nameof(ChromaClient))));
+		return services;
 	}
 
 	/// <summary>
 	/// A client and its options under a key, for an application that talks to more than one server, tenant or database.
-	/// Both are registered as singletons.
+	/// Both are registered as singletons. Returns the services, for more registrations.
 	/// </summary>
-	public static void AddKeyedChromaClient(this IServiceCollection services, object? serviceKey, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions = null)
+	public static IServiceCollection AddKeyedChromaClient(this IServiceCollection services, object? serviceKey, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions = null)
 		=> AddKeyedChromaClient(services, serviceKey, configurationOptions, _ => { });
 
 	/// <summary>
 	/// Registers a <c>ChromaClient</c> and its options as singletons under <c>serviceKey</c>. <c>configureHttpClient</c>
-	/// configures the <c>HttpClient</c> of the client, like a resilience handler, a proxy or a timeout.
+	/// configures the <c>HttpClient</c> of the client, like a resilience handler, a proxy or a timeout. Returns the services, for
+	/// more registrations.
 	/// </summary>
-	public static void AddKeyedChromaClient(this IServiceCollection services, object? serviceKey, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions, Action<IHttpClientBuilder> configureHttpClient)
+	public static IServiceCollection AddKeyedChromaClient(this IServiceCollection services, object? serviceKey, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions, Action<IHttpClientBuilder> configureHttpClient)
 	{
 		configurationOptions ??= DefaultConfigurationOptions;
 
@@ -56,6 +58,7 @@ public static class ChromaClientExtensions
 		services.AddKeyedSingleton(serviceKey, options);
 		configureHttpClient(services.AddHttpClient(httpClientName));
 		services.AddKeyedSingleton(serviceKey, (serviceProvider, _) => new ChromaClient(options, CreateHttpClient(serviceProvider, httpClientName)));
+		return services;
 	}
 
 	// The client is a singleton and keeps its HttpClient, which sends each request with the current handler of the factory:
