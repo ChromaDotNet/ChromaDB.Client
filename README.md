@@ -306,10 +306,9 @@ These operations exist on Chroma Cloud only; a single Chroma server answers them
 var copy = await collectionClient.ForkAsync("my_collection_copy");
 var forks = await collectionClient.ForkCountAsync();
 var status = await collectionClient.GetIndexingStatusAsync();
-var indexed = await collectionClient.CountAsync(ChromaReadLevel.IndexOnly);
 ```
 
-`ForkAsync` copies a collection with its records under a new name. `GetIndexingStatusAsync` tells how many writes are indexed. `CountAsync(ChromaReadLevel.IndexOnly)` counts only the records already indexed: Chroma Cloud indexes them later, so right after a write the count can be lower, even 0, while `CountAsync()` already sees them. A single server indexes them at once and gives the same count.
+`ForkAsync` copies a collection with its records under a new name. `GetIndexingStatusAsync` tells how many writes are indexed. On every server, `CountAsync(ChromaReadLevel.IndexOnly)` counts only the records already indexed: Chroma Cloud indexes them later, so right after a write the count can be lower, even 0, while `CountAsync()` already sees them. A single server indexes them at once and gives the same count.
 
 ```csharp
 await collectionClient.AddAsync(ids, embeddings: embeddings);                  // 6 records
