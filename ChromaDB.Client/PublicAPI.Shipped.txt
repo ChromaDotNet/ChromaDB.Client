@@ -138,8 +138,12 @@ ChromaDB.Client.Models.ChromaCollection.ConfigurationJson.get -> System.Text.Jso
 ChromaDB.Client.Models.ChromaCollection.ConfigurationJson.init -> void
 ChromaDB.Client.Models.ChromaCollection.Database.get -> string?
 ChromaDB.Client.Models.ChromaCollection.Database.init -> void
+ChromaDB.Client.Models.ChromaCollection.Dimension.get -> int?
+ChromaDB.Client.Models.ChromaCollection.Dimension.init -> void
 ChromaDB.Client.Models.ChromaCollection.Id.get -> System.Guid
 ChromaDB.Client.Models.ChromaCollection.Id.init -> void
+ChromaDB.Client.Models.ChromaCollection.LogPosition.get -> long?
+ChromaDB.Client.Models.ChromaCollection.LogPosition.init -> void
 ChromaDB.Client.Models.ChromaCollection.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>?
 ChromaDB.Client.Models.ChromaCollection.Metadata.init -> void
 ChromaDB.Client.Models.ChromaCollection.Name.get -> string!
@@ -149,12 +153,22 @@ ChromaDB.Client.Models.ChromaCollection.Space.get -> ChromaDB.Client.ChromaSpace
 ChromaDB.Client.Models.ChromaCollection.SparseVectorIndexes.get -> System.Collections.Generic.IReadOnlyList<ChromaDB.Client.Models.ChromaSparseVectorIndex!>!
 ChromaDB.Client.Models.ChromaCollection.Tenant.get -> string?
 ChromaDB.Client.Models.ChromaCollection.Tenant.init -> void
+ChromaDB.Client.Models.ChromaCollection.Version.get -> int?
+ChromaDB.Client.Models.ChromaCollection.Version.init -> void
 ChromaDB.Client.Models.ChromaCollectionConfiguration
 ChromaDB.Client.Models.ChromaCollectionConfiguration.ChromaCollectionConfiguration() -> void
+ChromaDB.Client.Models.ChromaCollectionConfiguration.EmbeddingFunction.get -> ChromaDB.Client.Models.ChromaEmbeddingFunctionReference?
+ChromaDB.Client.Models.ChromaCollectionConfiguration.EmbeddingFunction.init -> void
+ChromaDB.Client.Models.ChromaCollectionConfiguration.Hnsw.get -> ChromaDB.Client.Models.ChromaHnswConfiguration?
+ChromaDB.Client.Models.ChromaCollectionConfiguration.Hnsw.init -> void
 ChromaDB.Client.Models.ChromaCollectionConfiguration.Space.get -> ChromaDB.Client.ChromaSpace?
 ChromaDB.Client.Models.ChromaCollectionConfiguration.Space.init -> void
+ChromaDB.Client.Models.ChromaCollectionConfiguration.Spann.get -> ChromaDB.Client.Models.ChromaSpannConfiguration?
+ChromaDB.Client.Models.ChromaCollectionConfiguration.Spann.init -> void
 ChromaDB.Client.Models.ChromaCollectionConfigurationUpdate
 ChromaDB.Client.Models.ChromaCollectionConfigurationUpdate.ChromaCollectionConfigurationUpdate() -> void
+ChromaDB.Client.Models.ChromaCollectionConfigurationUpdate.EmbeddingFunction.get -> ChromaDB.Client.Models.ChromaEmbeddingFunctionReference?
+ChromaDB.Client.Models.ChromaCollectionConfigurationUpdate.EmbeddingFunction.init -> void
 ChromaDB.Client.Models.ChromaCollectionConfigurationUpdate.Hnsw.get -> ChromaDB.Client.Models.ChromaHnswConfigurationUpdate?
 ChromaDB.Client.Models.ChromaCollectionConfigurationUpdate.Hnsw.init -> void
 ChromaDB.Client.Models.ChromaCollectionConfigurationUpdate.Spann.get -> ChromaDB.Client.Models.ChromaSpannConfigurationUpdate?
@@ -194,7 +208,11 @@ ChromaDB.Client.Models.ChromaCollectionQueryEntry.Uri.get -> string?
 ChromaDB.Client.Models.ChromaCollectionQueryEntry.Uri.init -> void
 ChromaDB.Client.Models.ChromaCollectionSchema
 ChromaDB.Client.Models.ChromaCollectionSchema.ChromaCollectionSchema() -> void
+ChromaDB.Client.Models.ChromaCollectionSchema.WithGcpCmek(string! resource) -> ChromaDB.Client.Models.ChromaCollectionSchema!
+ChromaDB.Client.Models.ChromaCollectionSchema.WithIndex(ChromaDB.Client.Models.ChromaSchemaIndex index, string? key = null) -> ChromaDB.Client.Models.ChromaCollectionSchema!
+ChromaDB.Client.Models.ChromaCollectionSchema.WithSparseVectorIndex(string! key, ChromaDB.Client.Models.ChromaSparseIndexAlgorithm algorithm, string? sourceKey = null, bool bm25 = false, ChromaDB.Client.Models.ChromaEmbeddingFunctionReference? embeddingFunction = null) -> ChromaDB.Client.Models.ChromaCollectionSchema!
 ChromaDB.Client.Models.ChromaCollectionSchema.WithSparseVectorIndex(string! key, string? sourceKey = null, bool bm25 = false, ChromaDB.Client.Models.ChromaEmbeddingFunctionReference? embeddingFunction = null) -> ChromaDB.Client.Models.ChromaCollectionSchema!
+ChromaDB.Client.Models.ChromaCollectionSchema.WithoutIndex(ChromaDB.Client.Models.ChromaSchemaIndex index, string? key = null) -> ChromaDB.Client.Models.ChromaCollectionSchema!
 ChromaDB.Client.Models.ChromaDatabase
 ChromaDB.Client.Models.ChromaDatabase.ChromaDatabase(string! name) -> void
 ChromaDB.Client.Models.ChromaDatabase.Id.get -> System.Guid
@@ -223,6 +241,22 @@ ChromaDB.Client.Models.ChromaHeartbeat
 ChromaDB.Client.Models.ChromaHeartbeat.ChromaHeartbeat() -> void
 ChromaDB.Client.Models.ChromaHeartbeat.NanosecondHeartbeat.get -> long
 ChromaDB.Client.Models.ChromaHeartbeat.NanosecondHeartbeat.set -> void
+ChromaDB.Client.Models.ChromaHnswConfiguration
+ChromaDB.Client.Models.ChromaHnswConfiguration.BatchSize.get -> int?
+ChromaDB.Client.Models.ChromaHnswConfiguration.BatchSize.init -> void
+ChromaDB.Client.Models.ChromaHnswConfiguration.ChromaHnswConfiguration() -> void
+ChromaDB.Client.Models.ChromaHnswConfiguration.EfConstruction.get -> int?
+ChromaDB.Client.Models.ChromaHnswConfiguration.EfConstruction.init -> void
+ChromaDB.Client.Models.ChromaHnswConfiguration.EfSearch.get -> int?
+ChromaDB.Client.Models.ChromaHnswConfiguration.EfSearch.init -> void
+ChromaDB.Client.Models.ChromaHnswConfiguration.MaxNeighbors.get -> int?
+ChromaDB.Client.Models.ChromaHnswConfiguration.MaxNeighbors.init -> void
+ChromaDB.Client.Models.ChromaHnswConfiguration.NumThreads.get -> int?
+ChromaDB.Client.Models.ChromaHnswConfiguration.NumThreads.init -> void
+ChromaDB.Client.Models.ChromaHnswConfiguration.ResizeFactor.get -> double?
+ChromaDB.Client.Models.ChromaHnswConfiguration.ResizeFactor.init -> void
+ChromaDB.Client.Models.ChromaHnswConfiguration.SyncThreshold.get -> int?
+ChromaDB.Client.Models.ChromaHnswConfiguration.SyncThreshold.init -> void
 ChromaDB.Client.Models.ChromaHnswConfigurationUpdate
 ChromaDB.Client.Models.ChromaHnswConfigurationUpdate.BatchSize.get -> int?
 ChromaDB.Client.Models.ChromaHnswConfigurationUpdate.BatchSize.init -> void
@@ -277,6 +311,12 @@ ChromaDB.Client.Models.ChromaRecords.Metadatas.get -> System.Collections.Generic
 ChromaDB.Client.Models.ChromaRecords.Metadatas.init -> void
 ChromaDB.Client.Models.ChromaRecords.Uris.get -> System.Collections.Generic.IReadOnlyList<string?>?
 ChromaDB.Client.Models.ChromaRecords.Uris.init -> void
+ChromaDB.Client.Models.ChromaSchemaIndex
+ChromaDB.Client.Models.ChromaSchemaIndex.BoolInverted = 4 -> ChromaDB.Client.Models.ChromaSchemaIndex
+ChromaDB.Client.Models.ChromaSchemaIndex.FloatInverted = 3 -> ChromaDB.Client.Models.ChromaSchemaIndex
+ChromaDB.Client.Models.ChromaSchemaIndex.FullTextSearch = 0 -> ChromaDB.Client.Models.ChromaSchemaIndex
+ChromaDB.Client.Models.ChromaSchemaIndex.IntInverted = 2 -> ChromaDB.Client.Models.ChromaSchemaIndex
+ChromaDB.Client.Models.ChromaSchemaIndex.StringInverted = 1 -> ChromaDB.Client.Models.ChromaSchemaIndex
 ChromaDB.Client.Models.ChromaSearch
 ChromaDB.Client.Models.ChromaSearch.ChromaSearch() -> void
 ChromaDB.Client.Models.ChromaSearch.GroupBy.get -> ChromaDB.Client.ChromaSearchGroupBy?
@@ -306,18 +346,52 @@ ChromaDB.Client.Models.ChromaSearchEntry.Metadata.get -> System.Collections.Gene
 ChromaDB.Client.Models.ChromaSearchEntry.Metadata.init -> void
 ChromaDB.Client.Models.ChromaSearchEntry.Score.get -> float?
 ChromaDB.Client.Models.ChromaSearchEntry.Score.init -> void
+ChromaDB.Client.Models.ChromaSpannConfiguration
+ChromaDB.Client.Models.ChromaSpannConfiguration.CenterDriftThreshold.get -> double?
+ChromaDB.Client.Models.ChromaSpannConfiguration.CenterDriftThreshold.init -> void
+ChromaDB.Client.Models.ChromaSpannConfiguration.ChromaSpannConfiguration() -> void
+ChromaDB.Client.Models.ChromaSpannConfiguration.EfConstruction.get -> int?
+ChromaDB.Client.Models.ChromaSpannConfiguration.EfConstruction.init -> void
+ChromaDB.Client.Models.ChromaSpannConfiguration.EfSearch.get -> int?
+ChromaDB.Client.Models.ChromaSpannConfiguration.EfSearch.init -> void
+ChromaDB.Client.Models.ChromaSpannConfiguration.MaxNeighbors.get -> int?
+ChromaDB.Client.Models.ChromaSpannConfiguration.MaxNeighbors.init -> void
+ChromaDB.Client.Models.ChromaSpannConfiguration.MergeThreshold.get -> int?
+ChromaDB.Client.Models.ChromaSpannConfiguration.MergeThreshold.init -> void
+ChromaDB.Client.Models.ChromaSpannConfiguration.NreplicaCount.get -> int?
+ChromaDB.Client.Models.ChromaSpannConfiguration.NreplicaCount.init -> void
+ChromaDB.Client.Models.ChromaSpannConfiguration.NumCentersToMergeTo.get -> int?
+ChromaDB.Client.Models.ChromaSpannConfiguration.NumCentersToMergeTo.init -> void
+ChromaDB.Client.Models.ChromaSpannConfiguration.NumSamplesKmeans.get -> int?
+ChromaDB.Client.Models.ChromaSpannConfiguration.NumSamplesKmeans.init -> void
+ChromaDB.Client.Models.ChromaSpannConfiguration.ReassignNeighborCount.get -> int?
+ChromaDB.Client.Models.ChromaSpannConfiguration.ReassignNeighborCount.init -> void
+ChromaDB.Client.Models.ChromaSpannConfiguration.SearchNprobe.get -> int?
+ChromaDB.Client.Models.ChromaSpannConfiguration.SearchNprobe.init -> void
+ChromaDB.Client.Models.ChromaSpannConfiguration.SearchRngEpsilon.get -> double?
+ChromaDB.Client.Models.ChromaSpannConfiguration.SearchRngEpsilon.init -> void
+ChromaDB.Client.Models.ChromaSpannConfiguration.SplitThreshold.get -> int?
+ChromaDB.Client.Models.ChromaSpannConfiguration.SplitThreshold.init -> void
+ChromaDB.Client.Models.ChromaSpannConfiguration.WriteNprobe.get -> int?
+ChromaDB.Client.Models.ChromaSpannConfiguration.WriteNprobe.init -> void
+ChromaDB.Client.Models.ChromaSpannConfiguration.WriteRngEpsilon.get -> double?
+ChromaDB.Client.Models.ChromaSpannConfiguration.WriteRngEpsilon.init -> void
 ChromaDB.Client.Models.ChromaSpannConfigurationUpdate
 ChromaDB.Client.Models.ChromaSpannConfigurationUpdate.ChromaSpannConfigurationUpdate() -> void
 ChromaDB.Client.Models.ChromaSpannConfigurationUpdate.EfSearch.get -> int?
 ChromaDB.Client.Models.ChromaSpannConfigurationUpdate.EfSearch.init -> void
 ChromaDB.Client.Models.ChromaSpannConfigurationUpdate.SearchNprobe.get -> int?
 ChromaDB.Client.Models.ChromaSpannConfigurationUpdate.SearchNprobe.init -> void
+ChromaDB.Client.Models.ChromaSparseIndexAlgorithm
+ChromaDB.Client.Models.ChromaSparseIndexAlgorithm.MaxScore = 1 -> ChromaDB.Client.Models.ChromaSparseIndexAlgorithm
+ChromaDB.Client.Models.ChromaSparseIndexAlgorithm.Wand = 0 -> ChromaDB.Client.Models.ChromaSparseIndexAlgorithm
 ChromaDB.Client.Models.ChromaSparseVector
 ChromaDB.Client.Models.ChromaSparseVector.ChromaSparseVector(System.Collections.Generic.IReadOnlyList<uint>! indices, System.Collections.Generic.IReadOnlyList<float>! values, System.Collections.Generic.IReadOnlyList<string!>? tokens = null) -> void
 ChromaDB.Client.Models.ChromaSparseVector.Indices.get -> System.Collections.Generic.IReadOnlyList<uint>!
 ChromaDB.Client.Models.ChromaSparseVector.Tokens.get -> System.Collections.Generic.IReadOnlyList<string!>?
 ChromaDB.Client.Models.ChromaSparseVector.Values.get -> System.Collections.Generic.IReadOnlyList<float>!
 ChromaDB.Client.Models.ChromaSparseVectorIndex
+ChromaDB.Client.Models.ChromaSparseVectorIndex.Algorithm.get -> ChromaDB.Client.Models.ChromaSparseIndexAlgorithm
 ChromaDB.Client.Models.ChromaSparseVectorIndex.Bm25.get -> bool
 ChromaDB.Client.Models.ChromaSparseVectorIndex.Bm25Function.get -> ChromaDB.Client.ChromaBm25?
 ChromaDB.Client.Models.ChromaSparseVectorIndex.EmbeddingFunction.get -> string?
