@@ -4,6 +4,8 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<IsPackable>false</IsPackable>
+		<OpenTelemetryVersion Condition="'$(OpenTelemetryVersion)' == ''">1.19.1</OpenTelemetryVersion>
+		<DefineConstants Condition="'$(ChromaClientTargetFramework)' == 'netstandard2.0'">$(DefineConstants);CHROMA_CLIENT_NETSTANDARD2_0</DefineConstants>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
@@ -14,6 +16,8 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="ChromaDotNet.Testcontainers" Version="0.1.0" />
+		<!-- The OpenTelemetry SDK, for the buckets it gives db.client.operation.duration. -->
+		<PackageReference Include="OpenTelemetry.Exporter.InMemory" Version="$(OpenTelemetryVersion)" />
 		<PackageReference Include="GitHubActionsTestLogger" Version="2.3.3">
 		  <PrivateAssets>all</PrivateAssets>
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

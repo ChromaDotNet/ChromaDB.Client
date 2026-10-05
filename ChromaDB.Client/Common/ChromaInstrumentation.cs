@@ -11,7 +11,15 @@ internal static class ChromaInstrumentation
 	private static readonly string? Version = typeof(ChromaInstrumentation).Assembly.GetName().Version?.ToString();
 	private static readonly ActivitySource Source = new(ChromaTelemetry.ActivitySourceName, Version);
 	private static readonly Meter Meter = new(ChromaTelemetry.MeterName, Version);
+	// In seconds, with the bucket boundaries that the semantic conventions advise for it: without them OpenTelemetry uses its default
+	// ones, made for milliseconds, and every operation under 5 s falls in the same bucket. InstrumentAdvice is in
+	// System.Diagnostics.DiagnosticSource 9 and later, which the netstandard2.0 build does not take.
+#if NETSTANDARD2_0
 	private static readonly Histogram<double> Duration = Meter.CreateHistogram<double>("db.client.operation.duration", "s", "Duration of database client operations.");
+#else
+	private static readonly Histogram<double> Duration = Meter.CreateHistogram("db.client.operation.duration", "s", "Duration of database client operations.", tags: null,
+		advice: new InstrumentAdvice<double> { HistogramBucketBoundaries = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10] });
+#endif
 
 	public static async Task<T> Run<T>(string operation, string? collection, string? @namespace, Uri server, Func<Task<T>> body)
 	{

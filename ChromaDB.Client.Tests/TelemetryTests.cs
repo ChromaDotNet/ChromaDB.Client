@@ -3,6 +3,7 @@ using System.Diagnostics.Metrics;
 using System.Net;
 using ChromaDB.Client.Models;
 using NUnit.Framework;
+using OpenTelemetry.Metrics;
 
 namespace ChromaDB.Client.Tests;
 
@@ -101,6 +102,42 @@ public class TelemetryTests
 			("create_database", "tenant1|database1"),
 			("delete_collection articles", "default_tenant|default_database"),
 		}));
+	}
+
+	// With the OpenTelemetry SDK, as an application exports it: the bucket boundaries that the semantic conventions advise, in seconds,
+	// and not the default ones of OpenTelemetry, made for milliseconds, where every operation under 5 s falls in the same bucket.
+	[Test]
+	public async Task BucketsOfTheDuration()
+	{
+		var port = Port();
+		var metrics = new List<Metric>();
+		var builder = OpenTelemetry.Sdk.CreateMeterProviderBuilder().AddMeter(ChromaTelemetry.MeterName).AddInMemoryExporter(metrics);
+#if CHROMA_CLIENT_NETSTANDARD2_0
+		// The netstandard2.0 build cannot advise them: the view of the README sets them.
+		builder.AddView("db.client.operation.duration", new ExplicitBucketHistogramConfiguration { Boundaries = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10] });
+#endif
+		using var provider = builder.Build();
+		await CollectionClient(new FakeServer(_ => (HttpStatusCode.OK, "3")), port, "articles").CountAsync();
+		provider.ForceFlush();
+
+		var buckets = new List<(double Bound, long Count)>();
+		foreach (var point in metrics.Single(x => x.Name == "db.client.operation.duration").GetMetricPoints())
+		{
+			var ours = false;
+			foreach (var tag in point.Tags)
+			{
+				ours |= tag.Key == "server.port" && Equals(tag.Value, port);
+			}
+			if (ours)
+			{
+				foreach (var bucket in point.GetHistogramBuckets())
+				{
+					buckets.Add((bucket.ExplicitBound, bucket.BucketCount));
+				}
+			}
+		}
+		Assert.That(buckets.Select(x => x.Bound), Is.EqualTo(new[] { 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, double.PositiveInfinity }));
+		Assert.That(buckets.Where(x => x.Bound <= 1).Sum(x => x.Count), Is.EqualTo(1));
 	}
 
 	static int Port() => Random.Shared.Next(20000, 60000);

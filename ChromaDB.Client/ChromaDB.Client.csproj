@@ -55,6 +55,11 @@
 		<PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
 		<PackageReference Include="System.Text.Json" Version="8.0.6" />
 	</ItemGroup>
+	<!-- .NET 8: InstrumentAdvice, for the bucket boundaries of db.client.operation.duration, is in DiagnosticSource 9 and later,
+	     which OpenTelemetry 1.10 and later bring too. -->
+	<ItemGroup Condition="'$(TargetFramework)'=='net8.0'">
+		<PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.20" />
+	</ItemGroup>
 	<!-- .NET Framework: the versions OpenTelemetry 1.19 brings, so that the two load without binding redirects. -->
 	<ItemGroup Condition="'$(TargetFramework)'=='net462'">
 		<PackageReference Include="System.Memory" Version="4.6.3" />
