@@ -66,9 +66,24 @@ All the servers on this page reject `$in` and `$nin` without values (`400` or `5
 
 The v1 API of Chroma 0.6.3 fails on most requests, and Chroma 1.5.9 answers it with `410 Gone`: use the v2 API there.
 
+## Known defects of the servers
+
+Reproduced with plain HTTP, without the client, on 5 October 2026. The client cannot work around them.
+
+| Defect | Versions |
+|---|---|
+| `$contains` and `$not_contains` on documents read `_` and `%` as SQL wildcards: `ChromaWhereDocumentOperator.Contains("a_b")` also finds `xacby` and `a b`, `Contains("50%")` also finds `sale 500 off`, and `NotContains("a_b")` leaves them out. On 1.0.0 – 1.0.12 a text with `%` between spaces, like `" 50% "`, finds nothing. The server puts the text in an SQLite `LIKE` without an escape character, so the client cannot escape them | all the tested versions from 0.4.10 to 1.0.12; right from 1.0.13 |
+| While 24 threads add, update and delete records of their own, a query with `n_results` 3 and a `where` filter on a thread's records returns 4 of them, on a server just started | 0.4.24, in 5 runs out of 10 |
+| The same query returns no record | 0.6.3, in 1 run out of 10 |
+| A list of `$and` or `$or` becomes an SQLite expression as deep as the list: from 988 filters in one list Chroma 1.5.9 answers `500`, and from about 4,400 it crashes. The client splits long lists, as the README says; beyond 8,167 filters Chroma 1.5.9 answers `500` with `too many SQL variables` | single servers 1.0.0 – 1.5.9; 0.6.3 answers `500` from about 490 filters however they go |
+
+The query of the second and third rows returned 3 records in every run on Chroma 0.5.20, 1.0.0 and 1.5.9, 10 runs each on a server just started.
+
 ## Chroma Cloud
 
 Checked on 4 October 2026 against `api.trychroma.com`: the key goes in `X-Chroma-Token`, the default of `WithChromaToken`, since `Authorization: Bearer` gets `401`. `pre-flight-checks` declares a `max_batch_size` of 1000 and `supports_base64_encoding`, but a write of more than 300 records gets `422` with `Quota exceeded`, the default quota; `WithBatchSplitting(maxBatchSize: 300)` writes and deletes 301 records in two batches. Embeddings sent in base64 read back identical. A missing collection gets `404` with `NotFoundError`.
+
+A filter has at most 8 predicates, the default quota of a tenant: a `where` with 9, nested ones included, gets `422` with `Quota exceeded: 'Number of where clause predicates'`, and a link to ask for more; the values of an `In` do not count (checked on 5 October 2026).
 
 ## Versions tested in the CI
 
