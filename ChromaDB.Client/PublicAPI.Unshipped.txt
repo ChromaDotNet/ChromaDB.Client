@@ -60,6 +60,12 @@
 *REMOVED*ChromaDB.Client.ChromaCollectionClient.Upsert(System.Collections.Generic.List<string!>! ids, System.Collections.Generic.List<System.ReadOnlyMemory<float>>? embeddings = null, System.Collections.Generic.List<System.Collections.Generic.Dictionary<string!, object!>!>? metadatas = null, System.Collections.Generic.List<string!>? documents = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 *REMOVED*ChromaDB.Client.ChromaConfigurationOptions.ChromaConfigurationOptions(string! uri, string? defaultTenant = null, string? defaultDatabase = null, string? chromaToken = null) -> void
 *REMOVED*ChromaDB.Client.ChromaConfigurationOptions.ChromaConfigurationOptions(System.Uri! uri, string? defaultTenant = null, string? defaultDatabase = null, string? chromaToken = null) -> void
+*REMOVED*ChromaDB.Client.ChromaWhere
+*REMOVED*ChromaDB.Client.ChromaWhere.ChromaWhere(string! operator) -> void
+*REMOVED*ChromaDB.Client.ChromaWhere.Operator.get -> string!
+*REMOVED*ChromaDB.Client.ChromaWhereDocument
+*REMOVED*ChromaDB.Client.ChromaWhereDocument.ChromaWhereDocument(string! operator) -> void
+*REMOVED*ChromaDB.Client.ChromaWhereDocument.Operator.get -> string!
 *REMOVED*ChromaDB.Client.Models.ChromaCollection.Metadata.get -> System.Collections.Generic.Dictionary<string!, object!>?
 *REMOVED*ChromaDB.Client.Models.ChromaCollectionDefinition.Metadata.get -> System.Collections.Generic.Dictionary<string!, object!>?
 *REMOVED*ChromaDB.Client.Models.ChromaCollectionEntry.Data.get -> dynamic?
@@ -90,6 +96,26 @@
 *REMOVED*ChromaDB.Client.Models.ChromaSearch.Select.get -> System.Collections.Generic.List<string!>?
 *REMOVED*ChromaDB.Client.Models.ChromaSearchEntry.Metadata.get -> System.Collections.Generic.Dictionary<string!, object!>?
 *REMOVED*ChromaDB.Client.Models.ChromaUserIdentity.Databases.get -> System.Collections.Generic.List<string!>?
+*REMOVED*static ChromaDB.Client.ChromaWhere.Equal(string! field, object! value) -> ChromaDB.Client.ChromaWhere!
+*REMOVED*static ChromaDB.Client.ChromaWhere.GreaterThan(string! field, object! value) -> ChromaDB.Client.ChromaWhere!
+*REMOVED*static ChromaDB.Client.ChromaWhere.GreaterThanOrEqual(string! field, object! value) -> ChromaDB.Client.ChromaWhere!
+*REMOVED*static ChromaDB.Client.ChromaWhere.In(string! field, params object![]! values) -> ChromaDB.Client.ChromaWhere!
+*REMOVED*static ChromaDB.Client.ChromaWhere.LessThan(string! field, object! value) -> ChromaDB.Client.ChromaWhere!
+*REMOVED*static ChromaDB.Client.ChromaWhere.LessThanOrEqual(string! field, object! value) -> ChromaDB.Client.ChromaWhere!
+*REMOVED*static ChromaDB.Client.ChromaWhere.NotEqual(string! field, object! value) -> ChromaDB.Client.ChromaWhere!
+*REMOVED*static ChromaDB.Client.ChromaWhere.NotIn(string! field, params object![]! values) -> ChromaDB.Client.ChromaWhere!
+*REMOVED*static ChromaDB.Client.ChromaWhere.operator &(ChromaDB.Client.ChromaWhere! lhs, ChromaDB.Client.ChromaWhere! rhs) -> ChromaDB.Client.ChromaWhere!
+*REMOVED*static ChromaDB.Client.ChromaWhere.operator false(ChromaDB.Client.ChromaWhere! _) -> bool
+*REMOVED*static ChromaDB.Client.ChromaWhere.operator true(ChromaDB.Client.ChromaWhere! _) -> bool
+*REMOVED*static ChromaDB.Client.ChromaWhere.operator |(ChromaDB.Client.ChromaWhere! lhs, ChromaDB.Client.ChromaWhere! rhs) -> ChromaDB.Client.ChromaWhere!
+*REMOVED*static ChromaDB.Client.ChromaWhereDocument.Contains(char ch) -> ChromaDB.Client.ChromaWhereDocument!
+*REMOVED*static ChromaDB.Client.ChromaWhereDocument.Contains(string! str) -> ChromaDB.Client.ChromaWhereDocument!
+*REMOVED*static ChromaDB.Client.ChromaWhereDocument.NotContains(char ch) -> ChromaDB.Client.ChromaWhereDocument!
+*REMOVED*static ChromaDB.Client.ChromaWhereDocument.NotContains(string! str) -> ChromaDB.Client.ChromaWhereDocument!
+*REMOVED*static ChromaDB.Client.ChromaWhereDocument.operator &(ChromaDB.Client.ChromaWhereDocument! lhs, ChromaDB.Client.ChromaWhereDocument! rhs) -> ChromaDB.Client.ChromaWhereDocument!
+*REMOVED*static ChromaDB.Client.ChromaWhereDocument.operator false(ChromaDB.Client.ChromaWhereDocument! _) -> bool
+*REMOVED*static ChromaDB.Client.ChromaWhereDocument.operator true(ChromaDB.Client.ChromaWhereDocument! _) -> bool
+*REMOVED*static ChromaDB.Client.ChromaWhereDocument.operator |(ChromaDB.Client.ChromaWhereDocument! lhs, ChromaDB.Client.ChromaWhereDocument! rhs) -> ChromaDB.Client.ChromaWhereDocument!
 *REMOVED*static ChromaDB.Client.Models.ChromaEmbeddingFunctionReference.Known(string! name, System.Collections.Generic.Dictionary<string!, object!>? config = null) -> ChromaDB.Client.Models.ChromaEmbeddingFunctionReference!
 ChromaDB.Client.ChromaBm25.Embed(System.Collections.Generic.IEnumerable<string!>! texts) -> System.Collections.Generic.IReadOnlyList<ChromaDB.Client.Models.ChromaSparseVector!>!
 ChromaDB.Client.ChromaClient.ChromaClient() -> void
