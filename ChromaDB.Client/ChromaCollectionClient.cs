@@ -199,7 +199,7 @@ public class ChromaCollectionClient
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
-			foreach (var batch in await Batches(records, cancellationToken))
+			await InBatches(records, async batch =>
 			{
 				var request = new CollectionAddRequest()
 				{
@@ -210,7 +210,7 @@ public class ChromaCollectionClient
 					Uris = batch.Uris,
 				};
 				await _httpClient.Post(_httpClient.Routes.Collection + "/add", request, requestParams, cancellationToken);
-			}
+			}, cancellationToken);
 		});
 
 	/// <summary>
@@ -234,7 +234,7 @@ public class ChromaCollectionClient
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
-			foreach (var batch in await Batches(records, cancellationToken))
+			await InBatches(records, async batch =>
 			{
 				var request = new CollectionUpdateRequest()
 				{
@@ -245,7 +245,7 @@ public class ChromaCollectionClient
 					Uris = batch.Uris,
 				};
 				await _httpClient.Post(_httpClient.Routes.Collection + "/update", request, requestParams, cancellationToken);
-			}
+			}, cancellationToken);
 		});
 
 	/// <summary>
@@ -271,7 +271,7 @@ public class ChromaCollectionClient
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
-			foreach (var batch in await Batches(records, cancellationToken))
+			await InBatches(records, async batch =>
 			{
 				var request = new CollectionUpsertRequest()
 				{
@@ -282,7 +282,7 @@ public class ChromaCollectionClient
 					Uris = batch.Uris,
 				};
 				await _httpClient.Post(_httpClient.Routes.Collection + "/upsert", request, requestParams, cancellationToken);
-			}
+			}, cancellationToken);
 		});
 
 	// As the Python client of Chroma: for each sparse vector index of the schema with a source key and an embedding function, the vector
@@ -346,31 +346,53 @@ public class ChromaCollectionClient
 	private static ChromaException CannotEmbed(ChromaSparseVectorIndex index)
 		=> new($"The sparse vectors of \"{index.Key}\" come from the embedding function \"{index.EmbeddingFunction}\" of the schema, which the client cannot compute: it computes chroma_bm25. Give the sparse vectors yourself.");
 
-	// With batch splitting, on by default, records beyond the max_batch_size of the server go in more requests.
-	// Up to Chroma 1.0.13 a request beyond it fails; later versions accept it, but still declare the limit.
-	private async Task<List<ChromaRecords>> Batches(ChromaRecords records, CancellationToken cancellationToken)
+	// The records in batches of the batch size, one request after the other, with batch splitting, on by default. Chroma Cloud
+	// rejects a batch beyond its quota of records, "current usage of 301 exceeds limit of 300", before it writes any of it: the
+	// client keeps that limit for the server, and sends that batch and the rest in batches of it.
+	private async Task InBatches(ChromaRecords records, Func<ChromaRecords, Task> send, CancellationToken cancellationToken)
 	{
-		if (!_httpClient.BatchSplitting || await BatchSize(cancellationToken) is not { } size || records.Ids.Count <= size)
+		var total = records.Ids.Count;
+		var offset = 0;
+		do
 		{
-			return [records];
-		}
-		return Enumerable.Range(0, (records.Ids.Count + size - 1) / size)
-			.Select(i => new ChromaRecords(records.Ids.Skip(i * size).Take(size).ToList())
+			var size = _httpClient.BatchSplitting ? await BatchSize(cancellationToken) : null;
+			var count = size is { } limit ? Math.Min(limit, total - offset) : total - offset;
+			var batch = offset == 0 && count == total ? records : Slice(records, offset, count);
+			try
 			{
-				Embeddings = records.Embeddings?.Skip(i * size).Take(size).ToList(),
-				Metadatas = records.Metadatas?.Skip(i * size).Take(size).ToList(),
-				Documents = records.Documents?.Skip(i * size).Take(size).ToList(),
-				Uris = records.Uris?.Skip(i * size).Take(size).ToList(),
-			})
-			.ToList();
+				await send(batch);
+				offset += count;
+			}
+			catch (ChromaException ex) when (_httpClient.BatchSplitting && RecordsQuota(ex) is { } quota && quota < count)
+			{
+				_httpClient.LearnRecordsLimit(quota);
+			}
+		}
+		while (offset < total);
 	}
 
-	// The smaller of the limit of the caller and the max_batch_size of the server, either one when the other is missing.
+	private static ChromaRecords Slice(ChromaRecords records, int offset, int count)
+		=> new(records.Ids.Skip(offset).Take(count).ToList())
+		{
+			Embeddings = records.Embeddings?.Skip(offset).Take(count).ToList(),
+			Metadatas = records.Metadatas?.Skip(offset).Take(count).ToList(),
+			Documents = records.Documents?.Skip(offset).Take(count).ToList(),
+			Uris = records.Uris?.Skip(offset).Take(count).ToList(),
+		};
+
+	// "Quota exceeded: 'Number of records' exceeded quota limit for action 'Add': current usage of 301 exceeds limit of 300".
+	private static readonly System.Text.RegularExpressions.Regex RecordsQuotaMessage = new("'Number of records' exceeded quota limit .* exceeds limit of ([0-9]+)");
+
+	private static int? RecordsQuota(ChromaException exception)
+		=> RecordsQuotaMessage.Match(exception.Message) is { Success: true } match
+			&& int.TryParse(match.Groups[1].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var limit) && limit > 0
+			? limit
+			: null;
+
+	// The smallest of the limit of the caller, 300 on Chroma Cloud when not given, the max_batch_size the server declares, and the
+	// quota of records the server enforced.
 	private async Task<int?> BatchSize(CancellationToken cancellationToken)
-	{
-		var server = await _httpClient.GetMaxBatchSize(cancellationToken);
-		return _httpClient.MaxBatchSize is { } caller && server is { } declared ? Math.Min(caller, declared) : _httpClient.MaxBatchSize ?? server;
-	}
+		=> new[] { _httpClient.MaxBatchSize, await _httpClient.GetMaxBatchSize(cancellationToken), _httpClient.RecordsLimit }.Min();
 
 	// The 0.x servers accept lists in metadata but drop them without an error; Chroma 1.0 to 1.4 reject them, 1.5.0 stores them.
 	// Sparse vectors too: Chroma 0.6.3 accepts them and stores the metadata as null.
@@ -409,7 +431,7 @@ public class ChromaCollectionClient
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
-			foreach (var batch in await Batches(new ChromaRecords(ids), cancellationToken))
+			await InBatches(new ChromaRecords(ids), async batch =>
 			{
 				var request = new CollectionDeleteRequest()
 				{
@@ -418,7 +440,7 @@ public class ChromaCollectionClient
 					WhereDocument = whereDocument?.ToWhereDocument(),
 				};
 				await _httpClient.Post(_httpClient.Routes.Collection + "/delete", request, requestParams, cancellationToken);
-			}
+			}, cancellationToken);
 		});
 
 	/// <summary>
@@ -453,11 +475,17 @@ public class ChromaCollectionClient
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
-			var batches = delete.Ids is null ? [null] : (await Batches(new ChromaRecords(delete.Ids), cancellationToken)).Select(batch => batch.Ids).ToList<List<string>?>();
 			int? deleted = null;
 			var remaining = delete.Limit;
-			foreach (var ids in batches)
+			var sent = false;
+			async Task Send(List<string>? ids)
 			{
+				// The limit is used up: the next batches would delete nothing. The first request goes anyway, also with a limit of 0.
+				if (sent && remaining is <= 0)
+				{
+					return;
+				}
+				sent = true;
 				var request = new CollectionDeleteRequest()
 				{
 					Ids = ids,
@@ -473,11 +501,14 @@ public class ChromaCollectionClient
 					deleted = (deleted ?? 0) + count.GetInt32();
 					remaining -= count.GetInt32();
 				}
-				// The limit is used up: the next batches would delete nothing.
-				if (remaining is <= 0)
-				{
-					break;
-				}
+			}
+			if (delete.Ids is null)
+			{
+				await Send(null);
+			}
+			else
+			{
+				await InBatches(new ChromaRecords(delete.Ids), batch => Send(batch.Ids), cancellationToken);
 			}
 			return deleted;
 		});

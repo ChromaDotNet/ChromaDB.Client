@@ -38,4 +38,20 @@ public class BatchSplittingTests : ChromaTestsBase
 		Assert.That(page.Select(x => x.Id), Is.EqualTo(all.Skip(1).Take(5).Select(x => x.Id)));
 		Assert.That((await collectionClient.Get(ids)).Select(x => x.Id), Is.EquivalentTo(ids));
 	}
+
+	// Chroma Cloud declares a max_batch_size of 1000 but takes 300 records per write: by default the client sends 300 at a time; with a
+	// larger limit of the caller, the rejected batch and the rest go in batches of the quota that its message tells.
+	[TestCase(null)]
+	[TestCase(1000)]
+	public async Task QuotaOfRecordsOfChromaCloud(int? maxBatchSize)
+	{
+		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has the quota of 300 records.");
+		var options = maxBatchSize is { } limit ? BaseConfigurationOptions.WithBatchSplitting(limit) : BaseConfigurationOptions;
+		var client = new ChromaClient(options, HttpClient);
+		var collectionClient = client.GetCollectionClient(await client.CreateCollection($"collection{Random.Shared.Next()}"));
+		var ids = Enumerable.Range(0, 301).Select(i => $"r{i}").ToList();
+		await collectionClient.Add(new ChromaRecords(ids) { Embeddings = Enumerable.Repeat(new ReadOnlyMemory<float>([0.5f, 0.5f]), 301).ToList() });
+		Assert.That(await collectionClient.Count(), Is.EqualTo(301));
+		Assert.That((await collectionClient.Get()).Count, Is.EqualTo(301));
+	}
 }

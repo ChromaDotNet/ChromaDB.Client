@@ -158,12 +158,12 @@ var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithB
 
 `Get` reads more records than the batch size in pages: pages of the batch size from the offset, until the limit or the last record, and ids beyond the batch size in batches, with the limit and the offset applied to all of them together. The pages are separate requests: records written in between can be read twice or missed.
 
-`WithBatchSplitting(maxBatchSize)` uses the smaller of that limit and the one of the server, or that limit alone where the server declares none. Chroma Cloud declares 1000, but takes 300 records per write and answers at most 300 records per read, without an error, unless the quota is raised:
+`WithBatchSplitting(maxBatchSize)` uses the smaller of that limit and the one of the server, or that limit alone where the server declares none. Chroma Cloud declares 1000, but takes 300 records per write and answers at most 300 records per read, without an error, unless the quota is raised. So on Chroma Cloud, at `*.trychroma.com`, the client uses 300 when no limit is given. A server that rejects a batch beyond its quota of records, "current usage of 301 exceeds limit of 300" as Chroma Cloud answers before writing any of it, gets that batch and the rest in batches of the quota, and the next writes too. A raised quota needs its limit:
 
 ```csharp
 var options = new ChromaConfigurationOptions(uri: "https://api.trychroma.com").WithChromaToken(apiKey)
 	.WithTenant(tenant).WithDatabase(database)
-	.WithBatchSplitting(maxBatchSize: 300);
+	.WithBatchSplitting(maxBatchSize: 1000); // a quota raised to 1000 records
 ```
 
 ## Deleting records

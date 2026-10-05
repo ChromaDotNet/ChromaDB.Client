@@ -32,7 +32,9 @@ internal sealed class ChromaHttpClient
 		Routes = options.ApiVersion == ChromaApiVersion.V1 ? ChromaRoutes.V1 : ChromaRoutes.V2;
 		DeserializerOptions = HttpClientHelpers.DeserializerOptions(options.MetadataValues);
 		BatchSplitting = options.BatchSplitting;
-		MaxBatchSize = options.MaxBatchSize;
+		// Chroma Cloud declares a max_batch_size of 1000, but takes 300 records per write and answers at most 300 per read, without an
+		// error: its quotas by default.
+		MaxBatchSize = options.MaxBatchSize ?? (options.Uri.Host.EndsWith(".trychroma.com", StringComparison.OrdinalIgnoreCase) ? 300 : null);
 		if (options.ChromaToken is not null and not [])
 		{
 			if (options.ChromaTokenTransportHeader == ChromaTokenTransportHeader.Authorization)
@@ -109,6 +111,11 @@ internal sealed class ChromaHttpClient
 		var path = uri.GetLeftPart(UriPartial.Path);
 		return path.EndsWith("/") ? uri : new Uri(path + "/");
 	}
+
+	// The quota of records per request that the server enforced, like the 300 of Chroma Cloud, trusted as long as the other facts.
+	public int? RecordsLimit => _server.RecordsLimit is { IsCurrent: true } limit ? limit.Value : null;
+
+	public void LearnRecordsLimit(int limit) => _server.RecordsLimit = new Fact<int>(limit);
 
 	// From pre-flight-checks, asked like the version. Null for Chroma 0.4.10, which has no pre-flight-checks, and when the server
 	// cannot tell: batch splitting is on by default, and the records then go in one request, as without it.
@@ -235,6 +242,7 @@ internal sealed class ChromaHttpClient
 		public volatile Fact<ChromaPreFlightChecks?>? PreFlightChecks;
 		public readonly SemaphoreSlim PreFlightChecksLock = new(1, 1);
 		public volatile Fact<bool>? DeleteLimit;
+		public volatile Fact<int>? RecordsLimit;
 		public readonly SemaphoreSlim DeleteLimitLock = new(1, 1);
 	}
 
