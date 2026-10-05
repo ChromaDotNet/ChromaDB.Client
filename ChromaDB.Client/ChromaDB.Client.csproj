@@ -47,12 +47,19 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
 		</PackageReference>
+	</ItemGroup>
+	<!-- The netstandard2.0 build is the one of .NET Core 3.1 to 7: the 8.0 packages have builds for .NET 6 and 7, and no
+	     warning there, as 2.7.1. ActivitySource and Meter are in the runtime from .NET 5. -->
+	<ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
+		<PackageReference Include="System.Memory" Version="4.5.5" />
+		<PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
+		<PackageReference Include="System.Text.Json" Version="8.0.6" />
+	</ItemGroup>
+	<!-- .NET Framework: the versions OpenTelemetry 1.19 brings, so that the two load without binding redirects. -->
+	<ItemGroup Condition="'$(TargetFramework)'=='net462'">
 		<PackageReference Include="System.Memory" Version="4.6.3" />
-		<!-- ActivitySource and Meter, in the runtime from .NET 5. -->
 		<PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.0.12" />
 		<PackageReference Include="System.Text.Json" Version="10.0.12" />
-	</ItemGroup>
-	<ItemGroup Condition="'$(TargetFramework)'=='net462'">
 		<Reference Include="System.Net.Http" />
 		<!-- The implicit usings of .NET Framework do not have it. -->
 		<Using Include="System.Net.Http" />
