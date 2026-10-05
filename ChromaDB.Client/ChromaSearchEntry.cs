@@ -8,6 +8,7 @@ public class ChromaSearchEntry
 	/// <summary>
 	/// Creates the entry for the record with the given id; it sends no request.
 	/// </summary>
+	/// <param name="id">The id of the record.</param>
 	public ChromaSearchEntry(string id)
 	{
 		Id = id;

@@ -23,6 +23,7 @@ public class ChromaTenant
 	/// <summary>
 	/// Creates the object for a tenant with the given name; it sends no request.
 	/// </summary>
+	/// <param name="name">The name of the tenant.</param>
 	public ChromaTenant(string name)
 	{
 		Name = name;

@@ -30,6 +30,7 @@ public class ChromaCollectionDefinition
 	/// <summary>
 	/// Creates the definition of a collection with the name.
 	/// </summary>
+	/// <param name="name">The name of the collection.</param>
 	public ChromaCollectionDefinition(string name)
 	{
 		Name = name;

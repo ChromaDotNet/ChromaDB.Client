@@ -112,6 +112,7 @@ public class ChromaCollection
 	/// <summary>
 	/// Creates the object for a collection with the given name; it sends no request.
 	/// </summary>
+	/// <param name="name">The name of the collection.</param>
 	public ChromaCollection(string name)
 	{
 		Name = name;

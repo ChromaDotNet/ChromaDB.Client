@@ -38,6 +38,12 @@ public sealed class ChromaBm25
 	/// their tokens. A collection whose schema declares other settings needs the same ones here: <c>Bm25Function</c> of its
 	/// <c>ChromaCollection.SparseVectorIndexes</c> has them.
 	/// </summary>
+	/// <param name="k">The saturation of the term frequency.</param>
+	/// <param name="b">How much the length of the text weighs.</param>
+	/// <param name="avgDocLength">The length of an average text, in tokens.</param>
+	/// <param name="tokenMaxLength">The longest token kept, in characters; the longer ones are dropped.</param>
+	/// <param name="stopwords">The words dropped from the texts, or null for <c>DefaultStopwords</c>.</param>
+	/// <param name="includeTokens">Whether the vectors hold their tokens.</param>
 	public ChromaBm25(double k = 1.2, double b = 0.75, double avgDocLength = 256, int tokenMaxLength = 40, IEnumerable<string>? stopwords = null, bool includeTokens = false)
 	{
 		K = k;
@@ -153,6 +159,8 @@ public sealed class ChromaBm25
 	/// The sparse vector of the text, for a document or a query: one index for each distinct token, the absolute value of the
 	/// MurmurHash3 of the token, in ascending order, and its BM25 weight. An empty vector when no token is left.
 	/// </summary>
+	/// <param name="text">The text of a document or of a query.</param>
+	/// <returns>The sparse vector of the text.</returns>
 	public ChromaSparseVector Embed(string text)
 	{
 		var tokens = new Bm25Tokenizer(new SnowballEnglishStemmer(), _stopwords, TokenMaxLength).Tokenize(text);
@@ -188,6 +196,8 @@ public sealed class ChromaBm25
 	/// <summary>
 	/// The sparse vectors of the texts, in order.
 	/// </summary>
+	/// <param name="texts">The texts.</param>
+	/// <returns>The sparse vectors of the texts, in order.</returns>
 	public IReadOnlyList<ChromaSparseVector> Embed(IEnumerable<string> texts)
 		=> texts.Select(Embed).ToList();
 }

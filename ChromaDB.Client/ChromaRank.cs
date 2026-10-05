@@ -20,6 +20,7 @@ public abstract class ChromaRank
 	/// The JSON of the expression, as the client sends it in <c>rank</c>. A text query of <c>SparseKnn</c> is in it as the text:
 	/// <c>ChromaCollectionClient.SearchAsync</c> sends its sparse vector instead.
 	/// </summary>
+	/// <returns>The JSON.</returns>
 	public override string ToString()
 		=> System.Text.Json.JsonSerializer.Serialize(ToRank(), Common.HttpClientHelpers.TypeInfo<Dictionary<string, object>>(Common.HttpClientHelpers.PostJsonSerializerOptions));
 
@@ -28,6 +29,12 @@ public abstract class ChromaRank
 	/// by default. The other records get <c>defaultScore</c>, or are left out when it is null. With <c>returnRank</c> the score is the
 	/// position of the record, 0 for the nearest, as <c>Rrf</c> needs.
 	/// </summary>
+	/// <param name="query">The query embedding.</param>
+	/// <param name="key">The key of the index: <c>#embedding</c> for the embeddings, or a metadata key with a sparse vector index.</param>
+	/// <param name="limit">How many nearest records the expression ranks.</param>
+	/// <param name="defaultScore">The score of the records beyond the limit, or null to leave them out.</param>
+	/// <param name="returnRank">Whether the score is the position of the record, 0 for the nearest, as <c>Rrf</c> needs.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank Knn(ReadOnlyMemory<float> query, string key = ChromaSearchKeys.Embedding, int limit = 16, double? defaultScore = null, bool returnRank = false)
 		=> new ChromaKnnRank(query.ToArray(), key, limit, defaultScore, returnRank);
 
@@ -35,6 +42,12 @@ public abstract class ChromaRank
 	/// The same as <c>Knn</c> with a sparse vector as the query, on a metadata key that has a sparse vector index, like the BM25 vectors
 	/// of a text: <c>$knn</c> with the sparse vector in <c>query</c>. A name of its own, so that <c>Knn(new(...), key)</c> stays unambiguous.
 	/// </summary>
+	/// <param name="query">The query: a sparse vector, or a text that <c>ChromaCollectionClient.SearchAsync</c> turns into one with the function of the index.</param>
+	/// <param name="key">The key of the index: <c>#embedding</c> for the embeddings, or a metadata key with a sparse vector index.</param>
+	/// <param name="limit">How many nearest records the expression ranks.</param>
+	/// <param name="defaultScore">The score of the records beyond the limit, or null to leave them out.</param>
+	/// <param name="returnRank">Whether the score is the position of the record, 0 for the nearest, as <c>Rrf</c> needs.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank SparseKnn(Models.ChromaSparseVector query, string key, int limit = 16, double? defaultScore = null, bool returnRank = false)
 		=> new ChromaKnnRank(query, key, limit, defaultScore, returnRank);
 
@@ -43,60 +56,83 @@ public abstract class ChromaRank
 	/// of the sparse vector index of the key, <c>chroma_bm25</c>, as the Python client of Chroma does. The collection of the client needs
 	/// its schema, as <c>GetCollectionAsync</c> and <c>CreateCollectionAsync</c> return it.
 	/// </summary>
+	/// <param name="query">The query: a sparse vector, or a text that <c>ChromaCollectionClient.SearchAsync</c> turns into one with the function of the index.</param>
+	/// <param name="key">The key of the index: <c>#embedding</c> for the embeddings, or a metadata key with a sparse vector index.</param>
+	/// <param name="limit">How many nearest records the expression ranks.</param>
+	/// <param name="defaultScore">The score of the records beyond the limit, or null to leave them out.</param>
+	/// <param name="returnRank">Whether the score is the position of the record, 0 for the nearest, as <c>Rrf</c> needs.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank SparseKnn(string query, string key, int limit = 16, double? defaultScore = null, bool returnRank = false)
 		=> new ChromaKnnRank(query, key, limit, defaultScore, returnRank);
 
 	/// <summary>
 	/// A constant, with <c>$val</c>.
 	/// </summary>
+	/// <param name="value">The constant.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank Value(double value)
 		=> new ChromaValueRank(value);
 
 	/// <summary>
 	/// A number as a constant, with <c>$val</c>.
 	/// </summary>
+	/// <param name="value">The constant.</param>
 	public static implicit operator ChromaRank(double value)
 		=> Value(value);
 
 	/// <summary>
 	/// The sum of the expressions, with <c>$sum</c>.
 	/// </summary>
+	/// <param name="ranks">The expressions.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank Sum(params ChromaRank[] ranks)
 		=> new ChromaListRank("$sum", ranks);
 
 	/// <summary>
 	/// The product of the expressions, with <c>$mul</c>.
 	/// </summary>
+	/// <param name="ranks">The expressions.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank Multiply(params ChromaRank[] ranks)
 		=> new ChromaListRank("$mul", ranks);
 
 	/// <summary>
 	/// The largest of the expressions, with <c>$max</c>.
 	/// </summary>
+	/// <param name="ranks">The expressions.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank Max(params ChromaRank[] ranks)
 		=> new ChromaListRank("$max", ranks);
 
 	/// <summary>
 	/// The smallest of the expressions, with <c>$min</c>.
 	/// </summary>
+	/// <param name="ranks">The expressions.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank Min(params ChromaRank[] ranks)
 		=> new ChromaListRank("$min", ranks);
 
 	/// <summary>
 	/// The absolute value, with <c>$abs</c>.
 	/// </summary>
+	/// <param name="rank">The expression.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank Abs(ChromaRank rank)
 		=> new ChromaUnaryRank("$abs", rank);
 
 	/// <summary>
 	/// The exponential, with <c>$exp</c>.
 	/// </summary>
+	/// <param name="rank">The expression.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank Exp(ChromaRank rank)
 		=> new ChromaUnaryRank("$exp", rank);
 
 	/// <summary>
 	/// The natural logarithm, with <c>$log</c>.
 	/// </summary>
+	/// <param name="rank">The expression.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank Log(ChromaRank rank)
 		=> new ChromaUnaryRank("$log", rank);
 
@@ -105,6 +141,11 @@ public abstract class ChromaRank
 	/// The expressions are usually <c>Knn</c> with <c>returnRank</c>. The weights are 1 by default, must be as many as the expressions and
 	/// not negative; with <c>normalize</c> they are scaled to sum to 1. <c>k</c> must be positive.
 	/// </summary>
+	/// <param name="ranks">The expressions to fuse, usually <c>Knn</c> with <c>returnRank</c>.</param>
+	/// <param name="k">The constant added to each rank; positive.</param>
+	/// <param name="weights">The weight of each expression, not negative, or null for 1 each.</param>
+	/// <param name="normalize">Whether the weights are scaled to sum to 1.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank Rrf(IReadOnlyList<ChromaRank> ranks, double k = 60, IReadOnlyList<double>? weights = null, bool normalize = false)
 	{
 		if (ranks is not { Count: > 0 })
@@ -140,30 +181,44 @@ public abstract class ChromaRank
 	/// <summary>
 	/// The sum, with <c>$sum</c>; sums are flattened into one, as in the Python client of Chroma.
 	/// </summary>
+	/// <param name="left">The left expression.</param>
+	/// <param name="right">The right expression.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank operator +(ChromaRank left, ChromaRank right)
 		=> new ChromaListRank("$sum", Flatten("$sum", left).Concat(Flatten("$sum", right)).ToArray());
 
 	/// <summary>
 	/// The difference, with <c>$sub</c>.
 	/// </summary>
+	/// <param name="left">The left expression.</param>
+	/// <param name="right">The right expression.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank operator -(ChromaRank left, ChromaRank right)
 		=> new ChromaBinaryRank("$sub", left, right);
 
 	/// <summary>
 	/// The product, with <c>$mul</c>; products are flattened into one, as in the Python client of Chroma.
 	/// </summary>
+	/// <param name="left">The left expression.</param>
+	/// <param name="right">The right expression.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank operator *(ChromaRank left, ChromaRank right)
 		=> new ChromaListRank("$mul", Flatten("$mul", left).Concat(Flatten("$mul", right)).ToArray());
 
 	/// <summary>
 	/// The quotient, with <c>$div</c>.
 	/// </summary>
+	/// <param name="left">The left expression.</param>
+	/// <param name="right">The right expression.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank operator /(ChromaRank left, ChromaRank right)
 		=> new ChromaBinaryRank("$div", left, right);
 
 	/// <summary>
 	/// The opposite, as the product with <c>-1</c>.
 	/// </summary>
+	/// <param name="rank">The expression.</param>
+	/// <returns>The expression.</returns>
 	public static ChromaRank operator -(ChromaRank rank)
 		=> new ChromaListRank("$mul", [Value(-1), rank]);
 

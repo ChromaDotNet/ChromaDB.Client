@@ -66,6 +66,10 @@ public class ChromaConfigurationOptions
 	/// <summary>
 	/// Options for the server at the given URI, with the tenant, the database and the token, when given.
 	/// </summary>
+	/// <param name="uri">The URI of the server, like <c>http://localhost:8000</c>.</param>
+	/// <param name="tenant">The tenant, or null for the one of the options.</param>
+	/// <param name="database">The database, or null for the one of the options.</param>
+	/// <param name="chromaToken">The token, sent in <c>X-Chroma-Token</c> by default, or null for none.</param>
 	public ChromaConfigurationOptions(Uri uri, string? tenant = null, string? database = null, string? chromaToken = null)
 	{
 		Uri = uri;
@@ -77,6 +81,10 @@ public class ChromaConfigurationOptions
 	/// <summary>
 	/// Options for the server at the given URI, as a string, with the tenant, the database and the token, when given.
 	/// </summary>
+	/// <param name="uri">The URI of the server, like <c>http://localhost:8000</c>.</param>
+	/// <param name="tenant">The tenant, or null for the one of the options.</param>
+	/// <param name="database">The database, or null for the one of the options.</param>
+	/// <param name="chromaToken">The token, sent in <c>X-Chroma-Token</c> by default, or null for none.</param>
 	public ChromaConfigurationOptions(string uri, string? tenant = null, string? database = null, string? chromaToken = null)
 		: this(new Uri(uri), tenant, database, chromaToken)
 	{ }
@@ -96,6 +104,8 @@ public class ChromaConfigurationOptions
 	/// case-insensitive, a value with <c>;</c> goes in quotes, and an empty value is no value. Another key, or no endpoint, throws an
 	/// <c>ArgumentException</c>.
 	/// </summary>
+	/// <param name="connectionString">The connection string.</param>
+	/// <returns>The options.</returns>
 	public static ChromaConfigurationOptions FromConnectionString(string connectionString)
 	{
 		if (Uri.TryCreate(connectionString, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")
@@ -148,36 +158,49 @@ public class ChromaConfigurationOptions
 	/// <summary>
 	/// A copy of these options with the given URI.
 	/// </summary>
+	/// <param name="uri">The URI of the server, like <c>http://localhost:8000</c>.</param>
+	/// <returns>The new options; these do not change.</returns>
 	public ChromaConfigurationOptions WithUri(Uri uri)
 		=> new(this) { Uri = uri };
 
 	/// <summary>
 	/// A copy of these options with the given URI, as a string.
 	/// </summary>
+	/// <param name="uri">The URI of the server, like <c>http://localhost:8000</c>.</param>
+	/// <returns>The new options; these do not change.</returns>
 	public ChromaConfigurationOptions WithUri(string uri)
 		=> new(this) { Uri = new Uri(uri) };
 
 	/// <summary>
 	/// A copy of these options with the given default tenant.
 	/// </summary>
+	/// <param name="tenant">The tenant, or null for the one of the options.</param>
+	/// <returns>The new options; these do not change.</returns>
 	public ChromaConfigurationOptions WithTenant(string tenant)
 		=> new(this) { Tenant = tenant };
 
 	/// <summary>
 	/// A copy of these options with the given default database.
 	/// </summary>
+	/// <param name="database">The database, or null for the one of the options.</param>
+	/// <returns>The new options; these do not change.</returns>
 	public ChromaConfigurationOptions WithDatabase(string database)
 		=> new(this) { Database = database };
 
 	/// <summary>
 	/// A copy of these options with the given token, in the header these options already name: <c>X-Chroma-Token</c> by default.
 	/// </summary>
+	/// <param name="chromaToken">The token, sent in <c>X-Chroma-Token</c> by default, or null for none.</param>
+	/// <returns>The new options; these do not change.</returns>
 	public ChromaConfigurationOptions WithChromaToken(string chromaToken)
 		=> new(this) { ChromaToken = chromaToken };
 
 	/// <summary>
 	/// A copy of these options with the given token, in the given header.
 	/// </summary>
+	/// <param name="chromaToken">The token, sent in <c>X-Chroma-Token</c> by default, or null for none.</param>
+	/// <param name="transportHeader">The header the token goes in.</param>
+	/// <returns>The new options; these do not change.</returns>
 	public ChromaConfigurationOptions WithChromaToken(string chromaToken, ChromaTokenTransportHeader transportHeader)
 		=> new(this) { ChromaToken = chromaToken, ChromaTokenTransportHeader = transportHeader };
 
@@ -185,18 +208,25 @@ public class ChromaConfigurationOptions
 	/// A copy of these options with the user name and the password for basic authentication, for the Chroma 0.x servers with
 	/// basic authentication.
 	/// </summary>
+	/// <param name="username">The user name.</param>
+	/// <param name="password">The password.</param>
+	/// <returns>The new options; these do not change.</returns>
 	public ChromaConfigurationOptions WithBasicAuth(string username, string password)
 		=> new(this) { BasicAuthUsername = username, BasicAuthPassword = password };
 
 	/// <summary>
 	/// A copy of these options with the given version of the Chroma API.
 	/// </summary>
+	/// <param name="apiVersion">The version of the Chroma API.</param>
+	/// <returns>The new options; these do not change.</returns>
 	public ChromaConfigurationOptions WithApiVersion(ChromaApiVersion apiVersion)
 		=> new(this) { ApiVersion = apiVersion };
 
 	/// <summary>
 	/// A copy of these options that reads the values of the metadata the given way.
 	/// </summary>
+	/// <param name="metadataValues">How the client reads the values of the metadata.</param>
+	/// <returns>The new options; these do not change.</returns>
 	public ChromaConfigurationOptions WithMetadataValues(ChromaMetadataValues metadataValues)
 		=> new(this) { MetadataValues = metadataValues };
 
@@ -205,6 +235,8 @@ public class ChromaConfigurationOptions
 	/// of the server, one request after the other, as by default. If a batch fails, the earlier ones stay written. With
 	/// <c>false</c> the records go in one request.
 	/// </summary>
+	/// <param name="batchSplitting">Whether the records go in batches; false sends them in one request.</param>
+	/// <returns>The new options; these do not change.</returns>
 	public ChromaConfigurationOptions WithBatchSplitting(bool batchSplitting = true)
 		=> new(this) { BatchSplitting = batchSplitting };
 
@@ -212,6 +244,8 @@ public class ChromaConfigurationOptions
 	/// Batches of at most <c>maxBatchSize</c> records, or of the <c>max_batch_size</c> of the server if smaller. For a server whose
 	/// limit differs from the one it declares, like Chroma Cloud, which declares 1000 but takes 300 records per write by default.
 	/// </summary>
+	/// <param name="maxBatchSize">The most records in a request.</param>
+	/// <returns>The new options; these do not change.</returns>
 	public ChromaConfigurationOptions WithBatchSplitting(int maxBatchSize)
 		=> maxBatchSize > 0
 			? new(this) { BatchSplitting = true, MaxBatchSize = maxBatchSize }

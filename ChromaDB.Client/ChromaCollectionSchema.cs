@@ -28,6 +28,11 @@ public sealed class ChromaCollectionSchema
 	/// Chroma Cloud rejects one without the other: then it throws an <c>ArgumentException</c>. Only Chroma Cloud has sparse vector indexes:
 	/// a single server rejects them.
 	/// </summary>
+	/// <param name="key">The metadata key that holds the sparse vectors.</param>
+	/// <param name="sourceKey">The key of the text the vectors come from, like <c>#document</c>, or null for none.</param>
+	/// <param name="bm25">Whether the server applies the inverse document frequency of BM25.</param>
+	/// <param name="embeddingFunction">The function that computes the vectors, or null for none; a source key needs one.</param>
+	/// <returns>The new schema; this one does not change.</returns>
 	public ChromaCollectionSchema WithSparseVectorIndex(string key, string? sourceKey = null, bool bm25 = false, ChromaEmbeddingFunctionReference? embeddingFunction = null)
 	{
 		if (sourceKey is not null && embeddingFunction is null)
@@ -64,6 +69,7 @@ public sealed class ChromaCollectionSchema
 	/// The JSON of the schema, as the client sends it. With <c>ChromaCollectionConfiguration.Space</c> in the definition of the collection,
 	/// the client adds the space to it.
 	/// </summary>
+	/// <returns>The JSON.</returns>
 	public override string ToString()
 		=> System.Text.Json.JsonSerializer.Serialize(ToSchema(), Common.HttpClientHelpers.TypeInfo<Dictionary<string, object>>(Common.HttpClientHelpers.PostJsonSerializerOptions));
 

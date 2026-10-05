@@ -14,10 +14,13 @@ public class ChromaException : Exception
 	/// <summary>
 	/// An exception with the given message.
 	/// </summary>
+	/// <param name="message">The message.</param>
 	public ChromaException(string? message) : base(message) { }
 	/// <summary>
 	/// An exception with the given message and the exception that caused it.
 	/// </summary>
+	/// <param name="message">The message.</param>
+	/// <param name="inner">The exception that caused this one.</param>
 	public ChromaException(string? message, Exception? inner) : base(message, inner) { }
 
 	/// <summary>

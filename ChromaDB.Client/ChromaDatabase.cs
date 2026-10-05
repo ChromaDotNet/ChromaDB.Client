@@ -28,6 +28,7 @@ public class ChromaDatabase
 	/// <summary>
 	/// Creates the object for a database with the given name; it sends no request.
 	/// </summary>
+	/// <param name="name">The name of the database.</param>
 	public ChromaDatabase(string name)
 	{
 		Name = name;

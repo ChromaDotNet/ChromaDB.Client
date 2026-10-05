@@ -30,6 +30,7 @@ public class ChromaRecords
 	/// <summary>
 	/// Creates the records with the ids.
 	/// </summary>
+	/// <param name="ids">The ids of the records.</param>
 	public ChromaRecords(IReadOnlyList<string> ids)
 	{
 		Ids = ids;

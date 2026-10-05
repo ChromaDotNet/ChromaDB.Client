@@ -29,6 +29,7 @@ public class ChromaCollectionEntry
 	/// <summary>
 	/// Creates the entry of the record with the id.
 	/// </summary>
+	/// <param name="id">The id of the record.</param>
 	public ChromaCollectionEntry(string id)
 	{
 		Id = id;

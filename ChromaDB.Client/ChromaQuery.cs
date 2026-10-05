@@ -34,6 +34,7 @@ public class ChromaQuery
 	/// <summary>
 	/// Creates a query for the embeddings.
 	/// </summary>
+	/// <param name="queryEmbeddings">The query embeddings: the results are one list for each.</param>
 	public ChromaQuery(IReadOnlyList<ReadOnlyMemory<float>> queryEmbeddings)
 	{
 		QueryEmbeddings = queryEmbeddings;

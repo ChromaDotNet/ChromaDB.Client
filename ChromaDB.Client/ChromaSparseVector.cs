@@ -15,6 +15,9 @@ public sealed class ChromaSparseVector
 	/// The vector with the values of the dimensions in <c>indices</c>, which must be in strictly ascending order, as many as the values;
 	/// the tokens, when given, too. The indices are unsigned 32-bit integers, as Chroma stores them.
 	/// </summary>
+	/// <param name="indices">The dimensions that have a value, in strictly ascending order.</param>
+	/// <param name="values">The value of each dimension of the indices.</param>
+	/// <param name="tokens">The token of each dimension, or null for none.</param>
 	public ChromaSparseVector(IReadOnlyList<uint> indices, IReadOnlyList<float> values, IReadOnlyList<string>? tokens = null)
 	{
 		if (indices.Count != values.Count)
@@ -56,6 +59,7 @@ public sealed class ChromaSparseVector
 	/// <summary>
 	/// The JSON of the vector, as the client sends it.
 	/// </summary>
+	/// <returns>The JSON.</returns>
 	public override string ToString()
 		=> System.Text.Json.JsonSerializer.Serialize(this, HttpClientHelpers.TypeInfo<ChromaSparseVector>(HttpClientHelpers.PostJsonSerializerOptions));
 }
