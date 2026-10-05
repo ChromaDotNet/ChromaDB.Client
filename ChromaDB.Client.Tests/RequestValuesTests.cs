@@ -71,6 +71,33 @@ public class RequestValuesTests
 		Assert.That(() => Collection(new NoRequests()).ModifyAsync(metadata: metadata), Throws.ArgumentException);
 	}
 
+	// A byte[] goes as a base64 string, not as a list; a list that can be read once is not read by the checks, so it
+	// goes whole. The write reaches its request, which the handler stops.
+	[Test]
+	public void ValuesThatAreNotLists()
+	{
+		var collection = Collection(new PreFlightOnly());
+		Assert.That(() => collection.AddAsync(["a"], [Embedding], [new Dictionary<string, object> { ["b"] = Array.Empty<byte>(), ["c"] = new byte[] { 1, 2 } }]), Throws.InvalidOperationException.With.Message.Contains("/add"));
+		var once = new ReadOnce(["x", "y"]);
+		Assert.That(() => collection.AddAsync(["a"], [Embedding], [new Dictionary<string, object> { ["tags"] = once }]), Throws.InvalidOperationException.With.Message.Contains("/add"));
+		Assert.That(once.Reads, Is.EqualTo(1));
+		using var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(new NoRequests()));
+		Assert.That(() => client.CreateCollectionAsync("c", new Dictionary<string, object> { ["b"] = new byte[] { 1 } }), Throws.InvalidOperationException.With.Message.Contains("/collections"));
+	}
+
+	sealed class ReadOnce(IEnumerable<string> items) : IEnumerable<string>
+	{
+		public int Reads { get; private set; }
+
+		public IEnumerator<string> GetEnumerator()
+		{
+			if (++Reads > 1) throw new InvalidOperationException("Read twice.");
+			return items.GetEnumerator();
+		}
+
+		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+	}
+
 	static ChromaCollectionClient Collection(HttpMessageHandler handler)
 		=> new(Guid.NewGuid(), "c", new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
 

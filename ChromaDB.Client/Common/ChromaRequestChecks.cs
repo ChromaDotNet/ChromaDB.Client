@@ -48,27 +48,15 @@ internal static class ChromaRequestChecks
 		}
 	}
 
-	// A JsonElement array is what the client returns for a list read with ChromaMetadataValues.Inferred.
+	// A JsonElement array is what the client returns for a list read with ChromaMetadataValues.Inferred. A byte[] goes
+	// as a base64 string.
 	public static bool IsList(object? value)
 		=> value is JsonElement { ValueKind: JsonValueKind.Array }
-			or IEnumerable and not string and not IDictionary;
+			or IEnumerable and not string and not IDictionary and not byte[];
 
+	// Only from a count: enumerating the list would consume one that can be read once, before it is sent.
 	private static bool IsEmpty(object? value)
-	{
-		if (value is JsonElement element)
-		{
-			return element.GetArrayLength() == 0;
-		}
-		var enumerator = ((IEnumerable)value!).GetEnumerator();
-		try
-		{
-			return !enumerator.MoveNext();
-		}
-		finally
-		{
-			(enumerator as IDisposable)?.Dispose();
-		}
-	}
+		=> value is JsonElement element ? element.GetArrayLength() == 0 : value is ICollection { Count: 0 };
 
 	// A lone half of a surrogate pair: UTF-8 has no form for it, and System.Text.Json would send U+FFFD in its place, so
 	// an id or a document would come back changed.
