@@ -55,6 +55,16 @@ public class SearchRequestsTests
 			Is.EqualTo("""{"$or":[{"#document":{"$contains":"a"}},{"#document":{"$regex":"^b"}}]}"""));
 	}
 
+	// A chain of the same operator goes as one list here too.
+	[Test]
+	public async Task SearchWithAChainOfDocumentFilters()
+	{
+		var server = new FakeServer(_ => (HttpStatusCode.OK, Empty));
+		await Client(server).SearchAsync(new ChromaSearch { WhereDocument = ChromaWhereDocumentOperator.Contains("a") | ChromaWhereDocumentOperator.Contains("b") | ChromaWhereDocumentOperator.Regex("^c") });
+		Assert.That(server.Requests.Single().Body.GetProperty("searches")[0].GetProperty("filter").GetRawText(),
+			Is.EqualTo("""{"$or":[{"#document":{"$contains":"a"}},{"#document":{"$contains":"b"}},{"#document":{"$regex":"^c"}}]}"""));
+	}
+
 	// The JSON the Python client of Chroma 1.5.9 builds for Rrf: -(1 / (60 + rank1) + 1 / (60 + rank2)), which Chroma Cloud accepts.
 	[Test]
 	public void Rrf()

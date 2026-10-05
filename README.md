@@ -177,7 +177,7 @@ var where = ChromaWhereOperator.Equal("year", 2026) & ChromaWhereOperator.In("la
 Console.WriteLine(where); // {"$and":[{"year":{"$eq":2026}},{"lang":{"$in":["en","it"]}}]}
 ```
 
-`ChromaWhereOperator` has `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, `LessThanOrEqual`, `In`, `NotIn`, `Contains` and `NotContains`, combined with `&` and `|`; `ChromaWhereDocumentOperator` has `Contains`, `NotContains`, `Regex` and `NotRegex`.
+`ChromaWhereOperator` has `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, `LessThanOrEqual`, `In`, `NotIn`, `Contains` and `NotContains`, combined with `&` and `|`; `ChromaWhereDocumentOperator` has `Contains`, `NotContains`, `Regex` and `NotRegex`. A chain of the same operator, like `a & b & c` or one built in a loop, goes as one list, `{"$and":[a,b,c]}`, as the Python client writes it.
 
 `In` and `NotIn` without values throw an `ArgumentException`: every tested Chroma rejects `$in` and `$nin` without values.
 

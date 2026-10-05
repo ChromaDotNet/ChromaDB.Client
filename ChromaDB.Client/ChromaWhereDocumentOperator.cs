@@ -123,17 +123,39 @@ internal class ChromaWhereDocumentLogicalOperator : ChromaWhereDocumentOperator
 		Rhs = rhs;
 	}
 
+	// a & b & c goes as {"$and":[a,b,c]}, as for the filters on the metadata.
 	internal override Dictionary<string, object> ToWhereDocument()
 		=> new()
 		{
-			{ Operator, new object[] { Lhs.ToWhereDocument(), Rhs.ToWhereDocument() } }
+			{ Operator, Operands().Select(x => (object)x.ToWhereDocument()).ToArray() }
 		};
 
 	internal override Dictionary<string, object> ToSearchWhere()
 		=> new()
 		{
-			{ Operator, new object[] { Lhs.ToSearchWhere(), Rhs.ToSearchWhere() } }
+			{ Operator, Operands().Select(x => (object)x.ToSearchWhere()).ToArray() }
 		};
+
+	// The filters of a chain of the same operator, in their order, without recursion for a long chain.
+	private List<ChromaWhereDocumentOperator> Operands()
+	{
+		var operands = new List<ChromaWhereDocumentOperator>();
+		var stack = new Stack<ChromaWhereDocumentOperator>([Rhs, Lhs]);
+		while (stack.Count > 0)
+		{
+			var filter = stack.Pop();
+			if (filter is ChromaWhereDocumentLogicalOperator logical && logical.Operator == Operator)
+			{
+				stack.Push(logical.Rhs);
+				stack.Push(logical.Lhs);
+			}
+			else
+			{
+				operands.Add(filter);
+			}
+		}
+		return operands;
+	}
 }
 
 internal class ChromaWhereDocumentStringOperator : ChromaWhereDocumentOperator

@@ -110,6 +110,42 @@ public class BatchesAndFiltersTests
 		Assert.That(handler.Bodies.Single().GetProperty("where_document").GetRawText(), Is.EqualTo(whereDocument.ToString()));
 	}
 
+	// A chain of the same operator goes as one list, as the Python client writes it: nested, a chain of 32 filters went beyond the
+	// 64 levels of System.Text.Json.
+	[Test]
+	public async Task ChainsOfTheSameOperatorInOneList()
+	{
+		ChromaWhereOperator Eq(int i) => ChromaWhereOperator.Equal("i", i);
+		Assert.That((Eq(1) & Eq(2) & Eq(3)).ToString(), Is.EqualTo("""{"$and":[{"i":{"$eq":1}},{"i":{"$eq":2}},{"i":{"$eq":3}}]}"""));
+		Assert.That((Eq(1) & (Eq(2) & Eq(3))).ToString(), Is.EqualTo((Eq(1) & Eq(2) & Eq(3)).ToString()));
+		Assert.That(((Eq(1) | Eq(2)) & Eq(3) & (Eq(4) | Eq(5) | Eq(6))).ToString(),
+			Is.EqualTo("""{"$and":[{"$or":[{"i":{"$eq":1}},{"i":{"$eq":2}}]},{"i":{"$eq":3}},{"$or":[{"i":{"$eq":4}},{"i":{"$eq":5}},{"i":{"$eq":6}}]}]}"""));
+
+		// A filter used in two chains stays as it was.
+		var both = Eq(1) & Eq(2);
+		Assert.That(((both & Eq(3)).ToString(), (both | Eq(4)).ToString(), both.ToString()), Is.EqualTo((
+			"""{"$and":[{"i":{"$eq":1}},{"i":{"$eq":2}},{"i":{"$eq":3}}]}""",
+			"""{"$or":[{"$and":[{"i":{"$eq":1}},{"i":{"$eq":2}}]},{"i":{"$eq":4}}]}""",
+			"""{"$and":[{"i":{"$eq":1}},{"i":{"$eq":2}}]}""")));
+
+		var and = Eq(0);
+		var or = Eq(0);
+		var document = ChromaWhereDocumentOperator.Contains("w0");
+		for (var i = 1; i < 10_000; i++)
+		{
+			and &= Eq(i);
+			or = or || Eq(i);
+			document &= ChromaWhereDocumentOperator.Contains($"w{i}");
+		}
+		Assert.That(JsonDocument.Parse(and.ToString()).RootElement.GetProperty("$and").GetArrayLength(), Is.EqualTo(10_000));
+		Assert.That(JsonDocument.Parse(or.ToString()).RootElement.GetProperty("$or")[9_999].GetRawText(), Is.EqualTo("""{"i":{"$eq":9999}}"""));
+		Assert.That(JsonDocument.Parse(document.ToString()).RootElement.GetProperty("$and").GetArrayLength(), Is.EqualTo(10_000));
+
+		var handler = new Handler("""{"ids":[]}""");
+		await Client(Options, handler).GetAsync(where: and, whereDocument: document);
+		Assert.That(handler.Bodies.Single().GetProperty("where").GetProperty("$and").GetArrayLength(), Is.EqualTo(10_000));
+	}
+
 	// Every tested Chroma rejects $in and $nin without values.
 	[Test]
 	public void InAndNotInNeedValues()

@@ -395,6 +395,27 @@ public class CollectionClientGetTests : ChromaTestsBase
 	static readonly string Doc1 = "Doc1";
 	static readonly string Doc2 = "Doc2";
 
+	// A chain of 50 filters goes as one $or or $and list, which Chroma takes: nested, 32 were too deep for System.Text.Json.
+	[Test]
+	public async Task ChainsOfManyFilters()
+	{
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var collection = new ChromaCollectionClient(await client.CreateCollectionAsync($"collection{Random.Shared.Next()}"), BaseConfigurationOptions, HttpClient);
+		var ids = Enumerable.Range(0, 100).Select(i => $"r{i}").ToList();
+		await collection.AddAsync(ids,
+			embeddings: ids.Select(_ => new ReadOnlyMemory<float>([1f, 0f])).ToList(),
+			metadatas: Enumerable.Range(0, 100).Select(i => (IReadOnlyDictionary<string, object>)new Dictionary<string, object> { ["i"] = i }).ToList());
+		var or = ChromaWhereOperator.Equal("i", 0);
+		var and = ChromaWhereOperator.NotEqual("i", 0);
+		for (var i = 1; i < 50; i++)
+		{
+			or |= ChromaWhereOperator.Equal("i", i);
+			and &= ChromaWhereOperator.NotEqual("i", i);
+		}
+		Assert.That((await collection.GetAsync(where: or)).Select(x => x.Id).Order(), Is.EqualTo(ids.Take(50).Order()));
+		Assert.That((await collection.GetAsync(where: and)).Select(x => x.Id).Order(), Is.EqualTo(ids.Skip(50).Order()));
+	}
+
 	async Task<ChromaCollectionClient> Init()
 	{
 		var name = $"collection{Random.Shared.Next()}";

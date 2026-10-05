@@ -167,11 +167,34 @@ internal class ChromaWhereLogicalOperator : ChromaWhereOperator
 		Rhs = rhs;
 	}
 
+	// a & b & c goes as {"$and":[a,b,c]}, as the Python client writes it: each & inside the next would add a level for each filter,
+	// and System.Text.Json stops at 64 levels, so a chain of 32 filters failed.
 	internal override Dictionary<string, object> ToWhere()
 		=> new()
 		{
-			{ Operator, new object[] { Lhs.ToWhere(), Rhs.ToWhere() } }
+			{ Operator, Operands().Select(x => (object)x.ToWhere()).ToArray() }
 		};
+
+	// The filters of a chain of the same operator, in their order, without recursion for a long chain.
+	private List<ChromaWhereOperator> Operands()
+	{
+		var operands = new List<ChromaWhereOperator>();
+		var stack = new Stack<ChromaWhereOperator>([Rhs, Lhs]);
+		while (stack.Count > 0)
+		{
+			var filter = stack.Pop();
+			if (filter is ChromaWhereLogicalOperator logical && logical.Operator == Operator)
+			{
+				stack.Push(logical.Rhs);
+				stack.Push(logical.Lhs);
+			}
+			else
+			{
+				operands.Add(filter);
+			}
+		}
+		return operands;
+	}
 }
 
 internal class ChromaWhereValueOperator : ChromaWhereOperator
