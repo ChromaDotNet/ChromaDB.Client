@@ -36,10 +36,14 @@ public class ChromaCollectionDefinition
 	}
 
 	// The space goes in the "hnsw:space" metadata: every tested Chroma applies it from there, while the configuration
-	// field of the request is ignored by 0.4.10 to 0.5.3 and fails on 0.5.4 to 0.6.3.
+	// field of the request is ignored by 0.4.10 to 0.5.3 and fails on 0.5.4 to 0.6.3. With a schema it goes in the schema:
+	// Chroma rejects the two together ("Cannot set both collection config and schema simultaneously").
+	internal Dictionary<string, object>? ToRequestSchema()
+		=> Schema?.ToSchema(Configuration?.Space);
+
 	internal Dictionary<string, object>? ToRequestMetadata()
 	{
-		if (Configuration?.Space is not { } space)
+		if (Configuration?.Space is not { } space || Schema is not null)
 		{
 			return Metadata;
 		}

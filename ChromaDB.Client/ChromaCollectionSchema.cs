@@ -60,6 +60,29 @@ public sealed class ChromaCollectionSchema
 		return new(keys);
 	}
 
-	internal Dictionary<string, object> ToSchema()
-		=> new() { ["defaults"] = new Dictionary<string, object>(), ["keys"] = _keys };
+	/// <summary>
+	/// The JSON of the schema, as the client sends it. With <c>ChromaCollectionConfiguration.Space</c> in the definition of the collection,
+	/// the client adds the space to it.
+	/// </summary>
+	public override string ToString()
+		=> System.Text.Json.JsonSerializer.Serialize(ToSchema(), Common.HttpClientHelpers.TypeInfo<Dictionary<string, object>>(Common.HttpClientHelpers.PostJsonSerializerOptions));
+
+	// With a space, the vector index gets it as create_index(VectorIndexConfig(space=...)) of the Python client writes it: in the
+	// defaults and on #embedding. Chroma rejects a configuration, like the hnsw:space metadata, together with a schema.
+	internal Dictionary<string, object> ToSchema(ChromaSpace? space = null)
+	{
+		if (space is not { } value)
+		{
+			return new() { ["defaults"] = new Dictionary<string, object>(), ["keys"] = _keys };
+		}
+		var name = Common.ChromaSpaceNames.ToName(value);
+		Dictionary<string, object> VectorIndex(bool enabled) => new()
+		{
+			["float_list"] = new Dictionary<string, object>
+			{
+				["vector_index"] = new Dictionary<string, object> { ["enabled"] = enabled, ["config"] = new Dictionary<string, object> { ["space"] = name } },
+			},
+		};
+		return new() { ["defaults"] = VectorIndex(false), ["keys"] = new Dictionary<string, object>(_keys) { [ChromaSearchKeys.Embedding] = VectorIndex(true) } };
+	}
 }

@@ -367,10 +367,13 @@ var results = await collectionClient.Search(new ChromaSearch { Rank = ChromaRank
   - With `bm25` the server applies the inverse document frequency of BM25. A source key needs an embedding function, as Chroma Cloud rejects one without the other.
   - `ChromaEmbeddingFunctionReference.ChromaBm25()` declares the BM25 function of Chroma with the settings of its Python client, so that the clients that know it compute the vectors.
   - `ChromaCollection.SparseVectorIndexes` and `ChromaCollection.SchemaJson` read it back. `EmbeddingFunctionConfig` of an index holds the settings of its function, and `Bm25Function` the `ChromaBm25` with those settings.
+  - `ToString()` gives the JSON the client sends.
+- **The space with a schema:** `Configuration = new() { Space = ... }` goes in the schema, on `#embedding`, as `create_index(VectorIndexConfig(space=...))` of the Python client writes it, and not in the `hnsw:space` metadata. Chroma rejects the two together: "Cannot set both collection config and schema simultaneously".
 - **Where the schema works:**
   - Chroma 1.3.0 and later apply it;
   - a single server rejects a sparse vector index;
   - Chroma 1.0.0 to 1.2.2 and 0.6.3 create the collection without the schema: `CreateCollection` then deletes it and throws a `ChromaException`, and `GetOrCreateCollection` throws and keeps it, since it may have existed before.
+  - Chroma 1.3.0 ignores the space in the schema, which 1.3.2 and later apply: the same then, when the collection has another space.
 
 ## Hybrid search with BM25
 

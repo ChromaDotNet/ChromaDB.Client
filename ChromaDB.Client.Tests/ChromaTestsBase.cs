@@ -190,6 +190,9 @@ public abstract class ChromaTestsBase
 	// Chroma 1.0.12 and later filter documents with $regex and $not_regex; 1.0.0 to 1.0.6 reject them, 1.0.10 closes the connection.
 	protected static bool RegexSupported => ChromaImage.Version >= new Version(1, 0, 12);
 
+	// Chroma 1.3.0 accepts the space in the schema and ignores it.
+	protected static bool SpaceInSchemaApplied => ChromaCloud || ChromaImage.Version >= new Version(1, 3, 2);
+
 	// Chroma 1.5.3 and later apply the limit of a delete, declare it in their OpenAPI description and answer how many records they deleted.
 	protected static bool DeleteLimitSupported => ChromaImage.Version >= new Version(1, 5, 3);
 

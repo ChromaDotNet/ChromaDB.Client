@@ -122,6 +122,23 @@ public class ClientTests : ChromaTestsBase
 		Assert.That(result.Select(x => x.Distance).OrderBy(x => x), Is.EqualTo(distances).Within(0.0001f));
 	}
 
+	// With a schema the space goes in the schema, which Chroma 1.3.2 and later apply.
+	[TestCase(ChromaSpace.Cosine, new[] { 0f, 0f })]
+	[TestCase(ChromaSpace.InnerProduct, new[] { -1f, 0f })]
+	public async Task CreateCollectionWithSpaceAndSchema(ChromaSpace space, float[] distances)
+	{
+		Assume.That(SpaceInSchemaApplied, Is.True, "Chroma 1.3.2 and later apply the space in the schema.");
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var collection = await client.CreateCollection(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}") { Configuration = new() { Space = space }, Schema = new ChromaCollectionSchema() });
+		Assert.That(collection.Space, Is.EqualTo(space));
+		Assert.That((await client.GetCollection(collection.Name)).Space, Is.EqualTo(space));
+
+		var collectionClient = client.GetCollectionClient(collection);
+		await collectionClient.Add(["a", "b"], embeddings: [new([1f, 0f]), new([2f, 0f])]);
+		var result = await collectionClient.Query(new ReadOnlyMemory<float>([1f, 0f]), nResults: 2, include: ChromaQueryInclude.Distances);
+		Assert.That(result.Select(x => x.Distance).OrderBy(x => x), Is.EqualTo(distances).Within(0.0001f));
+	}
+
 	[Test]
 	public async Task GetOrCreateCollectionWithSpace()
 	{

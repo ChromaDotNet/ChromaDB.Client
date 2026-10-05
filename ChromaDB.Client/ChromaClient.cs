@@ -111,6 +111,12 @@ public class ChromaClient : IDisposable
 	private Task DatabaseOperation(string name, string? collection, string? tenant, string? database, Func<Task> body)
 		=> ChromaInstrumentation.Run(name, collection, $"{TenantName(tenant)}|{DatabaseName(database)}", _options.Uri, body);
 
+	// The message when the collection has another space than the one the schema gave it, which the server reports.
+	private static string? SpaceIgnored(ChromaCollectionDefinition definition, ChromaCollection collection)
+		=> definition.Schema is not null && definition.Configuration?.Space is { } space && collection.Space is { } actual && actual != space
+			? $"The collection has the space {ChromaSpaceNames.ToName(actual)}, not {ChromaSpaceNames.ToName(space)}: Chroma 1.3.2 and later apply the space with a schema."
+			: null;
+
 	private string TenantName(string? tenant)
 		=> tenant is not null and not [] ? tenant : _currentTenant.Name;
 
@@ -318,7 +324,7 @@ public class ChromaClient : IDisposable
 			{
 				Name = definition.Name,
 				Metadata = definition.ToRequestMetadata(),
-				Schema = definition.Schema?.ToSchema(),
+				Schema = definition.ToRequestSchema(),
 			};
 			var collection = await _httpClient.Post<CreateCollectionRequest, ChromaCollection>(_httpClient.Routes.Collections, request, requestParams, cancellationToken);
 			// Chroma 1.0.0 to 1.2.2 create the collection without the schema and without an error: the collection just created goes.
@@ -328,6 +334,12 @@ public class ChromaClient : IDisposable
 				// answer leaves nothing to tell whether the collection was created, so nothing is deleted then.
 				await DeleteCollection(collection.Name, tenant, database, CancellationToken.None);
 				throw new ChromaException("The server creates the collection without its schema: Chroma 1.3.0 and later apply it. The collection was deleted.");
+			}
+			// Chroma 1.3.0 creates the collection with the space of the schema ignored: l2.
+			if (SpaceIgnored(definition, collection) is { } ignored)
+			{
+				await DeleteCollection(collection.Name, tenant, database, CancellationToken.None);
+				throw new ChromaException($"{ignored} The collection was deleted.");
 			}
 			return collection;
 		});
@@ -355,13 +367,17 @@ public class ChromaClient : IDisposable
 			{
 				Name = definition.Name,
 				Metadata = definition.ToRequestMetadata(),
-				Schema = definition.Schema?.ToSchema(),
+				Schema = definition.ToRequestSchema(),
 			};
 			var collection = await _httpClient.Post<GetOrCreateCollectionRequest, ChromaCollection>(_httpClient.Routes.Collections, request, requestParams, cancellationToken);
 			// As in CreateCollection, but the collection stays: it may have existed before.
 			if (definition.Schema is not null && collection.SchemaJson is not { ValueKind: System.Text.Json.JsonValueKind.Object })
 			{
 				throw new ChromaException("The server answers without the schema of the collection: Chroma 1.3.0 and later apply it.");
+			}
+			if (SpaceIgnored(definition, collection) is { } ignored)
+			{
+				throw new ChromaException(ignored);
 			}
 			return collection;
 		});

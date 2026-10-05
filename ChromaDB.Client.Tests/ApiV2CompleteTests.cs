@@ -197,10 +197,13 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has sparse vector indexes.");
 		var bm25 = new ChromaBm25(k: 1.5);
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		// The space goes in the schema: Chroma Cloud rejects a configuration together with a schema.
 		var collection = client.GetCollectionClient(await client.CreateCollection(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}")
 		{
+			Configuration = new() { Space = ChromaSpace.Cosine },
 			Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, bm25.Reference),
 		}));
+		Assert.That(collection.Collection.Space, Is.EqualTo(ChromaSpace.Cosine));
 		string[] documents = ["apple pie with cinnamon", "banana split with chocolate", "cherry tart", "apple juice and apple cider"];
 		await collection.Add(new ChromaRecords(["a", "b", "c", "d"])
 		{

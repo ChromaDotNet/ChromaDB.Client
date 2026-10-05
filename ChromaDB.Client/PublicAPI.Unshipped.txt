@@ -2,3 +2,4 @@
 ChromaDB.Client.ChromaTelemetry
 const ChromaDB.Client.ChromaTelemetry.ActivitySourceName = "ChromaDB.Client" -> string!
 const ChromaDB.Client.ChromaTelemetry.MeterName = "ChromaDB.Client" -> string!
+override ChromaDB.Client.Models.ChromaCollectionSchema.ToString() -> string!

@@ -104,6 +104,45 @@ public class SparseVectorsAndSchemaTests
 		Assert.That(server.Requests.Single().Body.GetProperty("schema").GetRawText(), Is.EqualTo(Bm25Schema));
 		var index = collection.SparseVectorIndexes.Single();
 		Assert.That((index.Key, index.SourceKey, index.Bm25, index.EmbeddingFunction), Is.EqualTo(("doc_bm25", "#document", true, "chroma_bm25")));
+		Assert.That(definition.Schema.ToString(), Is.EqualTo(Bm25Schema));
+	}
+
+	// With a schema the space goes in it, as create_index(VectorIndexConfig(space=...)) of the Python client writes it: Chroma Cloud
+	// rejects the hnsw:space metadata together with a schema, "Cannot set both collection config and schema simultaneously".
+	[TestCase("create")]
+	[TestCase("get_or_create")]
+	public async Task SpaceInTheSchema(string operation)
+	{
+		var server = new FakeServer(_ => (HttpStatusCode.OK, $$$"""{"id":"11111111-2222-3333-4444-555555555555","name":"c","configuration_json":{"hnsw":null,"spann":{"space":"cosine"}},"schema":{{{Bm25Schema}}}}"""));
+		var definition = new ChromaCollectionDefinition("c")
+		{
+			Metadata = new() { ["x"] = 1 },
+			Configuration = new() { Space = ChromaSpace.Cosine },
+			Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, ChromaEmbeddingFunctionReference.ChromaBm25()),
+		};
+		var collection = operation == "create" ? await Client(server).CreateCollection(definition) : await Client(server).GetOrCreateCollection(definition);
+		Assert.That(collection.Space, Is.EqualTo(ChromaSpace.Cosine));
+		var body = server.Requests.Single().Body;
+		Assert.That(body.GetProperty("metadata").GetRawText(), Is.EqualTo("""{"x":1}"""));
+		Assert.That(body.GetProperty("schema").GetRawText(), Is.EqualTo("""
+			{"defaults":{"float_list":{"vector_index":{"enabled":false,"config":{"space":"cosine"}}}},
+			"keys":{"doc_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"chroma_bm25","config":{"k":1.2,"b":0.75,"avg_doc_length":256,"token_max_length":40,"include_tokens":false}},"source_key":"#document","bm25":true}}}},
+			"#embedding":{"float_list":{"vector_index":{"enabled":true,"config":{"space":"cosine"}}}}}}
+			""".Replace("\n", "").Replace("\t", "")));
+	}
+
+	// Chroma 1.3.0 creates the collection with the space of the schema ignored, l2: CreateCollection deletes it and throws,
+	// GetOrCreateCollection throws and keeps it, since it may have existed before.
+	[TestCase("create", true)]
+	[TestCase("get_or_create", false)]
+	public async Task SpaceIgnoredByTheServer(string operation, bool deleted)
+	{
+		var server = new FakeServer(r => r.Method == "DELETE" ? (HttpStatusCode.OK, "{}")
+			: (HttpStatusCode.OK, """{"id":"11111111-2222-3333-4444-555555555555","name":"c","configuration_json":{"hnsw":{"space":"l2"}},"schema":{"defaults":{},"keys":{}}}"""));
+		var definition = new ChromaCollectionDefinition("c") { Configuration = new() { Space = ChromaSpace.Cosine }, Schema = new ChromaCollectionSchema() };
+		await Assert.ThatAsync(() => operation == "create" ? Client(server).CreateCollection(definition) : Client(server).GetOrCreateCollection(definition),
+			Throws.InstanceOf<ChromaException>().With.Message.Contains("space l2, not cosine").And.Message.Contains("1.3.2"));
+		Assert.That(server.Requests.Any(x => x.Method == "DELETE"), Is.EqualTo(deleted));
 	}
 
 	// Without a schema the request stays as before.
