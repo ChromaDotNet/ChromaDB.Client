@@ -31,7 +31,7 @@ public static class ChromaClientExtensions
 
 		services.AddSingleton(options);
 		configureHttpClient(services.AddHttpClient(nameof(ChromaClient)));
-		services.AddSingleton(serviceProvider => new ChromaClient(options, CreateHttpClient(serviceProvider, nameof(ChromaClient))));
+		services.AddSingleton(serviceProvider => serviceProvider.CreateChromaClient(options, nameof(ChromaClient)));
 		return services;
 	}
 
@@ -57,13 +57,21 @@ public static class ChromaClientExtensions
 		var httpClientName = $"{nameof(ChromaClient)}:{serviceKey}";
 		services.AddKeyedSingleton(serviceKey, options);
 		configureHttpClient(services.AddHttpClient(httpClientName));
-		services.AddKeyedSingleton(serviceKey, (serviceProvider, _) => new ChromaClient(options, CreateHttpClient(serviceProvider, httpClientName)));
+		services.AddKeyedSingleton(serviceKey, (serviceProvider, _) => serviceProvider.CreateChromaClient(options, httpClientName));
 		return services;
 	}
 
-	// The client is a singleton and keeps its HttpClient, which sends each request with the current handler of the factory:
-	// the factory renews it after its handler lifetime, two minutes by default, so a change of the server in the DNS is seen
-	// on every target, also .NET Framework. The settings of the HttpClient itself, like ConfigureHttpClient, are applied here.
+	/// <summary>
+	/// A <c>ChromaClient</c> to keep, like a singleton of an application or of an integration, that sends each request with the
+	/// current handler of <c>IHttpClientFactory</c> for <c>httpClientName</c>: the factory renews it after its handler lifetime, two
+	/// minutes by default, so a change of the address of the server in the DNS is seen. The settings of that <c>HttpClient</c>, like
+	/// its timeout, are applied too. <c>AddChromaClient</c> and <c>AddKeyedChromaClient</c> create their clients with it.
+	/// </summary>
+	public static ChromaClient CreateChromaClient(this IServiceProvider services, ChromaConfigurationOptions options, string httpClientName)
+		=> new(options, CreateHttpClient(services, httpClientName));
+
+	// The client keeps its HttpClient, which sends each request with the current handler of the factory, on every target, also
+	// .NET Framework. The settings of the HttpClient itself, like ConfigureHttpClient, are applied here.
 	private static HttpClient CreateHttpClient(IServiceProvider serviceProvider, string name)
 	{
 		var httpClient = new HttpClient(new CurrentHandler(serviceProvider.GetRequiredService<IHttpMessageHandlerFactory>(), name));

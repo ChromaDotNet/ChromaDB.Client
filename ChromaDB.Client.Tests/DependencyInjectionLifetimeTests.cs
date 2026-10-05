@@ -73,11 +73,35 @@ public class DependencyInjectionLifetimeTests
 		Assert.That(handlers, Is.EqualTo(new[] { 1, 1, 2 }));
 	}
 
-	sealed class HeartbeatHandler(int id, List<int> handlers) : HttpMessageHandler
+	// A CreateChromaClient for an HttpClient name of its own, as an integration keeps it: the handler of that name, renewed by the
+	// factory, and the settings of that HttpClient.
+	[Test]
+	public async Task CreateChromaClientUsesTheHandlerOfTheName()
+	{
+		var handlers = new List<int>();
+		var headers = new List<string?>();
+		var created = 0;
+		var services = new ServiceCollection();
+		services.AddHttpClient("connection")
+			.ConfigurePrimaryHttpMessageHandler(() => new HeartbeatHandler(Interlocked.Increment(ref created), handlers, headers))
+			.ConfigureHttpClient(httpClient => httpClient.DefaultRequestHeaders.Add("X-Connection", "connection"))
+			.SetHandlerLifetime(TimeSpan.FromSeconds(1));
+		using var provider = services.BuildServiceProvider();
+		var client = provider.CreateChromaClient(Options, "connection");
+		await client.HeartbeatAsync();
+		await Task.Delay(TimeSpan.FromSeconds(2));
+		await client.HeartbeatAsync();
+		Assert.That(handlers, Is.EqualTo(new[] { 1, 2 }));
+		Assert.That(headers, Is.EqualTo(new[] { "connection", "connection" }));
+		Assert.That(client.Options, Is.SameAs(Options));
+	}
+
+	sealed class HeartbeatHandler(int id, List<int> handlers, List<string?>? headers = null) : HttpMessageHandler
 	{
 		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
 		{
 			lock (handlers) handlers.Add(id);
+			headers?.Add(request.Headers.TryGetValues("X-Connection", out var values) ? values.Single() : null);
 			return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent("{\"nanosecond heartbeat\":1}") });
 		}
 	}
