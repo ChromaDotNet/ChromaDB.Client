@@ -401,6 +401,7 @@ var results = await collectionClient.Search(new ChromaSearch
   - In `Search`, the vector of the text of `SparseKnn(queryText, key)`, with the function of the index of the key.
   - The schema comes with the collection, from `CreateCollection` or `GetCollection`. A collection client created from an id alone has none, so a text query throws a `ChromaException`; with another function than `chroma_bm25` too, unless the metadata has the vectors.
 - **By hand:** `new ChromaBm25()` with the same settings, or `Bm25Function` of the index, gives the vectors to put in the metadata or in `SparseKnn`. `Reference` declares the function in the schema.
+- **Records without the terms of the query:** Chroma Cloud ranks them too, among the `limit` of `SparseKnn`, with the score 1, one minus the dot product. With `returnRank` they take the next positions, so in `Rrf` they get points from the sparse part as well.
 - **License:** the license of the stemmer is in [THIRD-PARTY-NOTICES.md](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/THIRD-PARTY-NOTICES.md).
 
 ## Authentication
