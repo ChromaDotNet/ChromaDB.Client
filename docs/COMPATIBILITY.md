@@ -32,7 +32,8 @@ Differences between these servers, seen in the tests:
 | Applies the SPANN settings of a new collection (`ChromaCollectionConfiguration.Spann`) | Chroma Cloud only; 1.0.6 – 1.5.9 ignore them and report an HNSW index, so the client deletes the collection and throws a `ChromaException`; 1.0.0 – 1.0.5 report no configuration; 0.5.16 – 0.6.3 fail on the configuration, so the client throws before sending it |
 | Applies the embedding function of a new collection (`ChromaCollectionConfiguration.EmbeddingFunction`) and reports it | 1.0.6 – 1.5.9; 1.0.0 – 1.0.5 take it without reporting it; 0.5.16 – 0.6.3 fail on the configuration, so the client throws before sending it |
 | Applies the embedding function of `ModifyConfigurationAsync` | 1.0.6 – 1.5.9, as the other settings of the index |
-| Applies the indexes of a schema turned on or off (`ChromaCollectionSchema.WithIndex` and `WithoutIndex`) | 1.3.0 – 1.5.9; 1.0.0 – 1.2.2 create the collection without the schema |
+| Applies the indexes of a schema turned on or off (`ChromaCollectionSchema.WithIndex` and `WithoutIndex`), and rejects a filter on a key without its index ("indexing is disabled") | 1.3.0 – 1.5.9, but the full-text search index of the documents only from 1.5.1: 1.3.0 – 1.5.0 keep it on; 1.0.0 – 1.2.2 create the collection without the schema |
+| Takes an HNSW index with fewer than 2 neighbors (`max_neighbors`, `hnsw:M`) | 1.5.9 crashes on the first write with 0 and misses the nearest records with 1, also after `ModifyConfigurationAsync`: the client throws an `ArgumentException` before the request |
 | Sends the dimension and the version of a collection (`ChromaCollection.Dimension` and `Version`) | 0.5.16 – 1.5.9, and on the v1 API from 0.5.1; the log position (`LogPosition`) from 0.5.9 |
 
 ## v1 API (`ChromaApiVersion.V1`)

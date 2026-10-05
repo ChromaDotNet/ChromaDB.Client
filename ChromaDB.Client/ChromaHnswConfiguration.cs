@@ -17,7 +17,8 @@ public class ChromaHnswConfiguration
 	public int? EfSearch { get; init; }
 
 	/// <summary>
-	/// The <c>max_neighbors</c> setting, <c>M</c> of HNSW: how many neighbors each record links to.
+	/// The <c>max_neighbors</c> setting, <c>M</c> of HNSW: how many neighbors each record links to, at least 2. Chroma crashes on the
+	/// first write with 0 and misses the nearest records with 1: the client throws an <c>ArgumentException</c> for them.
 	/// </summary>
 	public int? MaxNeighbors { get; init; }
 
@@ -40,6 +41,16 @@ public class ChromaHnswConfiguration
 	/// The <c>num_threads</c> setting: how many threads build the index.
 	/// </summary>
 	public int? NumThreads { get; init; }
+
+	// Chroma 1.5.9 crashes on the first write to an HNSW index with no neighbors, and an index with one neighbor misses the nearest
+	// records: the client rejects them before the request, wherever they come from.
+	internal static void CheckMaxNeighbors(object? maxNeighbors, string paramName)
+	{
+		if (maxNeighbors is IConvertible and not string and not bool && System.Convert.ToDouble(maxNeighbors, System.Globalization.CultureInfo.InvariantCulture) < 2)
+		{
+			throw new ArgumentException($"The HNSW index needs at least 2 neighbors, not {maxNeighbors}: Chroma crashes on the first write with 0 and misses the nearest records with 1.", paramName);
+		}
+	}
 
 	// The "hnsw:" metadata of the settings, which every tested Chroma applies, as the space.
 	internal IEnumerable<KeyValuePair<string, object>> ToMetadata()

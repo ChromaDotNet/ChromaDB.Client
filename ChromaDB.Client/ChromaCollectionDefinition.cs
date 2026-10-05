@@ -54,6 +54,8 @@ public class ChromaCollectionDefinition
 		{
 			throw new ArgumentException("A collection has one vector index: set Hnsw for a single Chroma server or Spann for Chroma Cloud, not both, as Chroma rejects them together.", nameof(Configuration));
 		}
+		ChromaHnswConfiguration.CheckMaxNeighbors(Configuration?.Hnsw?.MaxNeighbors, nameof(Configuration));
+		ChromaHnswConfiguration.CheckMaxNeighbors(Metadata is not null && Metadata.TryGetValue("hnsw:M", out var m) ? m : null, nameof(Metadata));
 		// Chroma ignores the hnsw:space metadata next to SPANN settings, but ChromaCollection.Space would read it back.
 		if (Configuration?.Spann is not null && !SettingsInSchema && Metadata is not null && Metadata.ContainsKey(ChromaSpaceNames.MetadataKey))
 		{

@@ -182,6 +182,28 @@ public class CollectionSettingsTests
 		Assert.That(server.Requests, Is.Empty);
 	}
 
+	// Chroma 1.5.9 crashes on the first write with 0 neighbors and misses the nearest records with 1: nothing is sent.
+	[TestCase(0)]
+	[TestCase(1)]
+	[TestCase(-3)]
+	public async Task FewerThanTwoNeighbors(int maxNeighbors)
+	{
+		var server = Server();
+		Assert.That(() => Client(server).CreateCollectionAsync(new ChromaCollectionDefinition("c") { Configuration = new() { Hnsw = new() { MaxNeighbors = maxNeighbors } } }),
+			Throws.ArgumentException.With.Message.Contains("at least 2"));
+		Assert.That(() => Client(server).GetOrCreateCollectionAsync(new ChromaCollectionDefinition("c") { Metadata = new Dictionary<string, object> { ["hnsw:M"] = (long)maxNeighbors } }),
+			Throws.ArgumentException);
+		Assert.That(() => Client(server).CreateCollectionAsync(new ChromaCollectionDefinition("c")
+		{
+			Configuration = new() { Hnsw = new() { MaxNeighbors = maxNeighbors } },
+			Schema = new ChromaCollectionSchema(),
+		}), Throws.ArgumentException);
+		var collection = new ChromaCollectionClient(Guid.Parse("11111111-2222-3333-4444-555555555555"), "c", new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(server));
+		await Assert.ThatAsync(() => collection.ModifyConfigurationAsync(new ChromaCollectionConfigurationUpdate { Hnsw = new() { MaxNeighbors = maxNeighbors } }), Throws.ArgumentException);
+		Assert.That(server.Requests, Is.Empty);
+		Assert.That(() => Client(server).CreateCollectionAsync(new ChromaCollectionDefinition("c") { Configuration = new() { Hnsw = new() { MaxNeighbors = 2 } } }), Throws.Nothing);
+	}
+
 	[Test]
 	public void MetadataThatDisagreesWithTheSettings()
 	{

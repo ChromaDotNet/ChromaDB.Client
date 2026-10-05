@@ -897,6 +897,7 @@ public class ChromaCollectionClient
 	public virtual Task ModifyConfigurationAsync(ChromaCollectionConfigurationUpdate configuration, CancellationToken cancellationToken = default)
 		=> Operation("modify", async () =>
 		{
+			ChromaHnswConfiguration.CheckMaxNeighbors(configuration.Hnsw?.MaxNeighbors, nameof(configuration));
 			var current = await CurrentConfiguration(cancellationToken);
 			if (current is not { ValueKind: System.Text.Json.JsonValueKind.Object } value
 				|| !value.TryGetProperty("hnsw", out var hnsw) && !value.TryGetProperty("spann", out _))

@@ -206,6 +206,9 @@ public abstract class ChromaTestsBase
 	// Chroma 1.3.0 and later apply the indexes of a schema.
 	protected static bool SchemaApplied => ChromaCloud || ChromaImage.Version >= new Version(1, 3, 0);
 
+	// Chroma 1.5.1 and later turn off the full-text search index of a schema; 1.3.0 to 1.5.0 keep it.
+	protected static bool FullTextSearchOffApplied => ChromaCloud || ChromaImage.Version >= new Version(1, 5, 1);
+
 	// Chroma 0.5.1 and later send the dimension and the version of a collection.
 	protected static bool CollectionDimensionReported => ChromaImage.Version >= new Version(0, 5, 1);
 

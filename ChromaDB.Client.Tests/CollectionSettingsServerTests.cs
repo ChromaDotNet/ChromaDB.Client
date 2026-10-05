@@ -99,6 +99,33 @@ public class CollectionSettingsServerTests : ChromaTestsBase
 		Assert.That(Enabled(read.GetProperty("defaults").GetProperty("float").GetProperty("float_inverted_index")), Is.True);
 	}
 
+	// A filter on a key without its index is rejected; the full-text search index turned off is kept by Chroma 1.3.0 to 1.5.0.
+	[Test]
+	public async Task FiltersWithoutTheirIndex()
+	{
+		Assume.That(SchemaApplied, "Chroma 1.3.0 and later apply a schema.");
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var schema = new ChromaCollectionSchema().WithoutIndex(ChromaSchemaIndex.StringInverted, "title").WithoutIndex(ChromaSchemaIndex.IntInverted).WithoutIndex(ChromaSchemaIndex.FullTextSearch);
+		var collection = client.GetCollectionClient(await client.CreateCollectionAsync(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}") { Schema = schema }));
+		await collection.AddAsync(new ChromaRecords(["a", "b"])
+		{
+			Embeddings = [new([1f, 0f]), new([0f, 1f])],
+			Documents = ["apple pie", "banana split"],
+			Metadatas = [new Dictionary<string, object> { ["title"] = "x", ["n"] = 1, ["other"] = "x" }, new Dictionary<string, object> { ["title"] = "y", ["n"] = 2, ["other"] = "y" }],
+		});
+		Assert.That((await collection.GetAsync(where: ChromaWhereOperator.Equal("other", "x"))).Select(x => x.Id), Is.EqualTo(new[] { "a" }));
+		await Assert.ThatAsync(() => collection.GetAsync(where: ChromaWhereOperator.Equal("title", "x")), Throws.InstanceOf<ChromaException>().With.Message.Contains("indexing is disabled"));
+		await Assert.ThatAsync(() => collection.GetAsync(where: ChromaWhereOperator.Equal("n", 1)), Throws.InstanceOf<ChromaException>().With.Message.Contains("indexing is disabled"));
+		if (FullTextSearchOffApplied)
+		{
+			await Assert.ThatAsync(() => collection.GetAsync(whereDocument: ChromaWhereDocumentOperator.Contains("apple")), Throws.InstanceOf<ChromaException>().With.Message.Contains("FTS indexing is disabled"));
+		}
+		else
+		{
+			Assert.That((await collection.GetAsync(whereDocument: ChromaWhereDocumentOperator.Contains("apple"))).Select(x => x.Id), Is.EqualTo(new[] { "a" }));
+		}
+	}
+
 	// Only Chroma Cloud has sparse vector indexes, SPANN and customer-managed keys. A key of Google Cloud KMS that does not exist is kept.
 	[Test]
 	public async Task SettingsOfChromaCloud()

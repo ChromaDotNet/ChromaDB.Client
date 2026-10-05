@@ -15,7 +15,8 @@ public class ChromaHnswConfigurationUpdate
 	public int? EfSearch { get; init; }
 
 	/// <summary>
-	/// The <c>max_neighbors</c> setting of the HNSW index.
+	/// The <c>max_neighbors</c> setting of the HNSW index, at least 2: <c>ModifyConfigurationAsync</c> throws an
+	/// <c>ArgumentException</c> for less, as Chroma crashes on the next write with 0 and misses the nearest records with 1.
 	/// </summary>
 	[JsonPropertyName("max_neighbors")]
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

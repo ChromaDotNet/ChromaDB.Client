@@ -275,7 +275,7 @@ var cloud = await cloudClient.CreateCollectionAsync(new ChromaCollectionDefiniti
 });
 ```
 
-- **`Hnsw`**, the index of a single Chroma server: `EfConstruction`, `EfSearch`, `MaxNeighbors`, `ResizeFactor`, `SyncThreshold`, `BatchSize` and `NumThreads`. They go as the `hnsw:` metadata, like the space, which every tested Chroma applies; Chroma 1.0.6 and later report them in the configuration.
+- **`Hnsw`**, the index of a single Chroma server: `EfConstruction`, `EfSearch`, `MaxNeighbors`, `ResizeFactor`, `SyncThreshold`, `BatchSize` and `NumThreads`. They go as the `hnsw:` metadata, like the space, which every tested Chroma applies; Chroma 1.0.6 and later report them in the configuration. `MaxNeighbors` is at least 2, here, in the `hnsw:M` metadata and in `ModifyConfigurationAsync`: Chroma 1.5.9 crashes on the first write with 0 and misses the nearest records with 1, so the client throws an `ArgumentException` for them.
 - **`Spann`**, the index of Chroma Cloud: `SearchNprobe`, `WriteNprobe`, `EfConstruction`, `EfSearch`, `MaxNeighbors`, `SplitThreshold`, `MergeThreshold` and `ReassignNeighborCount` go in the `configuration` of the request, with the space, since Chroma ignores the `hnsw:space` metadata next to SPANN settings. `SearchRngEpsilon`, `WriteRngEpsilon`, `NreplicaCount`, `NumSamplesKmeans`, `NumCentersToMergeTo` and `CenterDriftThreshold` go in a schema, the only place Chroma takes them. Chroma Cloud keeps the other settings of SPANN fixed: the RNG factors at 1, `initial_lambda` at 100, and the quantization is not set by the user.
 - **`EmbeddingFunction`** goes in the `configuration` of the request, which Chroma 1.0.0 and later take; Chroma 1.0.6 and later report it.
 - **What the client checks:**
@@ -442,7 +442,7 @@ var results = await collectionClient.SearchAsync(new ChromaSearch { Rank = Chrom
   - `ChromaEmbeddingFunctionReference.ChromaBm25()` declares the BM25 function of Chroma with the settings of its Python client, so that the clients that know it compute the vectors.
   - `ChromaCollection.SparseVectorIndexes` and `ChromaCollection.SchemaJson` read it back. `EmbeddingFunctionConfig` of an index holds the settings of its function, and `Bm25Function` the `ChromaBm25` with those settings.
   - `ToString()` gives the JSON the client sends.
-- **The indexes of the values**, as `create_index` and `delete_index` of the Python client: `WithIndex` and `WithoutIndex` turn on or off the index of the string, integer, floating-point or Boolean values (`ChromaSchemaIndex.StringInverted`, `IntInverted`, `FloatInverted`, `BoolInverted`) of a metadata key, or of every key without one, and the full-text search index of the documents (`FullTextSearch`), on `#document` only. They are all on by default; a filter on a key without its index finds nothing.
+- **The indexes of the values**, as `create_index` and `delete_index` of the Python client: `WithIndex` and `WithoutIndex` turn on or off the index of the string, integer, floating-point or Boolean values (`ChromaSchemaIndex.StringInverted`, `IntInverted`, `FloatInverted`, `BoolInverted`) of a metadata key, or of every key without one, and the full-text search index of the documents (`FullTextSearch`), on `#document` only. They are all on by default. A filter on a key without its index fails with a `ChromaException`, "indexing is disabled"; Chroma 1.3.0 to 1.5.0 keep the full-text search index also when the schema turns it off, and 1.5.1 and later turn it off.
 
   ```csharp
   var schema = new ChromaCollectionSchema()
