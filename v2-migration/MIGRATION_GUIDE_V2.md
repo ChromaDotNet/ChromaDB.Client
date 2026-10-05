@@ -55,7 +55,7 @@ dotnet add package ChromaDotNet.Client
 
 ## What Else Changes?
 
-✅ **Namespaces** - The code keeps `using ChromaDB.Client;`  
+✅ **Namespaces** - The code keeps `using ChromaDB.Client;`, and `using ChromaDB.Client.Models;` for the models  
 ✅ **Functionality** - All the features of 1.x work, with many more: see the README  
 🔁 **API methods** - From 2.8.0 they follow the .NET conventions: the names end in `Async` (`GetOrCreateCollectionAsync`, `AddAsync`, `QueryAsync`...), they take an optional `CancellationToken`, and they take and return read-only lists and dictionaries: see the [Breaking Changes Summary](#breaking-changes-summary)  
 🔁 **Request/response models** - The same data, with `ChromaCollectionQueryEntry.Distance` as `float?`, and `Embedding` and `Uri` for the embedding and the URI of a record  

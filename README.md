@@ -33,8 +33,11 @@ The URI can be just the address of the server, like `http://localhost:8000`: the
 
 Without an `HttpClient`, `new ChromaClient("http://localhost:8000")`, or `new ChromaClient(options)`, creates one of its own, which `Dispose` closes: `using var client = new ChromaClient("http://localhost:8000");`. The clients it returns, like the collection clients, use the same `HttpClient`. An `HttpClient` given to the constructor stays open.
 
+The models, like `ChromaRecords`, `ChromaQuery` and `ChromaCollectionDefinition`, are in `ChromaDB.Client.Models`, and `AddChromaClient` in `ChromaDB.Client.DependencyInjection`.
+
 ```csharp
 using ChromaDB.Client;
+using ChromaDB.Client.Models;
 
 var configOptions = new ChromaConfigurationOptions(uri: "http://localhost:8000/api/v2/");
 using var httpClient = new HttpClient();
@@ -467,7 +470,7 @@ Each fixture deletes the collections and the databases its requests created, and
 ## Migrating from ChromaDB.Client 1.x
 
 - Use the `/api/v2/` URI, or just the address of the server. Chroma 1.x answers the v1 routes with `410 Gone`.
-- Namespaces do not change: the code keeps `using ChromaDB.Client;`.
+- Namespaces do not change: the code keeps `using ChromaDB.Client;`, and `using ChromaDB.Client.Models;` for the models.
 - Replace the `ChromaDB.Client` package reference with `ChromaDotNet.Client`.
 - `ChromaCollectionQueryEntry.Distance` is a `float?`: it is `null` when the query does not include `ChromaQueryInclude.Distances`.
 - Every async method takes an optional `CancellationToken` as its last parameter. Code compiled against 1.x has to be rebuilt, and a method group like `client.HeartbeatAsync` passed as a `Func<Task>` becomes `() => client.Heartbeat()`.
