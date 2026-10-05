@@ -87,7 +87,7 @@ public class ApiVersionTests
 	{
 		var handler = new RecordingHandler();
 		using var httpClient = new HttpClient(handler);
-		var options = new ChromaConfigurationOptions("http://localhost:8000", defaultTenant: "t", defaultDatabase: "d").WithApiVersion(apiVersion);
+		var options = new ChromaConfigurationOptions("http://localhost:8000", tenant: "t", database: "d").WithApiVersion(apiVersion);
 		var collection = new ChromaCollection("c") { Id = Guid.Parse(Id) };
 		try
 		{

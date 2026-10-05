@@ -283,7 +283,7 @@ public class ApiV2RequestsTests
 	public async Task TenantAndDatabaseFromIdentityThatDoNotMatch(string? tenant, string? database, string message)
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"tenant":"t1","databases":["d1"]}"""));
-		var options = new ChromaConfigurationOptions("http://localhost:8000", defaultTenant: tenant, defaultDatabase: database);
+		var options = new ChromaConfigurationOptions("http://localhost:8000", tenant: tenant, database: database);
 		await Assert.ThatAsync(() => new ChromaClient(options, new HttpClient(server)).WithTenantAndDatabaseFromIdentityAsync(),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains(message));
 	}
@@ -293,7 +293,7 @@ public class ApiV2RequestsTests
 	public async Task TenantAndDatabaseFromIdentityWithSeveralDatabases()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"tenant":"t1","databases":["d1","d2"]}"""));
-		var options = new ChromaConfigurationOptions("http://localhost:8000", defaultDatabase: "d3");
+		var options = new ChromaConfigurationOptions("http://localhost:8000", database: "d3");
 		var client = await new ChromaClient(options, new HttpClient(server)).WithTenantAndDatabaseFromIdentityAsync();
 		Assert.That((client.Options.Tenant, client.Options.Database), Is.EqualTo(("t1", "d3")));
 	}
@@ -302,7 +302,7 @@ public class ApiV2RequestsTests
 	public async Task TenantAndDatabaseFromIdentityReplaceTheDefaults()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"tenant":"t1","databases":["d1"]}"""));
-		var options = new ChromaConfigurationOptions("http://localhost:8000", defaultTenant: "default_tenant", defaultDatabase: "default_database");
+		var options = new ChromaConfigurationOptions("http://localhost:8000", tenant: "default_tenant", database: "default_database");
 		var client = await new ChromaClient(options, new HttpClient(server)).WithTenantAndDatabaseFromIdentityAsync();
 		Assert.That((client.Options.Tenant, client.Options.Database), Is.EqualTo(("t1", "d1")));
 	}

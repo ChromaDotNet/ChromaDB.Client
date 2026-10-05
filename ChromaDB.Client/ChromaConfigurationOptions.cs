@@ -64,21 +64,21 @@ public class ChromaConfigurationOptions
 	}
 
 	/// <summary>
-	/// Options for the server at the given URI, with the default tenant, the default database and the token, when given.
+	/// Options for the server at the given URI, with the tenant, the database and the token, when given.
 	/// </summary>
-	public ChromaConfigurationOptions(Uri uri, string? defaultTenant = null, string? defaultDatabase = null, string? chromaToken = null)
+	public ChromaConfigurationOptions(Uri uri, string? tenant = null, string? database = null, string? chromaToken = null)
 	{
 		Uri = uri;
-		Tenant = defaultTenant;
-		Database = defaultDatabase;
+		Tenant = tenant;
+		Database = database;
 		ChromaToken = chromaToken;
 	}
 
 	/// <summary>
-	/// Options for the server at the given URI, as a string, with the default tenant, the default database and the token, when given.
+	/// Options for the server at the given URI, as a string, with the tenant, the database and the token, when given.
 	/// </summary>
-	public ChromaConfigurationOptions(string uri, string? defaultTenant = null, string? defaultDatabase = null, string? chromaToken = null)
-		: this(new Uri(uri), defaultTenant, defaultDatabase, chromaToken)
+	public ChromaConfigurationOptions(string uri, string? tenant = null, string? database = null, string? chromaToken = null)
+		: this(new Uri(uri), tenant, database, chromaToken)
 	{ }
 
 	/// <summary>

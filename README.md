@@ -184,7 +184,7 @@ Where `pre-flight-checks` declares `supports_base64_encoding`, from Chroma 1.0.1
 await client.CreateTenantAsync("my_tenant");
 await client.CreateDatabaseAsync("my_database", tenant: "my_tenant");
 
-var options = new ChromaConfigurationOptions(uri: "http://localhost:8000", defaultTenant: "my_tenant", defaultDatabase: "my_database");
+var options = new ChromaConfigurationOptions(uri: "http://localhost:8000", tenant: "my_tenant", database: "my_database");
 ```
 
 The collections created with these options belong to that tenant and database.

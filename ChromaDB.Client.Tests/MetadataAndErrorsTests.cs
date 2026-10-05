@@ -61,7 +61,7 @@ public class MetadataAndErrorsTests
 	public async Task ClientWithMetadataValues()
 	{
 		using var httpClient = new HttpClient(Respond("""{"id":"11111111-2222-3333-4444-555555555555","name":"c","metadata":{"date":"2026-10-04"}}"""));
-		var exact = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000", defaultTenant: "t"), httpClient);
+		var exact = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000", tenant: "t"), httpClient);
 		var inferred = exact.WithMetadataValues(ChromaMetadataValues.Inferred);
 		Assert.That((await exact.GetCollectionAsync("c")).Metadata!["date"], Is.EqualTo("2026-10-04"));
 		Assert.That((await inferred.GetCollectionAsync("c")).Metadata!["date"], Is.EqualTo(new DateTime(2026, 10, 4)));

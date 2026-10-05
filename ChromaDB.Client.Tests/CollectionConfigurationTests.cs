@@ -95,7 +95,7 @@ public class CollectionConfigurationTests
 	{
 		var handler = new RecordingHandler("3");
 		var id = Guid.NewGuid();
-		var options = new ChromaConfigurationOptions("http://localhost:8000", defaultTenant: "t", defaultDatabase: "d");
+		var options = new ChromaConfigurationOptions("http://localhost:8000", tenant: "t", database: "d");
 		var client = new ChromaCollectionClient(id, "c", options, new HttpClient(handler));
 		Assert.That(await client.CountAsync(), Is.EqualTo(3));
 		Assert.That(handler.Path, Is.EqualTo($"/api/v2/tenants/t/databases/d/collections/{id}/count"));
@@ -108,7 +108,7 @@ public class CollectionConfigurationTests
 	{
 		var handler = new RecordingHandler("3");
 		var id = Guid.NewGuid();
-		var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000", defaultTenant: "t", defaultDatabase: "d"), new HttpClient(handler));
+		var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000", tenant: "t", database: "d"), new HttpClient(handler));
 		Assert.That(await client.GetCollectionClient(id, "c").CountAsync(), Is.EqualTo(3));
 		Assert.That(handler.Path, Is.EqualTo($"/api/v2/tenants/t/databases/d/collections/{id}/count"));
 		Assert.That(await client.GetCollectionClient(new ChromaCollection("c") { Id = id, Tenant = "t2", Database = "d2" }).CountAsync(), Is.EqualTo(3));
