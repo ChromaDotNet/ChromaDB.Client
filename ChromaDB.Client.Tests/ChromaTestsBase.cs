@@ -191,8 +191,8 @@ public abstract class ChromaTestsBase
 	protected static bool RegexSupported => ChromaImage.Version >= new Version(1, 0, 12);
 
 	// Chroma 1.0.21 to 1.1.1 reject a write with sparse vectors, but then fail the next write on the server, also to another collection,
-	// with "Error sending message to compactor".
-	protected static bool RejectedSparseVectorsBreakTheServer => !RunningServer && ChromaImage.Version >= new Version(1, 0, 21) && ChromaImage.Version <= new Version(1, 1, 1);
+	// with "Error sending message to compactor". A server already running counts by CHROMA_IMAGE too.
+	protected static bool RejectedSparseVectorsBreakTheServer => ChromaImage.Version >= new Version(1, 0, 21) && ChromaImage.Version <= new Version(1, 1, 1);
 
 	// Chroma 1.3.0 accepts the space in the schema and ignores it.
 	protected static bool SpaceInSchemaApplied => ChromaCloud || ChromaImage.Version >= new Version(1, 3, 2);
