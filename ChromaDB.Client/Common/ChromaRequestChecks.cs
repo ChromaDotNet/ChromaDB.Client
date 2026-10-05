@@ -54,6 +54,16 @@ internal static class ChromaRequestChecks
 		=> value is JsonElement { ValueKind: JsonValueKind.Array }
 			or IEnumerable and not string and not IDictionary and not byte[];
 
+	// A JsonElement number or string, what the client returns with ChromaMetadataValues.Inferred and sends as its raw
+	// value, checked as the double or string it holds.
+	public static object? Scalar(object? value)
+		=> value switch
+		{
+			JsonElement { ValueKind: JsonValueKind.Number } element when element.TryGetDouble(out var number) => number,
+			JsonElement { ValueKind: JsonValueKind.String } element => element.GetString(),
+			_ => value,
+		};
+
 	// Only from a count: enumerating the list would consume one that can be read once, before it is sent.
 	private static bool IsEmpty(object? value)
 		=> value is JsonElement element ? element.GetArrayLength() == 0 : value is ICollection { Count: 0 };

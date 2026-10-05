@@ -121,9 +121,12 @@ public class ChromaCollectionDefinition
 		return metadata;
 	}
 
-	// 2 and 2L, or 1.5f and 1.5, are the same setting.
+	// 2 and 2L, or 1.5f and 1.5, are the same setting, also in a JsonElement.
 	private static bool SameValue(object existing, object value)
-		=> Equals(existing, value)
-			|| existing is IConvertible && value is IConvertible && existing is not string && value is not string
-				&& Convert.ToDouble(existing, System.Globalization.CultureInfo.InvariantCulture) == Convert.ToDouble(value, System.Globalization.CultureInfo.InvariantCulture);
+	{
+		var scalar = ChromaRequestChecks.Scalar(existing);
+		return Equals(scalar, value)
+			|| scalar is IConvertible && value is IConvertible && scalar is not string && value is not string
+				&& Convert.ToDouble(scalar, System.Globalization.CultureInfo.InvariantCulture) == Convert.ToDouble(value, System.Globalization.CultureInfo.InvariantCulture);
+	}
 }

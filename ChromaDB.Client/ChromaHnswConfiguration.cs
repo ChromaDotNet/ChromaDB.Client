@@ -46,6 +46,7 @@ public class ChromaHnswConfiguration
 	// records: the client rejects them before the request, wherever they come from.
 	internal static void CheckMaxNeighbors(object? maxNeighbors, string paramName)
 	{
+		maxNeighbors = Common.ChromaRequestChecks.Scalar(maxNeighbors);
 		if (maxNeighbors is IConvertible and not string and not bool && System.Convert.ToDouble(maxNeighbors, System.Globalization.CultureInfo.InvariantCulture) < 2)
 		{
 			throw new ArgumentException($"The HNSW index needs at least 2 neighbors, not {maxNeighbors}: Chroma crashes on the first write with 0 and misses the nearest records with 1.", paramName);

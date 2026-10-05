@@ -193,6 +193,8 @@ public class CollectionSettingsTests
 			Throws.ArgumentException.With.Message.Contains("at least 2"));
 		Assert.That(() => Client(server).GetOrCreateCollectionAsync(new ChromaCollectionDefinition("c") { Metadata = new Dictionary<string, object> { ["hnsw:M"] = (long)maxNeighbors } }),
 			Throws.ArgumentException);
+		Assert.That(() => Client(server).CreateCollectionAsync(new ChromaCollectionDefinition("c") { Metadata = new Dictionary<string, object> { ["hnsw:M"] = JsonDocument.Parse(maxNeighbors.ToString(System.Globalization.CultureInfo.InvariantCulture)).RootElement } }),
+			Throws.ArgumentException.With.Message.Contains("at least 2"));
 		Assert.That(() => Client(server).CreateCollectionAsync(new ChromaCollectionDefinition("c")
 		{
 			Configuration = new() { Hnsw = new() { MaxNeighbors = maxNeighbors } },
@@ -218,6 +220,21 @@ public class CollectionSettingsTests
 			Metadata = new Dictionary<string, object> { ["hnsw:M"] = 20L, ["hnsw:resize_factor"] = 1.5f },
 			Configuration = new() { Hnsw = new() { MaxNeighbors = 20, ResizeFactor = 1.5 } },
 		}), Throws.Nothing);
+		Assert.That(() => Client(server).CreateCollectionAsync(new ChromaCollectionDefinition("c")
+		{
+			Metadata = new Dictionary<string, object> { ["hnsw:M"] = JsonDocument.Parse("20").RootElement, ["hnsw:space"] = JsonDocument.Parse("\"cosine\"").RootElement },
+			Configuration = new() { Space = ChromaSpace.Cosine, Hnsw = new() { MaxNeighbors = 20 } },
+		}), Throws.Nothing);
+		Assert.That(() => Client(server).CreateCollectionAsync(new ChromaCollectionDefinition("c")
+		{
+			Metadata = new Dictionary<string, object> { ["hnsw:space"] = JsonDocument.Parse("\"l2\"").RootElement },
+			Configuration = new() { Space = ChromaSpace.Cosine },
+		}), Throws.ArgumentException);
+		Assert.That(() => Client(server).CreateCollectionAsync(new ChromaCollectionDefinition("c")
+		{
+			Metadata = new Dictionary<string, object> { ["hnsw:M"] = JsonDocument.Parse("10").RootElement },
+			Configuration = new() { Hnsw = new() { MaxNeighbors = 20 } },
+		}), Throws.ArgumentException);
 	}
 
 	[Test]
