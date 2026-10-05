@@ -29,7 +29,7 @@ The v2 API uses a hierarchical URL structure where tenant and database are part 
 
 ### Step 1: Update Your ChromaDB Server
 
-Ensure your ChromaDB server supports the v2 API. The v2 API is available from Chroma 0.5.16: 0.5.16 to 0.6.x serve both v1 and v2, 1.0 and later only v2.
+Ensure your ChromaDB server supports the v2 API. The v2 API is available from Chroma 0.5.16: 0.5.16 to 0.5.23 serve both v1 and v2, the v1 API of 0.6.3 fails on most requests, and 1.0 and later serve only v2.
 
 ### Step 2: Update Your Configuration
 

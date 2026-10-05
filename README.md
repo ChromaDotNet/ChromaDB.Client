@@ -74,7 +74,7 @@ var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithA
 services.AddChromaClient(options => options!.WithUri("http://localhost:8000").WithApiVersion(ChromaApiVersion.V1));
 ```
 
-Chroma 0.5.16 to 0.5.20 serve both APIs. The v1 API of Chroma 0.6.3 fails on many requests, and Chroma 1.x answers it with `410 Gone`: use v2 there.
+Chroma 0.5.16 to 0.5.23 serve both APIs. The v1 API of Chroma 0.6.3 fails on most requests, and Chroma 1.x answers it with `410 Gone`: use v2 there.
 
 ## Records with URIs
 
