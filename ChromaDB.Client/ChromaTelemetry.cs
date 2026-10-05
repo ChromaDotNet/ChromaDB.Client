@@ -8,8 +8,9 @@ namespace ChromaDB.Client;
 /// and the database, as <c>tenant|database</c>), <c>server.address</c>, <c>server.port</c>, and on a failure <c>error.type</c> and
 /// <c>db.response.status_code</c>, the HTTP status. The duration of each operation goes in the histogram
 /// <c>db.client.operation.duration</c>, in seconds, with the same attributes, and with the bucket boundaries that the semantic
-/// conventions advise, from 0.001 to 10 seconds, which OpenTelemetry 1.10 and later apply; the netstandard2.0 build cannot advise
-/// them, so there a view sets them. Without a listener nothing is measured.
+/// conventions advise, from 0.001 to 10 seconds, which OpenTelemetry 1.10 and later apply. The netstandard2.0 build cannot advise
+/// them: there the application adds a view with them to its <c>MeterProvider</c>, as the README shows. Without a listener nothing is
+/// measured.
 /// </summary>
 public static class ChromaTelemetry
 {

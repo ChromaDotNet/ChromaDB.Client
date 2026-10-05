@@ -328,7 +328,7 @@ builder.Services.AddOpenTelemetry()
   - `server.address` and `server.port`;
   - on a failure, `error.type` and `db.response.status_code`, the HTTP status.
 - **Metrics:** the duration of each operation in the histogram `db.client.operation.duration`, in seconds, with the same attributes.
-- **Buckets of the histogram:** the boundaries that the semantic conventions advise, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5 and 10 seconds. OpenTelemetry 1.10 and later apply them. Without them, OpenTelemetry would use its default boundaries, made for milliseconds, and every operation under 5 seconds would fall in the same bucket. The netstandard2.0 build, the one of applications on .NET Core 3.1 to 7, cannot advise them; there a view sets them:
+- **Buckets of the histogram:** the boundaries that the semantic conventions advise, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5 and 10 seconds. OpenTelemetry 1.10 and later apply them. Without them, OpenTelemetry would use its default boundaries, made for milliseconds, and every operation under 5 seconds would fall in the same bucket. The netstandard2.0 build, the one of applications on .NET Core 3.1 to 7, cannot advise them: there the application adds a view with them to its metrics:
 
   ```csharp
   metrics.AddView("db.client.operation.duration", new ExplicitBucketHistogramConfiguration { Boundaries = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10] });
