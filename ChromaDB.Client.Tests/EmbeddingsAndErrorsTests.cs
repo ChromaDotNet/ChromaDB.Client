@@ -16,7 +16,7 @@ public class EmbeddingsAndErrorsTests : ChromaTestsBase
 		await collectionClient.Add(new ChromaRecords(["a", "b"]) { Embeddings = [.. embeddings] });
 		await collectionClient.Upsert(new ChromaRecords(["c"]) { Embeddings = [embeddings[1]] });
 		await collectionClient.Update(new ChromaRecords(["a"]) { Embeddings = [embeddings[1]] });
-		var result = (await collectionClient.Get(["a", "b", "c"], include: ChromaGetInclude.Embeddings)).ToDictionary(x => x.Id, x => x.Embeddings!.Value.ToArray());
+		var result = (await collectionClient.Get(["a", "b", "c"], include: ChromaGetInclude.Embeddings)).ToDictionary(x => x.Id, x => x.Embedding!.Value.ToArray());
 		Assert.That(result["a"], Is.EqualTo(embeddings[1].ToArray()));
 		Assert.That(result["b"], Is.EqualTo(embeddings[1].ToArray()));
 		Assert.That(result["c"], Is.EqualTo(embeddings[1].ToArray()));

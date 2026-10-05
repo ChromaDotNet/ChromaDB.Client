@@ -14,7 +14,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.None);
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result.Id, Is.EqualTo(Id1));
-		Assert.That(result.Embeddings, Is.Null);
+		Assert.That(result.Embedding, Is.Null);
 		Assert.That(result.Metadata, Is.Null);
 		Assert.That(result.Document, Is.Null);
 	}
@@ -27,7 +27,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Embeddings);
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result.Id, Is.EqualTo(Id1));
-		Assert.That(result.Embeddings, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
+		Assert.That(result.Embedding, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
 		Assert.That(result.Metadata, Is.Null);
 		Assert.That(result.Document, Is.Null);
 	}
@@ -40,7 +40,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Metadatas);
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result.Id, Is.EqualTo(Id1));
-		Assert.That(result.Embeddings, Is.Null);
+		Assert.That(result.Embedding, Is.Null);
 		Assert.That(result.Metadata, Is.EqualTo(Metadata1));
 		Assert.That(result.Document, Is.Null);
 	}
@@ -53,7 +53,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Documents);
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result.Id, Is.EqualTo(Id1));
-		Assert.That(result.Embeddings, Is.Null);
+		Assert.That(result.Embedding, Is.Null);
 		Assert.That(result.Metadata, Is.Null);
 		Assert.That(result.Document, Is.EqualTo(Doc1));
 	}
@@ -66,7 +66,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result.Id, Is.EqualTo(Id1));
-		Assert.That(result.Embeddings, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
+		Assert.That(result.Embedding, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
 		Assert.That(result.Metadata, Is.EqualTo(Metadata1));
 		Assert.That(result.Document, Is.EqualTo(Doc1));
 	}
@@ -80,11 +80,11 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.None);
 		Assert.That(result, Has.Count.EqualTo(2));
 		Assert.That(result[0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0].Embeddings, Is.Null);
+		Assert.That(result[0].Embedding, Is.Null);
 		Assert.That(result[0].Metadata, Is.Null);
 		Assert.That(result[0].Document, Is.Null);
 		Assert.That(result[1].Id, Is.EqualTo(Id2));
-		Assert.That(result[1].Embeddings, Is.Null);
+		Assert.That(result[1].Embedding, Is.Null);
 		Assert.That(result[1].Metadata, Is.Null);
 		Assert.That(result[1].Document, Is.Null);
 	}
@@ -98,11 +98,11 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Embeddings);
 		Assert.That(result, Has.Count.EqualTo(2));
 		Assert.That(result[0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0].Embeddings, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[0].Embedding, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[0].Metadata, Is.Null);
 		Assert.That(result[0].Document, Is.Null);
 		Assert.That(result[1].Id, Is.EqualTo(Id2));
-		Assert.That(result[1].Embeddings, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[1].Embedding, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[1].Metadata, Is.Null);
 		Assert.That(result[1].Document, Is.Null);
 	}
@@ -116,11 +116,11 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Metadatas);
 		Assert.That(result, Has.Count.EqualTo(2));
 		Assert.That(result[0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0].Embeddings, Is.Null);
+		Assert.That(result[0].Embedding, Is.Null);
 		Assert.That(result[0].Metadata, Is.EqualTo(Metadata1));
 		Assert.That(result[0].Document, Is.Null);
 		Assert.That(result[1].Id, Is.EqualTo(Id2));
-		Assert.That(result[1].Embeddings, Is.Null);
+		Assert.That(result[1].Embedding, Is.Null);
 		Assert.That(result[1].Metadata, Is.EqualTo(Metadata2));
 		Assert.That(result[1].Document, Is.Null);
 	}
@@ -134,11 +134,11 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(2));
 		Assert.That(result[0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0].Embeddings, Is.Null);
+		Assert.That(result[0].Embedding, Is.Null);
 		Assert.That(result[0].Metadata, Is.Null);
 		Assert.That(result[0].Document, Is.EqualTo(Doc1));
 		Assert.That(result[1].Id, Is.EqualTo(Id2));
-		Assert.That(result[1].Embeddings, Is.Null);
+		Assert.That(result[1].Embedding, Is.Null);
 		Assert.That(result[1].Metadata, Is.Null);
 		Assert.That(result[1].Document, Is.EqualTo(Doc2));
 	}
@@ -152,11 +152,11 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(2));
 		Assert.That(result[0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0].Embeddings, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[0].Embedding, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[0].Metadata, Is.EqualTo(Metadata1));
 		Assert.That(result[0].Document, Is.EqualTo(Doc1));
 		Assert.That(result[1].Id, Is.EqualTo(Id2));
-		Assert.That(result[1].Embeddings, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[1].Embedding, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[1].Metadata, Is.EqualTo(Metadata2));
 		Assert.That(result[1].Document, Is.EqualTo(Doc2));
 	}
@@ -171,7 +171,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			limit: 1);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0].Embeddings, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[0].Embedding, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[0].Metadata, Is.EqualTo(Metadata1));
 		Assert.That(result[0].Document, Is.EqualTo(Doc1));
 	}
@@ -187,7 +187,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			offset: 1);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Id, Is.EqualTo(Id2));
-		Assert.That(result[0].Embeddings, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[0].Embedding, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[0].Metadata, Is.EqualTo(Metadata2));
 		Assert.That(result[0].Document, Is.EqualTo(Doc2));
 	}
@@ -201,7 +201,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Id, Is.EqualTo(Id2));
-		Assert.That(result[0].Embeddings, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[0].Embedding, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[0].Metadata, Is.EqualTo(Metadata2));
 		Assert.That(result[0].Document, Is.EqualTo(Doc2));
 	}
@@ -215,7 +215,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Id, Is.EqualTo(Id2));
-		Assert.That(result[0].Embeddings, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[0].Embedding, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[0].Metadata, Is.EqualTo(Metadata2));
 		Assert.That(result[0].Document, Is.EqualTo(Doc2));
 	}
@@ -229,7 +229,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Id, Is.EqualTo(Id2));
-		Assert.That(result[0].Embeddings, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[0].Embedding, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[0].Metadata, Is.EqualTo(Metadata2));
 		Assert.That(result[0].Document, Is.EqualTo(Doc2));
 	}
@@ -243,7 +243,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Id, Is.EqualTo(Id2));
-		Assert.That(result[0].Embeddings, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[0].Embedding, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[0].Metadata, Is.EqualTo(Metadata2));
 		Assert.That(result[0].Document, Is.EqualTo(Doc2));
 	}
@@ -257,7 +257,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Id, Is.EqualTo(Id2));
-		Assert.That(result[0].Embeddings, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[0].Embedding, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[0].Metadata, Is.EqualTo(Metadata2));
 		Assert.That(result[0].Document, Is.EqualTo(Doc2));
 	}
@@ -271,7 +271,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0].Embeddings, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[0].Embedding, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[0].Metadata, Is.EqualTo(Metadata1));
 		Assert.That(result[0].Document, Is.EqualTo(Doc1));
 	}
@@ -285,7 +285,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Id, Is.EqualTo(Id2));
-		Assert.That(result[0].Embeddings, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[0].Embedding, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[0].Metadata, Is.EqualTo(Metadata2));
 		Assert.That(result[0].Document, Is.EqualTo(Doc2));
 	}
@@ -299,7 +299,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0].Embeddings, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[0].Embedding, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[0].Metadata, Is.EqualTo(Metadata1));
 		Assert.That(result[0].Document, Is.EqualTo(Doc1));
 	}
@@ -313,7 +313,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Id, Is.EqualTo(Id2));
-		Assert.That(result[0].Embeddings, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[0].Embedding, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[0].Metadata, Is.EqualTo(Metadata2));
 		Assert.That(result[0].Document, Is.EqualTo(Doc2));
 	}
@@ -327,7 +327,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Id, Is.EqualTo(Id2));
-		Assert.That(result[0].Embeddings, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[0].Embedding, Is.EqualTo(Embeddings2).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[0].Metadata, Is.EqualTo(Metadata2));
 		Assert.That(result[0].Document, Is.EqualTo(Doc2));
 	}
@@ -341,7 +341,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0].Embeddings, Is.Null);
+		Assert.That(result[0].Embedding, Is.Null);
 		Assert.That(result[0].Metadata, Is.Null);
 		Assert.That(result[0].Document, Is.EqualTo(Doc1));
 	}
@@ -356,7 +356,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0].Embeddings, Is.Null);
+		Assert.That(result[0].Embedding, Is.Null);
 		Assert.That(result[0].Metadata, Is.Null);
 		Assert.That(result[0].Document, Is.EqualTo(Doc1));
 	}
@@ -371,7 +371,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 			include: ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0].Embeddings, Is.Null);
+		Assert.That(result[0].Embedding, Is.Null);
 		Assert.That(result[0].Metadata, Is.Null);
 		Assert.That(result[0].Document, Is.EqualTo(Doc1));
 	}

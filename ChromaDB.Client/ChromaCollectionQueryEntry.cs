@@ -21,7 +21,7 @@ public class ChromaCollectionQueryEntry
 	/// <summary>
 	/// The embedding of the record, when the query included the embeddings.
 	/// </summary>
-	public ReadOnlyMemory<float>? Embeddings { get; init; }
+	public ReadOnlyMemory<float>? Embedding { get; init; }
 	/// <summary>
 	/// The document of the record, when the query included the documents.
 	/// </summary>
@@ -30,11 +30,6 @@ public class ChromaCollectionQueryEntry
 	/// The URI of the record. Null when the query did not include the URIs.
 	/// </summary>
 	public string? Uri { get; init; }
-	/// <summary>
-	/// The URI of the record in a list of one, or null without it. Obsolete: a record has one URI, use <c>Uri</c>.
-	/// </summary>
-	[Obsolete("A record has one URI: use Uri.")]
-	public List<string?>? Uris { get; init; }
 	/// <summary>
 	/// The <c>data</c> field of the answer of the server, the same for every result of the answer.
 	/// </summary>

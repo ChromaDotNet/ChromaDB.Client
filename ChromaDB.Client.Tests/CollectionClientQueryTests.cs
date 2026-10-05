@@ -18,10 +18,10 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result, Has.Count.EqualTo(2));
 		Assert.That(result.Select(x => x.Distance), Has.Some.Not.EqualTo(0).Within(DistanceTolerance));
-		Assert.That(result[0].Embeddings, Is.Not.Null.And.Length.GreaterThan(0));
+		Assert.That(result[0].Embedding, Is.Not.Null.And.Length.GreaterThan(0));
 		Assert.That(result[0].Metadata, Is.Null);
 		Assert.That(result[0].Document, Is.Null);
-		Assert.That(result[1].Embeddings, Is.Not.Null.And.Length.GreaterThan(0));
+		Assert.That(result[1].Embedding, Is.Not.Null.And.Length.GreaterThan(0));
 		Assert.That(result[1].Metadata, Is.Null);
 		Assert.That(result[1].Document, Is.Null);
 	}
@@ -35,10 +35,10 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result, Has.Count.EqualTo(2));
 		Assert.That(result.Select(x => x.Distance), Has.Some.Not.EqualTo(0).Within(DistanceTolerance));
-		Assert.That(result[0].Embeddings, Is.Not.Null.And.Length.GreaterThan(0));
+		Assert.That(result[0].Embedding, Is.Not.Null.And.Length.GreaterThan(0));
 		Assert.That(result[0].Metadata, Is.Not.Null.And.Not.Empty);
 		Assert.That(result[0].Document, Is.Not.Null.And.Not.Empty);
-		Assert.That(result[1].Embeddings, Is.Not.Null.And.Length.GreaterThan(0));
+		Assert.That(result[1].Embedding, Is.Not.Null.And.Length.GreaterThan(0));
 		Assert.That(result[1].Metadata, Is.Not.Null.And.Not.Empty);
 		Assert.That(result[1].Document, Is.Not.Null.And.Not.Empty);
 	}
@@ -62,18 +62,18 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result, Has.Count.EqualTo(2));
 		Assert.That(result[0], Has.Count.EqualTo(2));
 		Assert.That(result[0].Select(x => x.Distance), Has.Some.Not.EqualTo(0).Within(DistanceTolerance));
-		Assert.That(result[0][0].Embeddings, Is.Not.Null.And.Length.GreaterThan(0));
+		Assert.That(result[0][0].Embedding, Is.Not.Null.And.Length.GreaterThan(0));
 		Assert.That(result[0][0].Metadata, Is.Null);
 		Assert.That(result[0][0].Document, Is.Null);
-		Assert.That(result[0][1].Embeddings, Is.Not.Null.And.Length.GreaterThan(0));
+		Assert.That(result[0][1].Embedding, Is.Not.Null.And.Length.GreaterThan(0));
 		Assert.That(result[0][1].Metadata, Is.Null);
 		Assert.That(result[0][1].Document, Is.Null);
 		Assert.That(result[1], Has.Count.EqualTo(2));
 		Assert.That(result[1].Select(x => x.Distance), Has.Some.Not.EqualTo(0).Within(DistanceTolerance));
-		Assert.That(result[1][0].Embeddings, Is.Not.Null.And.Length.GreaterThan(0));
+		Assert.That(result[1][0].Embedding, Is.Not.Null.And.Length.GreaterThan(0));
 		Assert.That(result[1][0].Metadata, Is.Null);
 		Assert.That(result[1][0].Document, Is.Null);
-		Assert.That(result[1][1].Embeddings, Is.Not.Null.And.Length.GreaterThan(0));
+		Assert.That(result[1][1].Embedding, Is.Not.Null.And.Length.GreaterThan(0));
 		Assert.That(result[1][1].Metadata, Is.Null);
 		Assert.That(result[1][1].Document, Is.Null);
 	}
@@ -87,18 +87,18 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result, Has.Count.EqualTo(2));
 		Assert.That(result[0], Has.Count.EqualTo(2));
 		Assert.That(result[0].Select(x => x.Distance), Has.Some.Not.EqualTo(0).Within(DistanceTolerance));
-		Assert.That(result[0][0].Embeddings, Is.Not.Null.And.Length.GreaterThan(0));
+		Assert.That(result[0][0].Embedding, Is.Not.Null.And.Length.GreaterThan(0));
 		Assert.That(result[0][0].Metadata, Is.Not.Null.And.Not.Empty);
 		Assert.That(result[0][0].Document, Is.Not.Null.And.Not.Empty);
-		Assert.That(result[0][1].Embeddings, Is.Not.Null.And.Length.GreaterThan(0));
+		Assert.That(result[0][1].Embedding, Is.Not.Null.And.Length.GreaterThan(0));
 		Assert.That(result[0][1].Metadata, Is.Not.Null.And.Not.Empty);
 		Assert.That(result[0][1].Document, Is.Not.Null.And.Not.Empty);
 		Assert.That(result[1], Has.Count.EqualTo(2));
 		Assert.That(result[1].Select(x => x.Distance), Has.Some.Not.EqualTo(0).Within(DistanceTolerance));
-		Assert.That(result[1][0].Embeddings, Is.Not.Null.And.Length.GreaterThan(0));
+		Assert.That(result[1][0].Embedding, Is.Not.Null.And.Length.GreaterThan(0));
 		Assert.That(result[1][0].Metadata, Is.Not.Null.And.Not.Empty);
 		Assert.That(result[1][0].Document, Is.Not.Null.And.Not.Empty);
-		Assert.That(result[1][1].Embeddings, Is.Not.Null.And.Length.GreaterThan(0));
+		Assert.That(result[1][1].Embedding, Is.Not.Null.And.Length.GreaterThan(0));
 		Assert.That(result[1][1].Metadata, Is.Not.Null.And.Not.Empty);
 		Assert.That(result[1][1].Document, Is.Not.Null.And.Not.Empty);
 	}
@@ -113,7 +113,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result, Has.Count.EqualTo(1));
 		Assert.That(result[0].Distance, Is.EqualTo(0).Within(DistanceTolerance));
-		Assert.That(result[0].Embeddings, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
+		Assert.That(result[0].Embedding, Is.EqualTo(Embeddings1).Using(EmbeddingsComparer.Instance));
 		Assert.That(result[0].Metadata, Is.Null);
 		Assert.That(result[0].Document, Is.Null);
 	}
@@ -129,13 +129,13 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result[0], Has.Count.EqualTo(1));
 		Assert.That(result[0][0].Distance, Is.EqualTo(0).Within(DistanceTolerance));
 		Assert.That(result[0][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0][0].Embeddings, Is.Null);
+		Assert.That(result[0][0].Embedding, Is.Null);
 		Assert.That(result[0][0].Metadata, Is.Null);
 		Assert.That(result[0][0].Document, Is.Null);
 		Assert.That(result[1], Has.Count.EqualTo(1));
 		Assert.That(result[1][0].Distance, Is.GreaterThan(0));
 		Assert.That(result[1][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[1][0].Embeddings, Is.Null);
+		Assert.That(result[1][0].Embedding, Is.Null);
 		Assert.That(result[1][0].Metadata, Is.Null);
 		Assert.That(result[1][0].Document, Is.Null);
 	}
@@ -151,13 +151,13 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result[0], Has.Count.EqualTo(1));
 		Assert.That(result[0][0].Distance, Is.EqualTo(0).Within(DistanceTolerance));
 		Assert.That(result[0][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0][0].Embeddings, Is.Null);
+		Assert.That(result[0][0].Embedding, Is.Null);
 		Assert.That(result[0][0].Metadata, Is.Null);
 		Assert.That(result[0][0].Document, Is.Null);
 		Assert.That(result[1], Has.Count.EqualTo(1));
 		Assert.That(result[1][0].Distance, Is.GreaterThan(0));
 		Assert.That(result[1][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[1][0].Embeddings, Is.Null);
+		Assert.That(result[1][0].Embedding, Is.Null);
 		Assert.That(result[1][0].Metadata, Is.Null);
 		Assert.That(result[1][0].Document, Is.Null);
 	}
@@ -173,13 +173,13 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result[0], Has.Count.EqualTo(1));
 		Assert.That(result[0][0].Distance, Is.EqualTo(0).Within(DistanceTolerance));
 		Assert.That(result[0][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0][0].Embeddings, Is.Null);
+		Assert.That(result[0][0].Embedding, Is.Null);
 		Assert.That(result[0][0].Metadata, Is.Null);
 		Assert.That(result[0][0].Document, Is.Null);
 		Assert.That(result[1], Has.Count.EqualTo(1));
 		Assert.That(result[1][0].Distance, Is.GreaterThan(0));
 		Assert.That(result[1][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[1][0].Embeddings, Is.Null);
+		Assert.That(result[1][0].Embedding, Is.Null);
 		Assert.That(result[1][0].Metadata, Is.Null);
 		Assert.That(result[1][0].Document, Is.Null);
 	}
@@ -195,13 +195,13 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result[0], Has.Count.EqualTo(1));
 		Assert.That(result[0][0].Distance, Is.EqualTo(0).Within(DistanceTolerance));
 		Assert.That(result[0][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0][0].Embeddings, Is.Null);
+		Assert.That(result[0][0].Embedding, Is.Null);
 		Assert.That(result[0][0].Metadata, Is.Null);
 		Assert.That(result[0][0].Document, Is.Null);
 		Assert.That(result[1], Has.Count.EqualTo(1));
 		Assert.That(result[1][0].Distance, Is.GreaterThan(0));
 		Assert.That(result[1][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[1][0].Embeddings, Is.Null);
+		Assert.That(result[1][0].Embedding, Is.Null);
 		Assert.That(result[1][0].Metadata, Is.Null);
 		Assert.That(result[1][0].Document, Is.Null);
 	}
@@ -217,13 +217,13 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result[0], Has.Count.EqualTo(1));
 		Assert.That(result[0][0].Distance, Is.GreaterThan(0));
 		Assert.That(result[0][0].Id, Is.EqualTo(Id2));
-		Assert.That(result[0][0].Embeddings, Is.Null);
+		Assert.That(result[0][0].Embedding, Is.Null);
 		Assert.That(result[0][0].Metadata, Is.Null);
 		Assert.That(result[0][0].Document, Is.Null);
 		Assert.That(result[1], Has.Count.EqualTo(1));
 		Assert.That(result[1][0].Distance, Is.EqualTo(0).Within(DistanceTolerance));
 		Assert.That(result[1][0].Id, Is.EqualTo(Id2));
-		Assert.That(result[1][0].Embeddings, Is.Null);
+		Assert.That(result[1][0].Embedding, Is.Null);
 		Assert.That(result[1][0].Metadata, Is.Null);
 		Assert.That(result[1][0].Document, Is.Null);
 	}
@@ -239,13 +239,13 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result[0], Has.Count.EqualTo(1));
 		Assert.That(result[0][0].Distance, Is.EqualTo(0).Within(DistanceTolerance));
 		Assert.That(result[0][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0][0].Embeddings, Is.Null);
+		Assert.That(result[0][0].Embedding, Is.Null);
 		Assert.That(result[0][0].Metadata, Is.Null);
 		Assert.That(result[0][0].Document, Is.Null);
 		Assert.That(result[1], Has.Count.EqualTo(1));
 		Assert.That(result[1][0].Distance, Is.GreaterThan(0));
 		Assert.That(result[1][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[1][0].Embeddings, Is.Null);
+		Assert.That(result[1][0].Embedding, Is.Null);
 		Assert.That(result[1][0].Metadata, Is.Null);
 		Assert.That(result[1][0].Document, Is.Null);
 	}
@@ -261,13 +261,13 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result[0], Has.Count.EqualTo(1));
 		Assert.That(result[0][0].Distance, Is.GreaterThan(0));
 		Assert.That(result[0][0].Id, Is.EqualTo(Id2));
-		Assert.That(result[0][0].Embeddings, Is.Null);
+		Assert.That(result[0][0].Embedding, Is.Null);
 		Assert.That(result[0][0].Metadata, Is.Null);
 		Assert.That(result[0][0].Document, Is.Null);
 		Assert.That(result[1], Has.Count.EqualTo(1));
 		Assert.That(result[1][0].Distance, Is.EqualTo(0).Within(DistanceTolerance));
 		Assert.That(result[1][0].Id, Is.EqualTo(Id2));
-		Assert.That(result[1][0].Embeddings, Is.Null);
+		Assert.That(result[1][0].Embedding, Is.Null);
 		Assert.That(result[1][0].Metadata, Is.Null);
 		Assert.That(result[1][0].Document, Is.Null);
 	}
@@ -283,13 +283,13 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result[0], Has.Count.EqualTo(1));
 		Assert.That(result[0][0].Distance, Is.EqualTo(0).Within(DistanceTolerance));
 		Assert.That(result[0][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0][0].Embeddings, Is.Null);
+		Assert.That(result[0][0].Embedding, Is.Null);
 		Assert.That(result[0][0].Metadata, Is.Null);
 		Assert.That(result[0][0].Document, Is.Null);
 		Assert.That(result[1], Has.Count.EqualTo(1));
 		Assert.That(result[1][0].Distance, Is.GreaterThan(0));
 		Assert.That(result[1][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[1][0].Embeddings, Is.Null);
+		Assert.That(result[1][0].Embedding, Is.Null);
 		Assert.That(result[1][0].Metadata, Is.Null);
 		Assert.That(result[1][0].Document, Is.Null);
 	}
@@ -305,13 +305,13 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result[0], Has.Count.EqualTo(1));
 		Assert.That(result[0][0].Distance, Is.EqualTo(0).Within(DistanceTolerance));
 		Assert.That(result[0][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0][0].Embeddings, Is.Null);
+		Assert.That(result[0][0].Embedding, Is.Null);
 		Assert.That(result[0][0].Metadata, Is.Null);
 		Assert.That(result[0][0].Document, Is.Null);
 		Assert.That(result[1], Has.Count.EqualTo(1));
 		Assert.That(result[1][0].Distance, Is.GreaterThan(0));
 		Assert.That(result[1][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[1][0].Embeddings, Is.Null);
+		Assert.That(result[1][0].Embedding, Is.Null);
 		Assert.That(result[1][0].Metadata, Is.Null);
 		Assert.That(result[1][0].Document, Is.Null);
 	}
@@ -327,13 +327,13 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result[0], Has.Count.EqualTo(1));
 		Assert.That(result[0][0].Distance, Is.EqualTo(0).Within(DistanceTolerance));
 		Assert.That(result[0][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0][0].Embeddings, Is.Null);
+		Assert.That(result[0][0].Embedding, Is.Null);
 		Assert.That(result[0][0].Metadata, Is.Null);
 		Assert.That(result[0][0].Document, Is.Null);
 		Assert.That(result[1], Has.Count.EqualTo(1));
 		Assert.That(result[1][0].Distance, Is.GreaterThan(0));
 		Assert.That(result[1][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[1][0].Embeddings, Is.Null);
+		Assert.That(result[1][0].Embedding, Is.Null);
 		Assert.That(result[1][0].Metadata, Is.Null);
 		Assert.That(result[1][0].Document, Is.Null);
 	}
@@ -350,13 +350,13 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result[0], Has.Count.EqualTo(1));
 		Assert.That(result[0][0].Distance, Is.EqualTo(0).Within(DistanceTolerance));
 		Assert.That(result[0][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0][0].Embeddings, Is.Null);
+		Assert.That(result[0][0].Embedding, Is.Null);
 		Assert.That(result[0][0].Metadata, Is.Null);
 		Assert.That(result[0][0].Document, Is.Null);
 		Assert.That(result[1], Has.Count.EqualTo(1));
 		Assert.That(result[1][0].Distance, Is.GreaterThan(0));
 		Assert.That(result[1][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[1][0].Embeddings, Is.Null);
+		Assert.That(result[1][0].Embedding, Is.Null);
 		Assert.That(result[1][0].Metadata, Is.Null);
 		Assert.That(result[1][0].Document, Is.Null);
 	}
@@ -373,13 +373,13 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That(result[0], Has.Count.EqualTo(1));
 		Assert.That(result[0][0].Distance, Is.EqualTo(0).Within(DistanceTolerance));
 		Assert.That(result[0][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[0][0].Embeddings, Is.Null);
+		Assert.That(result[0][0].Embedding, Is.Null);
 		Assert.That(result[0][0].Metadata, Is.Null);
 		Assert.That(result[0][0].Document, Is.Null);
 		Assert.That(result[1], Has.Count.EqualTo(1));
 		Assert.That(result[1][0].Distance, Is.GreaterThan(0));
 		Assert.That(result[1][0].Id, Is.EqualTo(Id1));
-		Assert.That(result[1][0].Embeddings, Is.Null);
+		Assert.That(result[1][0].Embedding, Is.Null);
 		Assert.That(result[1][0].Metadata, Is.Null);
 		Assert.That(result[1][0].Document, Is.Null);
 	}

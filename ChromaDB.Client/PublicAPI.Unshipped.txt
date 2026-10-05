@@ -1,5 +1,17 @@
 #nullable enable
+*REMOVED*ChromaDB.Client.Models.ChromaCollectionEntry.Embeddings.get -> System.ReadOnlyMemory<float>?
+*REMOVED*ChromaDB.Client.Models.ChromaCollectionEntry.Embeddings.init -> void
+*REMOVED*ChromaDB.Client.Models.ChromaCollectionEntry.Uris.get -> System.Collections.Generic.List<string?>?
+*REMOVED*ChromaDB.Client.Models.ChromaCollectionEntry.Uris.init -> void
+*REMOVED*ChromaDB.Client.Models.ChromaCollectionQueryEntry.Embeddings.get -> System.ReadOnlyMemory<float>?
+*REMOVED*ChromaDB.Client.Models.ChromaCollectionQueryEntry.Embeddings.init -> void
+*REMOVED*ChromaDB.Client.Models.ChromaCollectionQueryEntry.Uris.get -> System.Collections.Generic.List<string?>?
+*REMOVED*ChromaDB.Client.Models.ChromaCollectionQueryEntry.Uris.init -> void
 ChromaDB.Client.ChromaTelemetry
+ChromaDB.Client.Models.ChromaCollectionEntry.Embedding.get -> System.ReadOnlyMemory<float>?
+ChromaDB.Client.Models.ChromaCollectionEntry.Embedding.init -> void
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Embedding.get -> System.ReadOnlyMemory<float>?
+ChromaDB.Client.Models.ChromaCollectionQueryEntry.Embedding.init -> void
 const ChromaDB.Client.ChromaTelemetry.ActivitySourceName = "ChromaDB.Client" -> string!
 const ChromaDB.Client.ChromaTelemetry.MeterName = "ChromaDB.Client" -> string!
 override ChromaDB.Client.Models.ChromaCollectionSchema.ToString() -> string!
