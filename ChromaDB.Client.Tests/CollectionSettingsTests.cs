@@ -167,6 +167,21 @@ public class CollectionSettingsTests
 		Assert.That(server.Requests.Select(x => x.Method), Has.None.EqualTo("DELETE"));
 	}
 
+	// Chroma ignores the hnsw:space metadata next to SPANN settings, while ChromaCollection.Space would read it back: the client rejects it.
+	[Test]
+	public void SpaceMetadataNextToSpannSettings()
+	{
+		var server = Server();
+		var definition = new ChromaCollectionDefinition("c")
+		{
+			Metadata = new Dictionary<string, object> { ["hnsw:space"] = "l2" },
+			Configuration = new() { Space = ChromaSpace.Cosine, Spann = new() { SearchNprobe = 32 } },
+		};
+		Assert.That(() => Client(server).CreateCollectionAsync(definition), Throws.ArgumentException.With.Message.Contains("Configuration.Space"));
+		Assert.That(() => Client(server).GetOrCreateCollectionAsync(definition), Throws.ArgumentException);
+		Assert.That(server.Requests, Is.Empty);
+	}
+
 	[Test]
 	public void MetadataThatDisagreesWithTheSettings()
 	{
@@ -230,6 +245,10 @@ public class CollectionSettingsTests
 		const string key = "projects/p/locations/us/keyRings/r/cryptoKeys/k";
 		Assert.That(new ChromaCollectionSchema().WithGcpCmek(key).ToString(), Is.EqualTo("{\"defaults\":{},\"keys\":{},\"cmek\":{\"gcp\":\"" + key + "\"}}"));
 		Assert.That(() => new ChromaCollectionSchema().WithGcpCmek("my-key"), Throws.ArgumentException);
+		Assert.That(() => new ChromaCollectionSchema().WithGcpCmek(key + "/cryptoKeyVersions/1"), Throws.ArgumentException);
+		Assert.That(() => new ChromaCollectionSchema().WithGcpCmek(key + "\n"), Throws.ArgumentException);
+		Assert.That(() => new ChromaCollectionSchema().WithGcpCmek("projects/p q/locations/us/keyRings/r/cryptoKeys/k"), Throws.ArgumentException);
+		Assert.That(() => new ChromaCollectionSchema().WithGcpCmek(" " + key), Throws.ArgumentException);
 	}
 
 	// new_configuration with the embedding function, as Chroma writes it.

@@ -121,7 +121,8 @@ public sealed class ChromaCollectionSchema
 		return new(_keys, _defaults, resource);
 	}
 
-	private static readonly System.Text.RegularExpressions.Regex GcpKey = new("^projects/.+/locations/.+/keyRings/.+/cryptoKeys/.+$");
+	// The pattern of the Python client, with one segment for each part and nothing after the key, not even a key version.
+	private static readonly System.Text.RegularExpressions.Regex GcpKey = new(@"\Aprojects/[^/\s]+/locations/[^/\s]+/keyRings/[^/\s]+/cryptoKeys/[^/\s]+\z");
 
 	/// <summary>
 	/// The JSON of the schema, as the client sends it. With the space, the index settings or the embedding function of

@@ -109,15 +109,35 @@ public class CollectionSettingsServerTests : ChromaTestsBase
 		var collection = await client.CreateCollectionAsync(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}")
 		{
 			Configuration = new() { Space = ChromaSpace.Cosine, Spann = new() { SearchNprobe = 32, NreplicaCount = 4, SearchRngEpsilon = 8, NumSamplesKmeans = 500 } },
-			Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSparseIndexAlgorithm.MaxScore, bm25: true).WithGcpCmek(key),
+			Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", bm25: true).WithGcpCmek(key),
 		});
-		Assert.That(collection.SparseVectorIndexes.Single().Algorithm, Is.EqualTo(ChromaSparseIndexAlgorithm.MaxScore));
+		Assert.That(collection.SparseVectorIndexes.Single().Algorithm, Is.EqualTo(ChromaSparseIndexAlgorithm.Wand));
 		var schema = collection.SchemaJson!.Value;
 		Assert.That(schema.GetProperty("cmek").GetProperty("gcp").GetString(), Is.EqualTo(key));
 		var spann = schema.GetProperty("keys").GetProperty("#embedding").GetProperty("float_list").GetProperty("vector_index").GetProperty("config").GetProperty("spann");
 		Assert.That((spann.GetProperty("search_nprobe").GetInt32(), spann.GetProperty("nreplica_count").GetInt32(), spann.GetProperty("search_rng_epsilon").GetDouble(), spann.GetProperty("num_samples_kmeans").GetInt32()),
 			Is.EqualTo((32, 4, 8.0, 500)));
 		Assert.That(collection.Space, Is.EqualTo(ChromaSpace.Cosine));
+	}
+
+	// MaxScore is only for the tenants of Chroma Cloud that have it: on the others the test is inconclusive.
+	[Test]
+	public async Task MaxScoreSparseIndex()
+	{
+		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has sparse vector indexes.");
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var definition = new ChromaCollectionDefinition($"collection{Random.Shared.Next()}") { Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSparseIndexAlgorithm.MaxScore, bm25: true) };
+		ChromaCollection collection;
+		try
+		{
+			collection = await client.CreateCollectionAsync(definition);
+		}
+		catch (ChromaException ex) when (ex.StatusCode is System.Net.HttpStatusCode.BadRequest or System.Net.HttpStatusCode.Forbidden)
+		{
+			Assert.Inconclusive($"The tenant does not have MaxScore: {ex.Message}");
+			return;
+		}
+		Assert.That(collection.SparseVectorIndexes.Single().Algorithm, Is.EqualTo(ChromaSparseIndexAlgorithm.MaxScore));
 	}
 
 	// Chroma 0.5.1 and later send the dimension, set by the first write.

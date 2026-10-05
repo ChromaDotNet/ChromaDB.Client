@@ -54,6 +54,11 @@ public class ChromaCollectionDefinition
 		{
 			throw new ArgumentException("A collection has one vector index: set Hnsw for a single Chroma server or Spann for Chroma Cloud, not both, as Chroma rejects them together.", nameof(Configuration));
 		}
+		// Chroma ignores the hnsw:space metadata next to SPANN settings, but ChromaCollection.Space would read it back.
+		if (Configuration?.Spann is not null && !SettingsInSchema && Metadata is not null && Metadata.ContainsKey(ChromaSpaceNames.MetadataKey))
+		{
+			throw new ArgumentException($"Chroma ignores the {ChromaSpaceNames.MetadataKey} metadata next to SPANN settings: set the space in Configuration.Space instead.", nameof(Metadata));
+		}
 	}
 
 	internal Dictionary<string, object>? ToRequestSchema()
