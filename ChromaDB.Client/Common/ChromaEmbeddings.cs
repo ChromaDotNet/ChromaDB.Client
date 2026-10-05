@@ -31,7 +31,7 @@ internal sealed class ChromaEmbeddingsConverter : JsonConverter<ChromaEmbeddings
 				writer.WriteStartArray();
 				foreach (var number in embedding.Span)
 				{
-					writer.WriteNumberValue(number);
+					writer.WriteRawValue(ChromaNumbers.Format(number), skipInputValidation: true);
 				}
 				writer.WriteEndArray();
 			}

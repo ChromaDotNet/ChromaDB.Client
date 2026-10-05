@@ -10,14 +10,14 @@ namespace ChromaDB.Client.Tests;
 public class SparseVectorsAndSchemaTests
 {
 	const string CollectionsPath = "/api/v2/tenants/default_tenant/databases/default_database/collections";
-	const string Bm25Schema = """{"defaults":{},"keys":{"doc_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"chroma_bm25","config":{"k":1.2,"b":0.75,"avg_doc_length":256,"token_max_length":40,"include_tokens":false}},"source_key":"#document","bm25":true}}}}}}""";
+	const string Bm25Schema = """{"defaults":{},"keys":{"doc_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"chroma_bm25","config":{"k":1.2,"b":0.75,"avg_doc_length":256.0,"token_max_length":40,"include_tokens":false}},"source_key":"#document","bm25":true}}}}}}""";
 
 	[Test]
 	public void SparseVectorJson()
 	{
 		Assert.That(new ChromaSparseVector([1, 5], [0.5f, 0.7f]).ToString(), Is.EqualTo("""{"#type":"sparse_vector","indices":[1,5],"values":[0.5,0.7]}"""));
-		Assert.That(new ChromaSparseVector([2], [1f], ["apple"]).ToString(), Is.EqualTo("""{"#type":"sparse_vector","indices":[2],"values":[1],"tokens":["apple"]}"""));
-		Assert.That(new ChromaSparseVector([2147483648, uint.MaxValue], [1f, 2f]).ToString(), Is.EqualTo("""{"#type":"sparse_vector","indices":[2147483648,4294967295],"values":[1,2]}"""));
+		Assert.That(new ChromaSparseVector([2], [1f], ["apple"]).ToString(), Is.EqualTo("""{"#type":"sparse_vector","indices":[2],"values":[1.0],"tokens":["apple"]}"""));
+		Assert.That(new ChromaSparseVector([2147483648, uint.MaxValue], [1f, 2f]).ToString(), Is.EqualTo("""{"#type":"sparse_vector","indices":[2147483648,4294967295],"values":[1.0,2.0]}"""));
 	}
 
 	// The rules of Chroma and of its Python client: Chroma Cloud rejects indices out of order with 400.
@@ -44,7 +44,7 @@ public class SparseVectorsAndSchemaTests
 	public void KnnWithASparseVector()
 	{
 		Assert.That(ChromaRank.SparseKnn(new ChromaSparseVector([1, 5], [1f, 1f]), "doc_bm25", returnRank: true).ToString(),
-			Is.EqualTo("""{"$knn":{"query":{"#type":"sparse_vector","indices":[1,5],"values":[1,1]},"key":"doc_bm25","limit":16,"return_rank":true}}"""));
+			Is.EqualTo("""{"$knn":{"query":{"#type":"sparse_vector","indices":[1,5],"values":[1.0,1.0]},"key":"doc_bm25","limit":16,"return_rank":true}}"""));
 	}
 
 	[Test]
@@ -126,7 +126,7 @@ public class SparseVectorsAndSchemaTests
 		Assert.That(body.GetProperty("metadata").GetRawText(), Is.EqualTo("""{"x":1}"""));
 		Assert.That(body.GetProperty("schema").GetRawText(), Is.EqualTo("""
 			{"defaults":{"float_list":{"vector_index":{"enabled":false,"config":{"space":"cosine"}}}},
-			"keys":{"doc_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"chroma_bm25","config":{"k":1.2,"b":0.75,"avg_doc_length":256,"token_max_length":40,"include_tokens":false}},"source_key":"#document","bm25":true}}}},
+			"keys":{"doc_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"chroma_bm25","config":{"k":1.2,"b":0.75,"avg_doc_length":256.0,"token_max_length":40,"include_tokens":false}},"source_key":"#document","bm25":true}}}},
 			"#embedding":{"float_list":{"vector_index":{"enabled":true,"config":{"space":"cosine"}}}}}}
 			""".Replace("\n", "").Replace("\t", "")));
 	}
@@ -353,7 +353,7 @@ public class SparseVectorsAndSchemaTests
 	// doc_bm25 from the documents with the default settings, title_bm25 from the title in the metadata with k 1.5, and an index without a source.
 	const string TwoSourcesSchema = """
 		{"defaults":{},"keys":{
-		"doc_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"chroma_bm25","config":{"k":1.2,"b":0.75,"avg_doc_length":256,"token_max_length":40,"include_tokens":false}},"source_key":"#document","bm25":true}}}},
+		"doc_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"chroma_bm25","config":{"k":1.2,"b":0.75,"avg_doc_length":256.0,"token_max_length":40,"include_tokens":false}},"source_key":"#document","bm25":true}}}},
 		"title_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"chroma_bm25","config":{"k":1.5}},"source_key":"title","bm25":true}}}},
 		"v":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"bm25":false}}}}}}
 		""";

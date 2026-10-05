@@ -49,9 +49,9 @@ public class ChromaBm25Tests
 	[Test]
 	public async Task Reference()
 	{
-		Assert.That(await Json(new ChromaBm25().Reference), Is.EqualTo("""{"type":"known","name":"chroma_bm25","config":{"k":1.2,"b":0.75,"avg_doc_length":256,"token_max_length":40,"include_tokens":false}}"""));
+		Assert.That(await Json(new ChromaBm25().Reference), Is.EqualTo("""{"type":"known","name":"chroma_bm25","config":{"k":1.2,"b":0.75,"avg_doc_length":256.0,"token_max_length":40,"include_tokens":false}}"""));
 		Assert.That(await Json(new ChromaBm25(k: 1.5, stopwords: ["quick", "fox"], includeTokens: true).Reference),
-			Is.EqualTo("""{"type":"known","name":"chroma_bm25","config":{"k":1.5,"b":0.75,"avg_doc_length":256,"token_max_length":40,"include_tokens":true,"stopwords":["quick","fox"]}}"""));
+			Is.EqualTo("""{"type":"known","name":"chroma_bm25","config":{"k":1.5,"b":0.75,"avg_doc_length":256.0,"token_max_length":40,"include_tokens":true,"stopwords":["quick","fox"]}}"""));
 	}
 
 	[Test]

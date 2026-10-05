@@ -30,7 +30,7 @@ public class SearchRequestsTests
 		Assert.That(server.Requests.Single().Line, Is.EqualTo($"POST {CollectionPath}/search"));
 		Assert.That(server.Requests.Single().Body.GetRawText(), Is.EqualTo("""
 			{"searches":[{"filter":{"$and":[{"year":{"$gte":2021}},{"#document":{"$contains":"apple"}},{"#id":{"$in":["a","b"]}}]},
-			"rank":{"$knn":{"query":[1,0],"key":"#embedding","limit":16}},
+			"rank":{"$knn":{"query":[1.0,0.0],"key":"#embedding","limit":16}},
 			"group_by":{"keys":["category"],"aggregate":{"$min_k":{"keys":["#score"],"k":1}}},
 			"limit":{"offset":1,"limit":3},"select":{"keys":["#document","#score","category"]}}],"read_level":"index_only"}
 			""".Replace("\n", "").Replace("\t", "")));
@@ -61,9 +61,9 @@ public class SearchRequestsTests
 	{
 		var rrf = ChromaRank.Rrf([ChromaRank.Knn(new([1f, 0f]), returnRank: true), ChromaRank.Knn(new([0f, 1f]), returnRank: true)]);
 		Assert.That(rrf.ToString(), Is.EqualTo("""
-			{"$mul":[{"$val":-1},{"$sum":[
-			{"$div":{"left":{"$val":1},"right":{"$sum":[{"$val":60},{"$knn":{"query":[1,0],"key":"#embedding","limit":16,"return_rank":true}}]}}},
-			{"$div":{"left":{"$val":1},"right":{"$sum":[{"$val":60},{"$knn":{"query":[0,1],"key":"#embedding","limit":16,"return_rank":true}}]}}}]}]}
+			{"$mul":[{"$val":-1.0},{"$sum":[
+			{"$div":{"left":{"$val":1.0},"right":{"$sum":[{"$val":60.0},{"$knn":{"query":[1.0,0.0],"key":"#embedding","limit":16,"return_rank":true}}]}}},
+			{"$div":{"left":{"$val":1.0},"right":{"$sum":[{"$val":60.0},{"$knn":{"query":[0.0,1.0],"key":"#embedding","limit":16,"return_rank":true}}]}}}]}]}
 			""".Replace("\n", "").Replace("\t", "")));
 	}
 
@@ -71,7 +71,7 @@ public class SearchRequestsTests
 	public void RrfOfOneRankWithWeights()
 	{
 		var rrf = ChromaRank.Rrf([ChromaRank.Value(5)], k: 10, weights: [4], normalize: true);
-		Assert.That(rrf.ToString(), Is.EqualTo("""{"$mul":[{"$val":-1},{"$div":{"left":{"$val":1},"right":{"$sum":[{"$val":10},{"$val":5}]}}}]}"""));
+		Assert.That(rrf.ToString(), Is.EqualTo("""{"$mul":[{"$val":-1.0},{"$div":{"left":{"$val":1.0},"right":{"$sum":[{"$val":10.0},{"$val":5.0}]}}}]}"""));
 	}
 
 	[Test]
@@ -89,15 +89,15 @@ public class SearchRequestsTests
 	public void RankOperators()
 	{
 		ChromaRank a = 1, b = 2, c = 3;
-		Assert.That((a + b + c).ToString(), Is.EqualTo("""{"$sum":[{"$val":1},{"$val":2},{"$val":3}]}"""));
-		Assert.That((a * (b * c)).ToString(), Is.EqualTo("""{"$mul":[{"$val":1},{"$val":2},{"$val":3}]}"""));
-		Assert.That((a - b).ToString(), Is.EqualTo("""{"$sub":{"left":{"$val":1},"right":{"$val":2}}}"""));
-		Assert.That((a / b).ToString(), Is.EqualTo("""{"$div":{"left":{"$val":1},"right":{"$val":2}}}"""));
-		Assert.That((-a).ToString(), Is.EqualTo("""{"$mul":[{"$val":-1},{"$val":1}]}"""));
-		Assert.That(ChromaRank.Max(a, b).ToString(), Is.EqualTo("""{"$max":[{"$val":1},{"$val":2}]}"""));
-		Assert.That(ChromaRank.Min(a, b).ToString(), Is.EqualTo("""{"$min":[{"$val":1},{"$val":2}]}"""));
-		Assert.That(ChromaRank.Abs(ChromaRank.Exp(ChromaRank.Log(a))).ToString(), Is.EqualTo("""{"$abs":{"$exp":{"$log":{"$val":1}}}}"""));
-		Assert.That(ChromaRank.Knn(new([1f]), "sparse_key", limit: 5, defaultScore: 10).ToString(), Is.EqualTo("""{"$knn":{"query":[1],"key":"sparse_key","limit":5,"default":10}}"""));
+		Assert.That((a + b + c).ToString(), Is.EqualTo("""{"$sum":[{"$val":1.0},{"$val":2.0},{"$val":3.0}]}"""));
+		Assert.That((a * (b * c)).ToString(), Is.EqualTo("""{"$mul":[{"$val":1.0},{"$val":2.0},{"$val":3.0}]}"""));
+		Assert.That((a - b).ToString(), Is.EqualTo("""{"$sub":{"left":{"$val":1.0},"right":{"$val":2.0}}}"""));
+		Assert.That((a / b).ToString(), Is.EqualTo("""{"$div":{"left":{"$val":1.0},"right":{"$val":2.0}}}"""));
+		Assert.That((-a).ToString(), Is.EqualTo("""{"$mul":[{"$val":-1.0},{"$val":1.0}]}"""));
+		Assert.That(ChromaRank.Max(a, b).ToString(), Is.EqualTo("""{"$max":[{"$val":1.0},{"$val":2.0}]}"""));
+		Assert.That(ChromaRank.Min(a, b).ToString(), Is.EqualTo("""{"$min":[{"$val":1.0},{"$val":2.0}]}"""));
+		Assert.That(ChromaRank.Abs(ChromaRank.Exp(ChromaRank.Log(a))).ToString(), Is.EqualTo("""{"$abs":{"$exp":{"$log":{"$val":1.0}}}}"""));
+		Assert.That(ChromaRank.Knn(new([1f]), "sparse_key", limit: 5, defaultScore: 10).ToString(), Is.EqualTo("""{"$knn":{"query":[1.0],"key":"sparse_key","limit":5,"default":10.0}}"""));
 	}
 
 	// An answer of Chroma Cloud to two searches: the first selected document, score and one metadata field, the second only the ids.

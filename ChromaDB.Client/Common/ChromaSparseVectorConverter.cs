@@ -50,7 +50,7 @@ internal sealed class ChromaSparseVectorConverter : JsonConverter<ChromaSparseVe
 		writer.WriteStartArray("values");
 		foreach (var v in value.Values)
 		{
-			writer.WriteNumberValue(v);
+			writer.WriteRawValue(ChromaNumbers.Format(v), skipInputValidation: true);
 		}
 		writer.WriteEndArray();
 		if (value.Tokens is { } tokens)

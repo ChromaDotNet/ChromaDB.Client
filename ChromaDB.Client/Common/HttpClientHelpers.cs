@@ -17,6 +17,13 @@ internal static partial class HttpClientHelpers
 		ReferenceHandler = ReferenceHandler.IgnoreCycles,
 		ReadCommentHandling = JsonCommentHandling.Skip,
 		TypeInfoResolver = ChromaJsonResolver.Instance,
+		// The doubles, floats and decimals of metadata, filters, ranks and queries, the same text on every build.
+		Converters =
+		{
+			new ChromaDoubleConverter(),
+			new ChromaFloatConverter(),
+			new ChromaDecimalConverter(),
+		},
 	};
 
 	private static readonly JsonSerializerOptions DeserializerJsonSerializerOptions = new()

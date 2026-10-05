@@ -115,7 +115,7 @@ var same = await collectionClient.QueryAsync(new ChromaQuery([new([1f, 0.5f, 0f]
 
 ## Metadata values
 
-By default, `ChromaMetadataValues.Exact`, strings in metadata stay strings, and lists come back as `List<object>` of `string`, `long`, `double` and `bool`, like the single values. With `ChromaMetadataValues.Inferred`, as before 2.8.0, a string that looks like a date comes back as a `DateTime`, and a list as a `JsonElement`:
+By default, `ChromaMetadataValues.Exact`, strings in metadata stay strings, and lists come back as `List<object>` of `string`, `long`, `double` and `bool`, like the single values. A `double`, `float` or `decimal` comes back as a `double`, also when it is whole: the client writes `2.0`, as the Python client does, and Chroma keeps it a float. With `ChromaMetadataValues.Inferred`, as before 2.8.0, a string that looks like a date comes back as a `DateTime`, and a list as a `JsonElement`:
 
 ```csharp
 var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithMetadataValues(ChromaMetadataValues.Inferred);

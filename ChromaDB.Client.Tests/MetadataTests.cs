@@ -20,6 +20,25 @@ public class MetadataTests : ChromaTestsBase
 		Assert.That(metadata["text"], Is.EqualTo("t"));
 	}
 
+	// A whole double goes as 2.0, as the Python client writes it: Chroma keeps it a float, and a list of doubles in a
+	// filter is not a list of ints and floats, which Chroma rejects.
+	[Test]
+	public async Task WholeDoublesStayFloats()
+	{
+		var client = await Init(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact));
+		await client.AddAsync(new ChromaRecords(["a", "b"])
+		{
+			Embeddings = [Embedding1, Embedding2],
+			Metadatas = [new Dictionary<string, object> { ["d"] = 2.0, ["f"] = 3f, ["m"] = 4m }, new Dictionary<string, object> { ["d"] = 2.25 }],
+		});
+		var metadata = (await client.GetAsync("a", include: ChromaGetInclude.Metadatas))!.Metadata!;
+		Assert.That(metadata["d"], Is.InstanceOf<double>().And.EqualTo(2.0));
+		Assert.That(metadata["f"], Is.InstanceOf<double>().And.EqualTo(3.0));
+		Assert.That(metadata["m"], Is.InstanceOf<double>().And.EqualTo(4.0));
+		var found = await client.GetAsync(where: ChromaWhereOperator.In("d", 2.0, 2.25), include: ChromaGetInclude.None);
+		Assert.That(found.Select(e => e.Id), Is.EquivalentTo(new[] { "a", "b" }));
+	}
+
 	[Test]
 	public async Task DatesStayStringsByDefault()
 	{
