@@ -244,6 +244,23 @@ Console.WriteLine(health.IsExecutorReady);
 
 `Healthcheck` needs Chroma 1.0.0 or later: the 0.x servers answer `404 Not Found`. A server that is not ready answers `503`, a `ChromaException`.
 
+## Traces and metrics
+
+```csharp
+builder.Services.AddOpenTelemetry()
+	.WithTracing(tracing => tracing.AddSource(ChromaTelemetry.ActivitySourceName))
+	.WithMetrics(metrics => metrics.AddMeter(ChromaTelemetry.MeterName));
+```
+
+- **Spans:** each operation, like `query` or `add`, is a client span named after the operation and the collection, like `query articles`. Its requests, the batches of a large write too, are inside it.
+- **Attributes:** those of the OpenTelemetry semantic conventions for database clients:
+  - `db.system.name` `chroma`, `db.operation.name` and `db.collection.name`;
+  - `db.namespace`, the tenant and the database as `tenant|database`;
+  - `server.address` and `server.port`;
+  - on a failure, `error.type` and `db.response.status_code`, the HTTP status.
+- **Metrics:** the duration of each operation in the histogram `db.client.operation.duration`, in seconds, with the same attributes.
+- **Cost:** without a listener nothing is measured. A missing collection in `CollectionExists` is an answer, not an error.
+
 ## Chroma Cloud
 
 ```csharp

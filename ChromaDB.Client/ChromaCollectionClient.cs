@@ -15,6 +15,7 @@ public class ChromaCollectionClient
 	private readonly ChromaHttpClient _httpClient;
 	private readonly string _tenant;
 	private readonly string _database;
+	private readonly Uri _server;
 
 	/// <summary>
 	/// Creates a client for the records of the collection, which sends its requests with the options and the
@@ -30,6 +31,7 @@ public class ChromaCollectionClient
 	{
 		_collection = collection;
 		_httpClient = httpClient;
+		_server = options.Uri;
 		// An empty tenant or database means the default, as in ChromaClient.
 		_tenant = collection.Tenant is not null and not [] ? collection.Tenant
 			: options.Tenant is not null and not [] ? options.Tenant
@@ -47,6 +49,13 @@ public class ChromaCollectionClient
 		: this(new ChromaCollection(collectionName) { Id = collectionId }, options, httpClient)
 	{ }
 
+	// The span and the duration of each operation on the collection.
+	private Task<T> Operation<T>(string name, Func<Task<T>> body)
+		=> ChromaInstrumentation.Run(name, _collection.Name, $"{_tenant}|{_database}", _server, body);
+
+	private Task Operation(string name, Func<Task> body)
+		=> ChromaInstrumentation.Run(name, _collection.Name, $"{_tenant}|{_database}", _server, body);
+
 	/// <summary>
 	/// The collection the client works on.
 	/// </summary>
@@ -63,24 +72,25 @@ public class ChromaCollectionClient
 	/// Gets the records selected by the ids and the filters, a page at a time with <c>limit</c> and <c>offset</c>.
 	/// Without <c>include</c>, the metadatas and the documents are included.
 	/// </summary>
-	public async Task<List<ChromaCollectionEntry>> Get(List<string>? ids = null, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, int? limit = null, int? offset = null, ChromaGetInclude? include = null, CancellationToken cancellationToken = default)
-	{
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		var request = new CollectionGetRequest()
+	public Task<List<ChromaCollectionEntry>> Get(List<string>? ids = null, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, int? limit = null, int? offset = null, ChromaGetInclude? include = null, CancellationToken cancellationToken = default)
+		=> Operation("get", async () =>
 		{
-			Ids = ids,
-			Where = where?.ToWhere(),
-			WhereDocument = whereDocument?.ToWhereDocument(),
-			Limit = limit,
-			Offset = offset,
-			Include = (include ?? ChromaGetInclude.Metadatas | ChromaGetInclude.Documents).ToInclude(),
-		};
-		var response = await _httpClient.Post<CollectionGetRequest, CollectionEntriesGetResponse>(_httpClient.Routes.Collection + "/get", request, requestParams, cancellationToken);
-		return response.Map() ?? [];
-	}
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			var request = new CollectionGetRequest()
+			{
+				Ids = ids,
+				Where = where?.ToWhere(),
+				WhereDocument = whereDocument?.ToWhereDocument(),
+				Limit = limit,
+				Offset = offset,
+				Include = (include ?? ChromaGetInclude.Metadatas | ChromaGetInclude.Documents).ToInclude(),
+			};
+			var response = await _httpClient.Post<CollectionGetRequest, CollectionEntriesGetResponse>(_httpClient.Routes.Collection + "/get", request, requestParams, cancellationToken);
+			return response.Map() ?? [];
+		});
 
 	/// <summary>
 	/// Searches the <c>nResults</c> records nearest to the query embedding. Without <c>include</c>, the metadatas, the
@@ -100,35 +110,36 @@ public class ChromaCollectionClient
 	/// Runs the query and returns one list of results per query embedding. When the query has ids and the server
 	/// searches outside them, as Chroma 0.x does, it throws a <c>ChromaException</c> instead of returning the results.
 	/// </summary>
-	public async Task<List<List<ChromaCollectionQueryEntry>>> Query(ChromaQuery query, CancellationToken cancellationToken = default)
-	{
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		var request = new CollectionQueryRequest()
+	public Task<List<List<ChromaCollectionQueryEntry>>> Query(ChromaQuery query, CancellationToken cancellationToken = default)
+		=> Operation("query", async () =>
 		{
-			QueryEmbeddings = query.QueryEmbeddings,
-			NResults = query.NResults,
-			Where = query.Where?.ToWhere(),
-			WhereDocument = query.WhereDocument?.ToWhereDocument(),
-			Include = (query.Include ?? ChromaQueryInclude.Metadatas | ChromaQueryInclude.Documents | ChromaQueryInclude.Distances).ToInclude(),
-			Ids = query.Ids,
-		};
-		var response = await _httpClient.Post<CollectionQueryRequest, CollectionEntriesQueryResponse>(_httpClient.Routes.Collection + "/query", request, requestParams, cancellationToken);
-		var result = response.Map() ?? [];
-		// Chroma 0.x ignores the ids and searches all the records: a result outside the ids shows it. When all the results
-		// are among the ids, they are also the nearest among them, so the answer is right on those servers too.
-		if (query.Ids is not null)
-		{
-			var ids = new HashSet<string>(query.Ids);
-			if (result.Any(entries => entries.Any(entry => !ids.Contains(entry.Id))))
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			var request = new CollectionQueryRequest()
 			{
-				throw new ChromaException("The server searched outside the ids of the query: it does not support them. Chroma 1.0.0 and later do.");
+				QueryEmbeddings = query.QueryEmbeddings,
+				NResults = query.NResults,
+				Where = query.Where?.ToWhere(),
+				WhereDocument = query.WhereDocument?.ToWhereDocument(),
+				Include = (query.Include ?? ChromaQueryInclude.Metadatas | ChromaQueryInclude.Documents | ChromaQueryInclude.Distances).ToInclude(),
+				Ids = query.Ids,
+			};
+			var response = await _httpClient.Post<CollectionQueryRequest, CollectionEntriesQueryResponse>(_httpClient.Routes.Collection + "/query", request, requestParams, cancellationToken);
+			var result = response.Map() ?? [];
+			// Chroma 0.x ignores the ids and searches all the records: a result outside the ids shows it. When all the results
+			// are among the ids, they are also the nearest among them, so the answer is right on those servers too.
+			if (query.Ids is not null)
+			{
+				var ids = new HashSet<string>(query.Ids);
+				if (result.Any(entries => entries.Any(entry => !ids.Contains(entry.Id))))
+				{
+					throw new ChromaException("The server searched outside the ids of the query: it does not support them. Chroma 1.0.0 and later do.");
+				}
 			}
-		}
-		return result;
-	}
+			return result;
+		});
 
 	/// <summary>
 	/// Adds the records with the ids, embeddings, metadatas and documents. Since Chroma 1.0.16 the server requires the
@@ -142,28 +153,29 @@ public class ChromaCollectionClient
 	/// Since Chroma 1.0.16 the server requires the embeddings: the client does not compute them. It computes the sparse vectors
 	/// of the <c>chroma_bm25</c> indexes of the schema that have a source key, as the Python client of Chroma does.
 	/// </summary>
-	public async Task Add(ChromaRecords records, CancellationToken cancellationToken = default)
-	{
-		records = WithSparseVectors(records);
-		await CheckListsInMetadata(records, cancellationToken);
-		var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		foreach (var batch in await Batches(records, cancellationToken))
+	public Task Add(ChromaRecords records, CancellationToken cancellationToken = default)
+		=> Operation("add", async () =>
 		{
-			var request = new CollectionAddRequest()
+			records = WithSparseVectors(records);
+			await CheckListsInMetadata(records, cancellationToken);
+			var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			foreach (var batch in await Batches(records, cancellationToken))
 			{
-				Ids = batch.Ids,
-				Embeddings = batch.Embeddings is { } embeddings ? new ChromaEmbeddings(embeddings, base64) : null,
-				Metadatas = batch.Metadatas,
-				Documents = batch.Documents,
-				Uris = batch.Uris,
-			};
-			await _httpClient.Post(_httpClient.Routes.Collection + "/add", request, requestParams, cancellationToken);
-		}
-	}
+				var request = new CollectionAddRequest()
+				{
+					Ids = batch.Ids,
+					Embeddings = batch.Embeddings is { } embeddings ? new ChromaEmbeddings(embeddings, base64) : null,
+					Metadatas = batch.Metadatas,
+					Documents = batch.Documents,
+					Uris = batch.Uris,
+				};
+				await _httpClient.Post(_httpClient.Routes.Collection + "/add", request, requestParams, cancellationToken);
+			}
+		});
 
 	/// <summary>
 	/// Updates the embeddings, metadatas and documents of the records with the ids.
@@ -176,28 +188,29 @@ public class ChromaCollectionClient
 	/// of the server. The client computes the sparse vectors of the <c>chroma_bm25</c> indexes of the schema that have a source
 	/// key, as the Python client of Chroma does.
 	/// </summary>
-	public async Task Update(ChromaRecords records, CancellationToken cancellationToken = default)
-	{
-		records = WithSparseVectors(records);
-		await CheckListsInMetadata(records, cancellationToken);
-		var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		foreach (var batch in await Batches(records, cancellationToken))
+	public Task Update(ChromaRecords records, CancellationToken cancellationToken = default)
+		=> Operation("update", async () =>
 		{
-			var request = new CollectionUpdateRequest()
+			records = WithSparseVectors(records);
+			await CheckListsInMetadata(records, cancellationToken);
+			var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			foreach (var batch in await Batches(records, cancellationToken))
 			{
-				Ids = batch.Ids,
-				Embeddings = batch.Embeddings is { } embeddings ? new ChromaEmbeddings(embeddings, base64) : null,
-				Metadatas = batch.Metadatas,
-				Documents = batch.Documents,
-				Uris = batch.Uris,
-			};
-			await _httpClient.Post(_httpClient.Routes.Collection + "/update", request, requestParams, cancellationToken);
-		}
-	}
+				var request = new CollectionUpdateRequest()
+				{
+					Ids = batch.Ids,
+					Embeddings = batch.Embeddings is { } embeddings ? new ChromaEmbeddings(embeddings, base64) : null,
+					Metadatas = batch.Metadatas,
+					Documents = batch.Documents,
+					Uris = batch.Uris,
+				};
+				await _httpClient.Post(_httpClient.Routes.Collection + "/update", request, requestParams, cancellationToken);
+			}
+		});
 
 	/// <summary>
 	/// Adds the records with the ids, or updates the ones that already exist. Since Chroma 1.0.16 the server requires
@@ -212,28 +225,29 @@ public class ChromaCollectionClient
 	/// not compute them. It computes the sparse vectors of the <c>chroma_bm25</c> indexes of the schema that have a source
 	/// key, as the Python client of Chroma does.
 	/// </summary>
-	public async Task Upsert(ChromaRecords records, CancellationToken cancellationToken = default)
-	{
-		records = WithSparseVectors(records);
-		await CheckListsInMetadata(records, cancellationToken);
-		var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		foreach (var batch in await Batches(records, cancellationToken))
+	public Task Upsert(ChromaRecords records, CancellationToken cancellationToken = default)
+		=> Operation("upsert", async () =>
 		{
-			var request = new CollectionUpsertRequest()
+			records = WithSparseVectors(records);
+			await CheckListsInMetadata(records, cancellationToken);
+			var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			foreach (var batch in await Batches(records, cancellationToken))
 			{
-				Ids = batch.Ids,
-				Embeddings = batch.Embeddings is { } embeddings ? new ChromaEmbeddings(embeddings, base64) : null,
-				Metadatas = batch.Metadatas,
-				Documents = batch.Documents,
-				Uris = batch.Uris,
-			};
-			await _httpClient.Post(_httpClient.Routes.Collection + "/upsert", request, requestParams, cancellationToken);
-		}
-	}
+				var request = new CollectionUpsertRequest()
+				{
+					Ids = batch.Ids,
+					Embeddings = batch.Embeddings is { } embeddings ? new ChromaEmbeddings(embeddings, base64) : null,
+					Metadatas = batch.Metadatas,
+					Documents = batch.Documents,
+					Uris = batch.Uris,
+				};
+				await _httpClient.Post(_httpClient.Routes.Collection + "/upsert", request, requestParams, cancellationToken);
+			}
+		});
 
 	// As the Python client of Chroma: for each sparse vector index of the schema with a source key and an embedding function, the vector
 	// of each record whose metadata does not have the key, from its document (#document) or from the text in its metadata. The records
@@ -352,109 +366,113 @@ public class ChromaCollectionClient
 	/// Deletes the records with the ids, sending the filters with them when given; with <c>WithBatchSplitting</c> the
 	/// ids go in batches of the <c>max_batch_size</c> of the server.
 	/// </summary>
-	public async Task Delete(List<string> ids, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, CancellationToken cancellationToken = default)
-	{
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		foreach (var batch in await Batches(new ChromaRecords(ids), cancellationToken))
+	public Task Delete(List<string> ids, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, CancellationToken cancellationToken = default)
+		=> Operation("delete", async () =>
 		{
-			var request = new CollectionDeleteRequest()
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			foreach (var batch in await Batches(new ChromaRecords(ids), cancellationToken))
 			{
-				Ids = batch.Ids,
-				Where = where?.ToWhere(),
-				WhereDocument = whereDocument?.ToWhereDocument(),
-			};
-			await _httpClient.Post(_httpClient.Routes.Collection + "/delete", request, requestParams, cancellationToken);
-		}
-	}
+				var request = new CollectionDeleteRequest()
+				{
+					Ids = batch.Ids,
+					Where = where?.ToWhere(),
+					WhereDocument = whereDocument?.ToWhereDocument(),
+				};
+				await _httpClient.Post(_httpClient.Routes.Collection + "/delete", request, requestParams, cancellationToken);
+			}
+		});
 
 	/// <summary>
 	/// Deletes the records with the ids, the ones the filters match, or both, at most <c>delete.Limit</c> of them.
 	/// Returns how many records were deleted when the server says it, from Chroma 1.5.3; null otherwise.
 	/// </summary>
-	public async Task<int?> Delete(ChromaDelete delete, CancellationToken cancellationToken = default)
-	{
-		// The rules of Chroma and of its Python client, checked before any request.
-		if (delete.Ids is null && delete.Where is null && delete.WhereDocument is null)
+	public Task<int?> Delete(ChromaDelete delete, CancellationToken cancellationToken = default)
+		=> Operation("delete", async () =>
 		{
-			throw new ArgumentException("A delete needs ids, a where filter or a where document filter: without them it would select every record.", nameof(delete));
-		}
-		if (delete.Ids is [])
-		{
-			throw new ArgumentException("The ids of a delete cannot be empty: leave them null to delete by the filters only.", nameof(delete));
-		}
-		if (delete.Limit is < 0)
-		{
-			throw new ArgumentOutOfRangeException(nameof(delete), "The limit of a delete cannot be negative.");
-		}
-		if (delete.Limit is not null && delete.Where is null && delete.WhereDocument is null)
-		{
-			throw new ArgumentException("The limit of a delete needs a where or where document filter: Chroma rejects it with the ids alone.", nameof(delete));
-		}
-		if (delete.Limit is not null && !await _httpClient.SupportsDeleteLimit(cancellationToken))
-		{
-			throw new ChromaException("The server ignores the limit of a delete and would delete every matching record: Chroma 1.5.3 and later apply it.");
-		}
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		var batches = delete.Ids is null ? [null] : (await Batches(new ChromaRecords(delete.Ids), cancellationToken)).Select(batch => batch.Ids).ToList<List<string>?>();
-		int? deleted = null;
-		var remaining = delete.Limit;
-		foreach (var ids in batches)
-		{
-			var request = new CollectionDeleteRequest()
+			// The rules of Chroma and of its Python client, checked before any request.
+			if (delete.Ids is null && delete.Where is null && delete.WhereDocument is null)
 			{
-				Ids = ids,
-				Where = delete.Where?.ToWhere(),
-				WhereDocument = delete.WhereDocument?.ToWhereDocument(),
-				Limit = remaining,
-			};
-			// {"deleted": n} from Chroma 1.5.3; {} or null before, and a list of ids from some 0.x servers.
-			var response = await _httpClient.Post<CollectionDeleteRequest, System.Text.Json.JsonElement>(_httpClient.Routes.Collection + "/delete", request, requestParams, cancellationToken);
-			if (response.ValueKind == System.Text.Json.JsonValueKind.Object
-				&& response.TryGetProperty("deleted", out var count) && count.ValueKind == System.Text.Json.JsonValueKind.Number)
-			{
-				deleted = (deleted ?? 0) + count.GetInt32();
-				remaining -= count.GetInt32();
+				throw new ArgumentException("A delete needs ids, a where filter or a where document filter: without them it would select every record.", nameof(delete));
 			}
-			// The limit is used up: the next batches would delete nothing.
-			if (remaining is <= 0)
+			if (delete.Ids is [])
 			{
-				break;
+				throw new ArgumentException("The ids of a delete cannot be empty: leave them null to delete by the filters only.", nameof(delete));
 			}
-		}
-		return deleted;
-	}
+			if (delete.Limit is < 0)
+			{
+				throw new ArgumentOutOfRangeException(nameof(delete), "The limit of a delete cannot be negative.");
+			}
+			if (delete.Limit is not null && delete.Where is null && delete.WhereDocument is null)
+			{
+				throw new ArgumentException("The limit of a delete needs a where or where document filter: Chroma rejects it with the ids alone.", nameof(delete));
+			}
+			if (delete.Limit is not null && !await _httpClient.SupportsDeleteLimit(cancellationToken))
+			{
+				throw new ChromaException("The server ignores the limit of a delete and would delete every matching record: Chroma 1.5.3 and later apply it.");
+			}
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			var batches = delete.Ids is null ? [null] : (await Batches(new ChromaRecords(delete.Ids), cancellationToken)).Select(batch => batch.Ids).ToList<List<string>?>();
+			int? deleted = null;
+			var remaining = delete.Limit;
+			foreach (var ids in batches)
+			{
+				var request = new CollectionDeleteRequest()
+				{
+					Ids = ids,
+					Where = delete.Where?.ToWhere(),
+					WhereDocument = delete.WhereDocument?.ToWhereDocument(),
+					Limit = remaining,
+				};
+				// {"deleted": n} from Chroma 1.5.3; {} or null before, and a list of ids from some 0.x servers.
+				var response = await _httpClient.Post<CollectionDeleteRequest, System.Text.Json.JsonElement>(_httpClient.Routes.Collection + "/delete", request, requestParams, cancellationToken);
+				if (response.ValueKind == System.Text.Json.JsonValueKind.Object
+					&& response.TryGetProperty("deleted", out var count) && count.ValueKind == System.Text.Json.JsonValueKind.Number)
+				{
+					deleted = (deleted ?? 0) + count.GetInt32();
+					remaining -= count.GetInt32();
+				}
+				// The limit is used up: the next batches would delete nothing.
+				if (remaining is <= 0)
+				{
+					break;
+				}
+			}
+			return deleted;
+		});
 
 	/// <summary>
 	/// Counts the records of the collection.
 	/// </summary>
-	public async Task<int> Count(CancellationToken cancellationToken = default)
-	{
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		return await _httpClient.Get<int>(_httpClient.Routes.Collection + "/count", requestParams, cancellationToken);
-	}
+	public Task<int> Count(CancellationToken cancellationToken = default)
+		=> Operation("count", async () =>
+		{
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			return await _httpClient.Get<int>(_httpClient.Routes.Collection + "/count", requestParams, cancellationToken);
+		});
 
 	/// <summary>
 	/// The count at a read level: on Chroma Cloud, <c>ChromaReadLevel.IndexOnly</c> leaves out the records not indexed
 	/// yet.
 	/// </summary>
-	public async Task<int> Count(ChromaReadLevel readLevel, CancellationToken cancellationToken = default)
-	{
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id)
-			.Insert("{read_level}", ReadLevelName(readLevel));
-		return await _httpClient.Get<int>(_httpClient.Routes.Collection + "/count?read_level={read_level}", requestParams, cancellationToken);
-	}
+	public Task<int> Count(ChromaReadLevel readLevel, CancellationToken cancellationToken = default)
+		=> Operation("count", async () =>
+		{
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id)
+				.Insert("{read_level}", ReadLevelName(readLevel));
+			return await _httpClient.Get<int>(_httpClient.Routes.Collection + "/count?read_level={read_level}", requestParams, cancellationToken);
+		});
 
 	/// <summary>
 	/// Runs one search with the Search API of Chroma, which only Chroma Cloud serves: a single server answers <c>501</c>.
@@ -467,52 +485,53 @@ public class ChromaCollectionClient
 	/// <c>501</c>. The results come in the order of the searches. With <c>ChromaReadLevel.IndexOnly</c> the records not indexed yet are
 	/// left out.
 	/// </summary>
-	public async Task<List<List<ChromaSearchEntry>>> Search(List<ChromaSearch> searches, ChromaReadLevel? readLevel = null, CancellationToken cancellationToken = default)
-	{
-		if (searches is not { Count: > 0 })
+	public Task<List<List<ChromaSearchEntry>>> Search(List<ChromaSearch> searches, ChromaReadLevel? readLevel = null, CancellationToken cancellationToken = default)
+		=> Operation("search", async () =>
 		{
-			throw new ArgumentException("At least one search is needed.", nameof(searches));
-		}
-		foreach (var search in searches)
-		{
-			if (search.Offset < 0 || search.Limit is <= 0)
+			if (searches is not { Count: > 0 })
 			{
-				throw new ArgumentOutOfRangeException(nameof(searches), "The offset of a search cannot be negative, and its limit must be positive.");
+				throw new ArgumentException("At least one search is needed.", nameof(searches));
 			}
-			if (search.Ids is [])
+			foreach (var search in searches)
 			{
-				throw new ArgumentException("The ids of a search cannot be empty: leave them null to search all the records.", nameof(searches));
-			}
-		}
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		var request = new CollectionSearchRequest()
-		{
-			Searches = searches.Select(search => new CollectionSearchPayload()
-			{
-				Filter = SearchFilter(search),
-				Rank = search.Rank?.ToRank(EmbedText),
-				GroupBy = search.GroupBy?.ToGroupBy() ?? [],
-				Limit = new CollectionSearchLimit() { Offset = search.Offset, Limit = search.Limit },
-				Select = new CollectionSearchSelect() { Keys = search.Select?.Distinct().ToList() ?? [] },
-			}).ToList(),
-			ReadLevel = readLevel is { } level ? ReadLevelName(level) : null,
-		};
-		var response = await _httpClient.Post<CollectionSearchRequest, CollectionSearchResponse>(_httpClient.Routes.Collection + "/search", request, requestParams, cancellationToken);
-		return response.Ids
-			.Select((ids, i) => ids
-				.Select((id, j) => new ChromaSearchEntry(id)
+				if (search.Offset < 0 || search.Limit is <= 0)
 				{
-					Document = response.Documents?[i]?[j],
-					Embedding = response.Embeddings?[i]?[j],
-					Metadata = response.Metadatas?[i]?[j],
-					Score = response.Scores?[i]?[j],
-				})
-				.ToList())
-			.ToList();
-	}
+					throw new ArgumentOutOfRangeException(nameof(searches), "The offset of a search cannot be negative, and its limit must be positive.");
+				}
+				if (search.Ids is [])
+				{
+					throw new ArgumentException("The ids of a search cannot be empty: leave them null to search all the records.", nameof(searches));
+				}
+			}
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			var request = new CollectionSearchRequest()
+			{
+				Searches = searches.Select(search => new CollectionSearchPayload()
+				{
+					Filter = SearchFilter(search),
+					Rank = search.Rank?.ToRank(EmbedText),
+					GroupBy = search.GroupBy?.ToGroupBy() ?? [],
+					Limit = new CollectionSearchLimit() { Offset = search.Offset, Limit = search.Limit },
+					Select = new CollectionSearchSelect() { Keys = search.Select?.Distinct().ToList() ?? [] },
+				}).ToList(),
+				ReadLevel = readLevel is { } level ? ReadLevelName(level) : null,
+			};
+			var response = await _httpClient.Post<CollectionSearchRequest, CollectionSearchResponse>(_httpClient.Routes.Collection + "/search", request, requestParams, cancellationToken);
+			return response.Ids
+				.Select((ids, i) => ids
+					.Select((id, j) => new ChromaSearchEntry(id)
+					{
+						Document = response.Documents?[i]?[j],
+						Embedding = response.Embeddings?[i]?[j],
+						Metadata = response.Metadatas?[i]?[j],
+						Score = response.Scores?[i]?[j],
+					})
+					.ToList())
+				.ToList();
+		});
 
 	// The where clause of the Search API holds the metadata, the documents (#document) and the ids (#id); several filters go in $and.
 	private static Dictionary<string, object>? SearchFilter(ChromaSearch search)
@@ -550,130 +569,138 @@ public class ChromaCollectionClient
 	/// A copy of the collection under a new name, with the same records: Chroma Cloud only, a single server answers
 	/// 501.
 	/// </summary>
-	public async Task<ChromaCollection> Fork(string newName, CancellationToken cancellationToken = default)
-	{
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		var request = new ForkCollectionRequest()
+	public Task<ChromaCollection> Fork(string newName, CancellationToken cancellationToken = default)
+		=> Operation("fork", async () =>
 		{
-			NewName = newName,
-		};
-		return await _httpClient.Post<ForkCollectionRequest, ChromaCollection>(_httpClient.Routes.Collection + "/fork", request, requestParams, cancellationToken);
-	}
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			var request = new ForkCollectionRequest()
+			{
+				NewName = newName,
+			};
+			return await _httpClient.Post<ForkCollectionRequest, ChromaCollection>(_httpClient.Routes.Collection + "/fork", request, requestParams, cancellationToken);
+		});
 
 	/// <summary>
 	/// How many forks the collection has: Chroma Cloud only.
 	/// </summary>
-	public async Task<int> ForkCount(CancellationToken cancellationToken = default)
-	{
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		return (await _httpClient.Get<ForkCountResponse>(_httpClient.Routes.Collection + "/fork_count", requestParams, cancellationToken)).Count;
-	}
+	public Task<int> ForkCount(CancellationToken cancellationToken = default)
+		=> Operation("fork_count", async () =>
+		{
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			return (await _httpClient.Get<ForkCountResponse>(_httpClient.Routes.Collection + "/fork_count", requestParams, cancellationToken)).Count;
+		});
 
 	/// <summary>
 	/// How far the writes to the collection are indexed: Chroma Cloud only.
 	/// </summary>
-	public async Task<ChromaIndexingStatus> GetIndexingStatus(CancellationToken cancellationToken = default)
-	{
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		return await _httpClient.Get<ChromaIndexingStatus>(_httpClient.Routes.Collection + "/indexing_status", requestParams, cancellationToken);
-	}
+	public Task<ChromaIndexingStatus> GetIndexingStatus(CancellationToken cancellationToken = default)
+		=> Operation("get_indexing_status", async () =>
+		{
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			return await _httpClient.Get<ChromaIndexingStatus>(_httpClient.Routes.Collection + "/indexing_status", requestParams, cancellationToken);
+		});
 
 	/// <summary>
 	/// Attaches a function of Chroma Cloud, like <c>ChromaFunctions.Statistics</c>, under a name of its own; its
 	/// results go to the output collection. <c>Created</c> is false when a function with that name was already
 	/// attached.
 	/// </summary>
-	public async Task<(ChromaAttachedFunction AttachedFunction, bool Created)> AttachFunction(string function, string name, string outputCollection, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
-	{
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		var request = new AttachFunctionRequest()
+	public Task<(ChromaAttachedFunction AttachedFunction, bool Created)> AttachFunction(string function, string name, string outputCollection, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
+		=> Operation("attach_function", async () =>
 		{
-			Name = name,
-			FunctionId = function,
-			OutputCollection = outputCollection,
-			Params = parameters,
-		};
-		var response = await _httpClient.Post<AttachFunctionRequest, AttachFunctionResponse>(_httpClient.Routes.Collection + "/functions/attach", request, requestParams, cancellationToken);
-		return (response.AttachedFunction, response.Created ?? true);
-	}
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			var request = new AttachFunctionRequest()
+			{
+				Name = name,
+				FunctionId = function,
+				OutputCollection = outputCollection,
+				Params = parameters,
+			};
+			var response = await _httpClient.Post<AttachFunctionRequest, AttachFunctionResponse>(_httpClient.Routes.Collection + "/functions/attach", request, requestParams, cancellationToken);
+			return (response.AttachedFunction, response.Created ?? true);
+		});
 
 	/// <summary>
 	/// Gets the function attached to the collection under the name: Chroma Cloud only.
 	/// </summary>
-	public async Task<ChromaAttachedFunction> GetAttachedFunction(string name, CancellationToken cancellationToken = default)
-	{
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id)
-			.Insert("{function_name}", name);
-		return (await _httpClient.Get<GetAttachedFunctionResponse>(_httpClient.Routes.Collection + "/functions/{function_name}", requestParams, cancellationToken)).AttachedFunction;
-	}
+	public Task<ChromaAttachedFunction> GetAttachedFunction(string name, CancellationToken cancellationToken = default)
+		=> Operation("get_attached_function", async () =>
+		{
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id)
+				.Insert("{function_name}", name);
+			return (await _httpClient.Get<GetAttachedFunctionResponse>(_httpClient.Routes.Collection + "/functions/{function_name}", requestParams, cancellationToken)).AttachedFunction;
+		});
 
 	/// <summary>
 	/// Detaches the function attached under the name, and deletes its output collection when
 	/// <c>deleteOutputCollection</c> is true: Chroma Cloud only. Returns the <c>success</c> of the answer of the
 	/// server.
 	/// </summary>
-	public async Task<bool> DetachFunction(string name, bool deleteOutputCollection = false, CancellationToken cancellationToken = default)
-	{
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id)
-			.Insert("{function_name}", name);
-		var request = new DetachFunctionRequest()
+	public Task<bool> DetachFunction(string name, bool deleteOutputCollection = false, CancellationToken cancellationToken = default)
+		=> Operation("detach_function", async () =>
 		{
-			DeleteOutput = deleteOutputCollection,
-		};
-		return (await _httpClient.Post<DetachFunctionRequest, DetachFunctionResponse>(_httpClient.Routes.Collection + "/attached_functions/{function_name}/detach", request, requestParams, cancellationToken)).Success;
-	}
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id)
+				.Insert("{function_name}", name);
+			var request = new DetachFunctionRequest()
+			{
+				DeleteOutput = deleteOutputCollection,
+			};
+			return (await _httpClient.Post<DetachFunctionRequest, DetachFunctionResponse>(_httpClient.Routes.Collection + "/attached_functions/{function_name}/detach", request, requestParams, cancellationToken)).Success;
+		});
 
 	/// <summary>
 	/// Gets up to <c>limit</c> records of the collection, with a get that sets only the limit.
 	/// </summary>
-	public async Task<List<ChromaCollectionEntry>> Peek(int limit = 10, CancellationToken cancellationToken = default)
-	{
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		var request = new CollectionPeekRequest()
+	public Task<List<ChromaCollectionEntry>> Peek(int limit = 10, CancellationToken cancellationToken = default)
+		=> Operation("peek", async () =>
 		{
-			Limit = limit,
-		};
-		var response = await _httpClient.Post<CollectionPeekRequest, CollectionEntriesGetResponse>(_httpClient.Routes.Collection + "/get", request, requestParams, cancellationToken);
-		return response.Map() ?? [];
-	}
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			var request = new CollectionPeekRequest()
+			{
+				Limit = limit,
+			};
+			var response = await _httpClient.Post<CollectionPeekRequest, CollectionEntriesGetResponse>(_httpClient.Routes.Collection + "/get", request, requestParams, cancellationToken);
+			return response.Map() ?? [];
+		});
 
 	/// <summary>
 	/// Changes the name or the metadata of the collection.
 	/// </summary>
-	public async Task Modify(string? name = null, Dictionary<string, object>? metadata = null, CancellationToken cancellationToken = default)
-	{
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		var request = new CollectionModifyRequest()
+	public Task Modify(string? name = null, Dictionary<string, object>? metadata = null, CancellationToken cancellationToken = default)
+		=> Operation("modify", async () =>
 		{
-			Name = name,
-			Metadata = metadata,
-		};
-		await _httpClient.Put(_httpClient.Routes.Collection, request, requestParams, cancellationToken);
-	}
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			var request = new CollectionModifyRequest()
+			{
+				Name = name,
+				Metadata = metadata,
+			};
+			await _httpClient.Put(_httpClient.Routes.Collection, request, requestParams, cancellationToken);
+		});
 
 	/// <summary>
 	/// Changes the settings of the index, like <c>ef_search</c>. Chroma 1.0.6 and later apply them; the earlier
@@ -682,34 +709,35 @@ public class ChromaCollectionClient
 	/// Cloud. Chroma Cloud answers 500 to HNSW settings, and a single server answers without applying SPANN settings:
 	/// the client throws before both.
 	/// </summary>
-	public async Task ModifyConfiguration(ChromaCollectionConfigurationUpdate configuration, CancellationToken cancellationToken = default)
-	{
-		var current = await CurrentConfiguration(cancellationToken);
-		if (current is not { ValueKind: System.Text.Json.JsonValueKind.Object } value
-			|| !value.TryGetProperty("hnsw", out var hnsw) && !value.TryGetProperty("spann", out _))
+	public Task ModifyConfiguration(ChromaCollectionConfigurationUpdate configuration, CancellationToken cancellationToken = default)
+		=> Operation("modify", async () =>
 		{
-			throw new ChromaException("The server answers without applying a new configuration: Chroma 1.0.6 and later apply it.");
-		}
-		var hasHnsw = hnsw.ValueKind == System.Text.Json.JsonValueKind.Object;
-		var hasSpann = value.TryGetProperty("spann", out var spann) && spann.ValueKind == System.Text.Json.JsonValueKind.Object;
-		if (configuration.Hnsw is not null && !hasHnsw && hasSpann)
-		{
-			throw new ChromaException("The collection has a SPANN index, as on Chroma Cloud, which rejects HNSW settings: set Spann instead.");
-		}
-		if (configuration.Spann is not null && !hasSpann && hasHnsw)
-		{
-			throw new ChromaException("The collection has an HNSW index, as on a single Chroma server, which answers without applying SPANN settings: set Hnsw instead.");
-		}
-		var requestParams = new RequestQueryParams()
-			.Insert("{tenant}", _tenant)
-			.Insert("{database}", _database)
-			.Insert("{collection_id}", _collection.Id);
-		var request = new CollectionModifyRequest()
-		{
-			Configuration = configuration,
-		};
-		await _httpClient.Put(_httpClient.Routes.Collection, request, requestParams, cancellationToken);
-	}
+			var current = await CurrentConfiguration(cancellationToken);
+			if (current is not { ValueKind: System.Text.Json.JsonValueKind.Object } value
+				|| !value.TryGetProperty("hnsw", out var hnsw) && !value.TryGetProperty("spann", out _))
+			{
+				throw new ChromaException("The server answers without applying a new configuration: Chroma 1.0.6 and later apply it.");
+			}
+			var hasHnsw = hnsw.ValueKind == System.Text.Json.JsonValueKind.Object;
+			var hasSpann = value.TryGetProperty("spann", out var spann) && spann.ValueKind == System.Text.Json.JsonValueKind.Object;
+			if (configuration.Hnsw is not null && !hasHnsw && hasSpann)
+			{
+				throw new ChromaException("The collection has a SPANN index, as on Chroma Cloud, which rejects HNSW settings: set Spann instead.");
+			}
+			if (configuration.Spann is not null && !hasSpann && hasHnsw)
+			{
+				throw new ChromaException("The collection has an HNSW index, as on a single Chroma server, which answers without applying SPANN settings: set Hnsw instead.");
+			}
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			var request = new CollectionModifyRequest()
+			{
+				Configuration = configuration,
+			};
+			await _httpClient.Put(_httpClient.Routes.Collection, request, requestParams, cancellationToken);
+		});
 
 	// Chroma 1.0.6 and later, Chroma Cloud too, send the configuration with "hnsw" and "spann", one of them null; 0.5.4 to 1.0.5
 	// with "hnsw_configuration", and 0.4.10 to 0.5.3 send none. Without the configuration at hand, the collection is read by its name.
