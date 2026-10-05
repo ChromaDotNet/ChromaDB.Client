@@ -128,23 +128,64 @@ public class BatchesAndFiltersTests
 			"""{"$or":[{"$and":[{"i":{"$eq":1}},{"i":{"$eq":2}}]},{"i":{"$eq":4}}]}""",
 			"""{"$and":[{"i":{"$eq":1}},{"i":{"$eq":2}}]}""")));
 
-		var and = Eq(0);
-		var or = Eq(0);
+		ChromaWhereOperator Chain(int count, Func<ChromaWhereOperator, ChromaWhereOperator, ChromaWhereOperator> combine)
+		{
+			var chain = Eq(0);
+			for (var i = 1; i < count; i++)
+			{
+				chain = combine(chain, Eq(i));
+			}
+			return chain;
+		}
+		// Up to 900 deep, the depth of the SQLite expression of a single server, one list; beyond, ⌈√n⌉ lists with the same filters in
+		// the same order.
+		Assert.That(Lists(Chain(900, (x, y) => x & y).ToString()), Is.EqualTo(new[] { 900 }));
+		Assert.That(Lists(Chain(901, (x, y) => x & y).ToString()), Is.EqualTo(new[] { 31, 30, 30 }.Concat(Enumerable.Repeat(29, 29)).ToArray()));
+		var and = Chain(10_000, (x, y) => x & y);
+		Assert.That(Lists(and.ToString()), Is.EqualTo(new[] { 100 }.Concat(Enumerable.Repeat(100, 100)).ToArray()));
+		Assert.That(Leaves(and.ToString()), Is.EqualTo(Enumerable.Range(0, 10_000)));
+		var or = Chain(10_000, (x, y) => x || y);
+		Assert.That(JsonDocument.Parse(or.ToString()).RootElement.GetProperty("$or")[99].GetProperty("$or")[99].GetRawText(), Is.EqualTo("""{"i":{"$eq":9999}}"""));
+		Assert.That(Leaves(or.ToString()), Is.EqualTo(Enumerable.Range(0, 10_000)));
+		// Two lists of 600 under an $or are 601 deep: they go as they are.
+		var lists = Chain(600, (x, y) => x & y) | Chain(600, (x, y) => x & y);
+		Assert.That(Lists(lists.ToString()), Is.EqualTo(new[] { 2, 600, 600 }));
+
 		var document = ChromaWhereDocumentOperator.Contains("w0");
 		for (var i = 1; i < 10_000; i++)
 		{
-			and &= Eq(i);
-			or = or || Eq(i);
 			document &= ChromaWhereDocumentOperator.Contains($"w{i}");
 		}
-		Assert.That(JsonDocument.Parse(and.ToString()).RootElement.GetProperty("$and").GetArrayLength(), Is.EqualTo(10_000));
-		Assert.That(JsonDocument.Parse(or.ToString()).RootElement.GetProperty("$or")[9_999].GetRawText(), Is.EqualTo("""{"i":{"$eq":9999}}"""));
-		Assert.That(JsonDocument.Parse(document.ToString()).RootElement.GetProperty("$and").GetArrayLength(), Is.EqualTo(10_000));
+		Assert.That(Lists(document.ToString()), Is.EqualTo(new[] { 100 }.Concat(Enumerable.Repeat(100, 100)).ToArray()));
 
 		var handler = new Handler("""{"ids":[]}""");
 		await Client(Options, handler).GetAsync(where: and, whereDocument: document);
-		Assert.That(handler.Bodies.Single().GetProperty("where").GetProperty("$and").GetArrayLength(), Is.EqualTo(10_000));
+		Assert.That((handler.Bodies.Single().GetProperty("where").GetRawText(), handler.Bodies.Single().GetProperty("where_document").GetRawText()),
+			Is.EqualTo((and.ToString(), document.ToString())));
 	}
+
+	// The lengths of the $and and $or lists of a filter, depth first.
+	static int[] Lists(string filter)
+	{
+		var lengths = new List<int>();
+		void Walk(JsonElement element)
+		{
+			if (element.ValueKind == JsonValueKind.Object && element.EnumerateObject().ToList() is [{ Name: "$and" or "$or" } list])
+			{
+				lengths.Add(list.Value.GetArrayLength());
+				foreach (var item in list.Value.EnumerateArray())
+				{
+					Walk(item);
+				}
+			}
+		}
+		Walk(JsonDocument.Parse(filter).RootElement);
+		return [.. lengths];
+	}
+
+	// The values of the {"i":{"$eq":n}} filters, in their order.
+	static int[] Leaves(string filter)
+		=> [.. System.Text.RegularExpressions.Regex.Matches(filter, """\{"i":\{"\$eq":(\d+)\}\}""").Select(x => int.Parse(x.Groups[1].Value))];
 
 	// Every tested Chroma rejects $in and $nin without values.
 	[Test]

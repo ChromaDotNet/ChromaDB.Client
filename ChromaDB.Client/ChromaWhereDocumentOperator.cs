@@ -22,15 +22,20 @@ public abstract class ChromaWhereDocumentOperator
 
 	internal abstract Dictionary<string, object> ToWhereDocument();
 
+	// The filter as it goes to the server, with the long lists split as the server takes them.
+	internal Dictionary<string, object> ToRequestWhereDocument() => Common.ChromaFilterLists.Shape(ToWhereDocument());
+
 	// The same filter in the where clause of the Search API, on the #document key: {"#document": {"$contains": "..."}}.
 	internal abstract Dictionary<string, object> ToSearchWhere();
+
+	internal Dictionary<string, object> ToRequestSearchWhere() => Common.ChromaFilterLists.Shape(ToSearchWhere());
 
 	/// <summary>
 	/// The JSON of the filter, as the client sends it in <c>where_document</c>.
 	/// </summary>
 	/// <returns>The JSON.</returns>
 	public override string ToString()
-		=> System.Text.Json.JsonSerializer.Serialize(ToWhereDocument(), Common.HttpClientHelpers.TypeInfo<Dictionary<string, object>>(Common.HttpClientHelpers.PostJsonSerializerOptions));
+		=> System.Text.Json.JsonSerializer.Serialize(ToRequestWhereDocument(), Common.HttpClientHelpers.TypeInfo<Dictionary<string, object>>(Common.HttpClientHelpers.PostJsonSerializerOptions));
 
 	/// <summary>
 	/// The documents that contain the character, with <c>$contains</c>.

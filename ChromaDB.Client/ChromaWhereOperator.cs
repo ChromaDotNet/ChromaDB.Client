@@ -22,6 +22,9 @@ public abstract class ChromaWhereOperator
 
 	internal abstract Dictionary<string, object> ToWhere();
 
+	// The filter as it goes to the server, with the long lists split as the server takes them.
+	internal Dictionary<string, object> ToRequestWhere() => Common.ChromaFilterLists.Shape(ToWhere());
+
 	/// <summary>
 	/// The records whose value for the key is one of the values, with <c>$in</c>.
 	/// Every tested Chroma rejects <c>$in</c> and <c>$nin</c> without values, so the client rejects them before the request, with an <c>ArgumentException</c>.
@@ -47,7 +50,7 @@ public abstract class ChromaWhereOperator
 	/// </summary>
 	/// <returns>The JSON.</returns>
 	public override string ToString()
-		=> System.Text.Json.JsonSerializer.Serialize(ToWhere(), Common.HttpClientHelpers.TypeInfo<Dictionary<string, object>>(Common.HttpClientHelpers.PostJsonSerializerOptions));
+		=> System.Text.Json.JsonSerializer.Serialize(ToRequestWhere(), Common.HttpClientHelpers.TypeInfo<Dictionary<string, object>>(Common.HttpClientHelpers.PostJsonSerializerOptions));
 
 	/// <summary>
 	/// The records whose value for the key is greater than the value, with <c>$gt</c>.

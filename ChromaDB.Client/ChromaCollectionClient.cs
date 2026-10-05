@@ -152,8 +152,8 @@ public class ChromaCollectionClient
 		var request = new CollectionGetRequest()
 		{
 			Ids = ids,
-			Where = where?.ToWhere(),
-			WhereDocument = whereDocument?.ToWhereDocument(),
+			Where = where?.ToRequestWhere(),
+			WhereDocument = whereDocument?.ToRequestWhereDocument(),
 			Limit = limit,
 			Offset = offset,
 			Include = (include ?? ChromaGetInclude.Metadatas | ChromaGetInclude.Documents).ToInclude(),
@@ -211,8 +211,8 @@ public class ChromaCollectionClient
 			{
 				QueryEmbeddings = query.QueryEmbeddings,
 				NResults = query.NResults,
-				Where = query.Where?.ToWhere(),
-				WhereDocument = query.WhereDocument?.ToWhereDocument(),
+				Where = query.Where?.ToRequestWhere(),
+				WhereDocument = query.WhereDocument?.ToRequestWhereDocument(),
 				Include = (query.Include ?? ChromaQueryInclude.Metadatas | ChromaQueryInclude.Documents | ChromaQueryInclude.Distances).ToInclude(),
 				Ids = query.Ids,
 			};
@@ -509,8 +509,8 @@ public class ChromaCollectionClient
 				var request = new CollectionDeleteRequest()
 				{
 					Ids = batch.Ids,
-					Where = where?.ToWhere(),
-					WhereDocument = whereDocument?.ToWhereDocument(),
+					Where = where?.ToRequestWhere(),
+					WhereDocument = whereDocument?.ToRequestWhereDocument(),
 				};
 				await _httpClient.Post(_httpClient.Routes.Collection + "/delete", request, requestParams, cancellationToken);
 			}, cancellationToken);
@@ -565,8 +565,8 @@ public class ChromaCollectionClient
 				var request = new CollectionDeleteRequest()
 				{
 					Ids = ids,
-					Where = delete.Where?.ToWhere(),
-					WhereDocument = delete.WhereDocument?.ToWhereDocument(),
+					Where = delete.Where?.ToRequestWhere(),
+					WhereDocument = delete.WhereDocument?.ToRequestWhereDocument(),
 					Limit = remaining,
 				};
 				// {"deleted": n} from Chroma 1.5.3; {} or null before, and a list of ids from some 0.x servers.
@@ -695,11 +695,11 @@ public class ChromaCollectionClient
 		var filters = new List<Dictionary<string, object>>();
 		if (search.Where is { } where)
 		{
-			filters.Add(where.ToWhere());
+			filters.Add(where.ToRequestWhere());
 		}
 		if (search.WhereDocument is { } whereDocument)
 		{
-			filters.Add(whereDocument.ToSearchWhere());
+			filters.Add(whereDocument.ToRequestSearchWhere());
 		}
 		if (search.Ids is { } ids)
 		{

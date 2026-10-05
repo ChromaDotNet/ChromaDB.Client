@@ -414,6 +414,31 @@ public class CollectionClientGetTests : ChromaTestsBase
 		}
 		Assert.That((await collection.GetAsync(where: or)).Select(x => x.Id).Order(), Is.EqualTo(ids.Take(50).Order()));
 		Assert.That((await collection.GetAsync(where: and)).Select(x => x.Id).Order(), Is.EqualTo(ids.Skip(50).Order()));
+
+		// The client splits a long list: in one list, Chroma 1.x answers 500 from 988 filters, and Chroma 1.5.9 crashes on a stack
+		// overflow from about 4,400. Split, 4,000 filters work, and 4,500 leave the server up: Chroma 1.0.0 answers "too many SQL
+		// variables" from about 4,090. Chroma 0.6.3 rejects more than 488 filters however they go.
+		if (IsChroma1)
+		{
+			ChromaWhereOperator Chain(int count)
+			{
+				var chain = ChromaWhereOperator.NotEqual("i", 0);
+				for (var i = 1; i < count; i++)
+				{
+					chain &= ChromaWhereOperator.NotEqual("i", i < 50 ? i : 1000 + i);
+				}
+				return chain;
+			}
+			Assert.That((await collection.GetAsync(where: Chain(4_000))).Select(x => x.Id).Order(), Is.EqualTo(ids.Skip(50).Order()));
+			try
+			{
+				await collection.GetAsync(where: Chain(4_500));
+			}
+			catch (ChromaException ex) when (ex.Message.Contains("too many SQL variables"))
+			{
+			}
+			await client.HeartbeatAsync();
+		}
 	}
 
 	async Task<ChromaCollectionClient> Init()
