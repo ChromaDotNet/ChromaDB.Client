@@ -274,6 +274,12 @@ internal static partial class HttpClientHelpers
 		var formattedEndpoint = endpoint;
 		foreach (var (key, value) in queryParams)
 		{
+			// Uri drops "." and ".." from a path, escaped or not, and an empty name leaves the parent: GetCollectionAsync("..")
+			// would read the database as a collection. Chroma takes none of them as a name.
+			if (value is "" or "." or "..")
+			{
+				throw new ArgumentException($"\"{value}\" cannot be the {key.Trim('{', '}')} of a request: the path of the URL drops it.");
+			}
 			var urlEncodedQueryParam = Uri.EscapeDataString(value);
 			formattedEndpoint = formattedEndpoint.Replace(key, urlEncodedQueryParam);
 		}
