@@ -16,7 +16,6 @@ internal static class CollectionQueryEntryMapper
 					Embedding = response.Embeddings?[i][j],
 					Document = response.Documents?[i][j],
 					Uri = response.Uris?[i][j],
-					Data = response.Data,
 				})
 				.ToList())
 			.ToList();

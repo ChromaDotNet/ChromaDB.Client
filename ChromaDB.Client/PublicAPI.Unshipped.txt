@@ -1,8 +1,12 @@
 #nullable enable
+*REMOVED*ChromaDB.Client.Models.ChromaCollectionEntry.Data.get -> dynamic?
+*REMOVED*ChromaDB.Client.Models.ChromaCollectionEntry.Data.init -> void
 *REMOVED*ChromaDB.Client.Models.ChromaCollectionEntry.Embeddings.get -> System.ReadOnlyMemory<float>?
 *REMOVED*ChromaDB.Client.Models.ChromaCollectionEntry.Embeddings.init -> void
 *REMOVED*ChromaDB.Client.Models.ChromaCollectionEntry.Uris.get -> System.Collections.Generic.List<string?>?
 *REMOVED*ChromaDB.Client.Models.ChromaCollectionEntry.Uris.init -> void
+*REMOVED*ChromaDB.Client.Models.ChromaCollectionQueryEntry.Data.get -> dynamic?
+*REMOVED*ChromaDB.Client.Models.ChromaCollectionQueryEntry.Data.init -> void
 *REMOVED*ChromaDB.Client.Models.ChromaCollectionQueryEntry.Embeddings.get -> System.ReadOnlyMemory<float>?
 *REMOVED*ChromaDB.Client.Models.ChromaCollectionQueryEntry.Embeddings.init -> void
 *REMOVED*ChromaDB.Client.Models.ChromaCollectionQueryEntry.Uris.get -> System.Collections.Generic.List<string?>?

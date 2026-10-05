@@ -19,7 +19,4 @@ internal class CollectionEntriesGetResponse
 
 	[JsonPropertyName("uris")]
 	public List<string?>? Uris { get; init; }
-
-	[JsonPropertyName("data")]
-	public object? Data { get; init; }
 }

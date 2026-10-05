@@ -30,10 +30,6 @@ public class ChromaCollectionQueryEntry
 	/// The URI of the record. Null when the query did not include the URIs.
 	/// </summary>
 	public string? Uri { get; init; }
-	/// <summary>
-	/// The <c>data</c> field of the answer of the server, the same for every result of the answer.
-	/// </summary>
-	public dynamic? Data { get; init; }
 
 	/// <summary>
 	/// Creates the entry of the record with the id.
