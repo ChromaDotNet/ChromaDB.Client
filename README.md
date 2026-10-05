@@ -1,8 +1,8 @@
 # ChromaDB.Client
 
-_ChromaDB.Client_ is a .NET SDK that offers a seamless connection to the Chroma database. It allows creating and managing collections, performing CRUD operations, and executing nearest neighbor search and filtering.
+_ChromaDB.Client_, published on NuGet as `ChromaDotNet.Client`, is a .NET client for Chroma and Chroma Cloud. It creates and manages collections, tenants and databases, writes and reads records, runs nearest neighbor queries with filters and the Search API of Chroma Cloud with hybrid BM25 search, and has traces and metrics for OpenTelemetry.
 
-> This is the community-maintained continuation of [ssone95/ChromaDB.Client](https://github.com/ssone95/ChromaDB.Client), kept up to date with current Chroma versions. It is an independent project and is not affiliated with or endorsed by Chroma. See [About this fork](#about-this-fork).
+> This is a community project, the continuation of [ssone95/ChromaDB.Client](https://github.com/ssone95/ChromaDB.Client), kept up to date with current Chroma versions. It is not affiliated with or endorsed by Chroma. See [About this fork](#about-this-fork).
 
 ## Compatibility
 
@@ -329,7 +329,7 @@ var collection = await client.GetCollectionByCrnAsync("my_org:my_database:my_col
 
 `UpdateTenantAsync` sets the resource name of a tenant, which `GetTenantAsync` returns as `ResourceName`, and `GetCollectionByCrnAsync` gets a collection by its Chroma Resource Name. A single Chroma server from 1.0.17 accepts `UpdateTenantAsync` but does not keep the name.
 
-`GetCollectionByCrnAsync` is there as in the official JavaScript client of Chroma, but the operation is hidden in the OpenAPI description of Chroma and missing from its documentation. On Chroma Cloud, `GetCollectionByCrnAsync` sent with an API key limited to one database, and with an API key for the whole tenant, got `403 Permission denied`, also for a collection of that tenant.
+`GetCollectionByCrnAsync` is there as in the JavaScript client of Chroma, but the operation is hidden in the OpenAPI description of Chroma and missing from its documentation. On Chroma Cloud, `GetCollectionByCrnAsync` sent with an API key limited to one database, and with an API key for the whole tenant, got `403 Permission denied`, also for a collection of that tenant.
 
 ## Search
 

@@ -1,6 +1,6 @@
 # Compatibility with Chroma
 
-On 3 October 2026 the whole test suite of the client ran against each Chroma release listed on this page, using the official Docker image `chromadb/chroma`. The page lists only those runs: a version that is not here was not tested.
+On 3 October 2026 the whole test suite of the client ran against each Chroma release listed on this page, using the `chromadb/chroma` Docker image published by Chroma. The page lists only those runs: a version that is not here was not tested.
 
 The suite covers collections (create, get, list, count, modify, delete), records (add, update, upsert, delete, get, query, count, peek, filters), tenants and databases, error messages, cancellation, and the built-in authentication of the server where noted.
 
