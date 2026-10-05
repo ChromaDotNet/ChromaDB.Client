@@ -443,7 +443,7 @@ var results = await collectionClient.SearchAsync(new ChromaSearch
 ```
 
 - **What `ChromaBm25` computes:** the BM25 vectors as the Python client of Chroma computes them, `chroma_bm25` with the Snowball English stemmer of snowballstemmer 3.1.1. The same text gives the same indices and values in .NET and in Python, so a collection written by one is searched by the other.
-- **How it was tested:** against the Python client on more than 5,000 texts, with the characters of every Unicode script that Python 3.13 knows, on .NET 8 and on .NET Framework. It follows the Unicode rules of Python from its own tables, not those of the runtime.
+- **How it was tested:** against the Python client on more than 5,000 texts, with the characters of every Unicode script that Python 3.13 knows, on .NET 8 and on .NET Framework, outside the CI; on every change `ChromaBm25Tests` compares the vectors of a few texts with those of Python. It follows the Unicode rules of Python from its own tables, not those of the runtime.
 - **What the client computes, as the Python client of Chroma does:**
   - In `AddAsync`, `UpdateAsync` and `UpsertAsync`, the vectors of each sparse vector index of the schema with a source key and `chroma_bm25`, from the document or from the text in the metadata key, with the settings of the schema. A record whose metadata already has the key keeps its vector. The records and the metadata you pass do not change.
   - In `SearchAsync`, the vector of the text of `SparseKnn(queryText, key)`, with the function of the index of the key.
@@ -518,7 +518,7 @@ The original project was created by [ssone95](https://github.com/ssone95) and la
 This fork:
 
 - integrates the pending upstream pull requests [80](https://github.com/ssone95/ChromaDB.Client/pull/80), by [inlineHamed](https://github.com/inlineHamed), and [82](https://github.com/ssone95/ChromaDB.Client/pull/82), by [richlander](https://github.com/richlander), which migrate the client to the v2 API;
-- tests the client against several Chroma versions and against both target frameworks;
+- tests the client against several Chroma versions, with its .NET 8 and .NET Standard 2.0 builds;
 - works through the issues reported upstream, one pull request each.
 
 The original commits of the upstream pull requests, which were squash-merged, are kept in the [`upstream-history`](https://github.com/ChromaDotNet/ChromaDB.Client/tree/upstream-history) branch.
