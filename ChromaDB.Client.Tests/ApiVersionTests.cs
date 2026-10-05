@@ -12,40 +12,40 @@ public class ApiVersionTests
 
 	static IEnumerable<TestCaseData> Requests()
 	{
-		yield return Case("ListCollections", c => c.ListCollections(), "GET", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
-		yield return Case("ListCollectionsPage", c => c.ListCollections(limit: 2, offset: 1), "GET", "tenants/t/databases/d/collections?limit=2&offset=1", "collections?tenant=t&database=d&limit=2&offset=1");
-		yield return Case("GetCollection", c => c.GetCollection("c"), "GET", "tenants/t/databases/d/collections/c", "collections/c?tenant=t&database=d");
-		yield return Case("CollectionExists", c => c.CollectionExists("c"), "GET", "tenants/t/databases/d/collections/c", "collections/c?tenant=t&database=d");
-		yield return Case("GetCollectionById", c => c.GetCollectionById(Guid.Parse(Id)), "GET", $"tenants/t/databases/d/collections/by-id/{Id}", $"collections/by-id/{Id}?tenant=t&database=d");
-		yield return Case("Heartbeat", c => c.Heartbeat(), "GET", "heartbeat", "heartbeat");
-		yield return Case("CreateCollection", c => c.CreateCollection("c"), "POST", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
-		yield return Case("CreateCollectionDefinition", c => c.CreateCollection(new ChromaCollectionDefinition("c") { Configuration = new() { Space = ChromaSpace.Cosine } }), "POST", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
-		yield return Case("GetOrCreateCollectionDefinition", c => c.GetOrCreateCollection(new ChromaCollectionDefinition("c")), "POST", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
-		yield return Case("GetOrCreateCollection", c => c.GetOrCreateCollection("c"), "POST", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
-		yield return Case("DeleteCollection", c => c.DeleteCollection("c"), "DELETE", "tenants/t/databases/d/collections/c", "collections/c?tenant=t&database=d");
-		yield return Case("GetVersion", c => c.GetVersion(), "GET", "version", "version");
-		yield return Case("GetUserIdentity", c => c.GetUserIdentity(), "GET", "auth/identity", "auth/identity");
-		yield return Case("GetPreFlightChecks", c => c.GetPreFlightChecks(), "GET", "pre-flight-checks", "pre-flight-checks");
-		yield return Case("Reset", c => c.Reset(), "POST", "reset", "reset");
-		yield return Case("CountCollections", c => c.CountCollections(), "GET", "tenants/t/databases/d/collections_count", "count_collections?tenant=t&database=d");
-		yield return Case("CreateTenant", c => c.CreateTenant("t"), "POST", "tenants", "tenants");
-		yield return Case("GetTenant", c => c.GetTenant("t"), "GET", "tenants/t", "tenants/t");
-		yield return Case("CreateDatabase", c => c.CreateDatabase("d"), "POST", "tenants/t/databases", "databases?tenant=t");
-		yield return Case("GetDatabase", c => c.GetDatabase("d"), "GET", "tenants/t/databases/d", "databases/d?tenant=t");
-		yield return Case("ListDatabases", c => c.ListDatabases(), "GET", "tenants/t/databases", "databases?tenant=t");
-		yield return Case("ListDatabasesPage", c => c.ListDatabases(limit: 2, offset: 1), "GET", "tenants/t/databases?limit=2&offset=1", "databases?tenant=t&limit=2&offset=1");
-		yield return Case("DeleteDatabase", c => c.DeleteDatabase("d"), "DELETE", "tenants/t/databases/d", "databases/d?tenant=t");
-		yield return Case("Get", c => c.Get(), "POST", $"tenants/t/databases/d/collections/{Id}/get", $"collections/{Id}/get");
-		yield return Case("Query", c => c.Query(Embedding), "POST", $"tenants/t/databases/d/collections/{Id}/query", $"collections/{Id}/query");
-		yield return Case("QueryWithIds", c => c.Query(new ChromaQuery([Embedding]) { Ids = ["a"] }), "POST", $"tenants/t/databases/d/collections/{Id}/query", $"collections/{Id}/query");
-		yield return Case("Add", c => c.Add(["a"], embeddings: [Embedding]), "POST", $"tenants/t/databases/d/collections/{Id}/add", $"collections/{Id}/add");
-		yield return Case("Update", c => c.Update(["a"]), "POST", $"tenants/t/databases/d/collections/{Id}/update", $"collections/{Id}/update");
-		yield return Case("Upsert", c => c.Upsert(["a"], embeddings: [Embedding]), "POST", $"tenants/t/databases/d/collections/{Id}/upsert", $"collections/{Id}/upsert");
-		yield return Case("Delete", c => c.Delete(["a"]), "POST", $"tenants/t/databases/d/collections/{Id}/delete", $"collections/{Id}/delete");
-		yield return Case("Count", c => c.Count(), "GET", $"tenants/t/databases/d/collections/{Id}/count", $"collections/{Id}/count");
-		yield return Case("CountFromGetCollectionClient", c => c.GetCollectionClient(Guid.Parse(Id), "c").Count(), "GET", $"tenants/t/databases/d/collections/{Id}/count", $"collections/{Id}/count");
-		yield return Case("Peek", c => c.Peek(), "POST", $"tenants/t/databases/d/collections/{Id}/get", $"collections/{Id}/get");
-		yield return Case("Modify", c => c.Modify(name: "c2"), "PUT", $"tenants/t/databases/d/collections/{Id}", $"collections/{Id}");
+		yield return Case("ListCollections", c => c.ListCollectionsAsync(), "GET", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
+		yield return Case("ListCollectionsPage", c => c.ListCollectionsAsync(limit: 2, offset: 1), "GET", "tenants/t/databases/d/collections?limit=2&offset=1", "collections?tenant=t&database=d&limit=2&offset=1");
+		yield return Case("GetCollection", c => c.GetCollectionAsync("c"), "GET", "tenants/t/databases/d/collections/c", "collections/c?tenant=t&database=d");
+		yield return Case("CollectionExists", c => c.CollectionExistsAsync("c"), "GET", "tenants/t/databases/d/collections/c", "collections/c?tenant=t&database=d");
+		yield return Case("GetCollectionById", c => c.GetCollectionByIdAsync(Guid.Parse(Id)), "GET", $"tenants/t/databases/d/collections/by-id/{Id}", $"collections/by-id/{Id}?tenant=t&database=d");
+		yield return Case("Heartbeat", c => c.HeartbeatAsync(), "GET", "heartbeat", "heartbeat");
+		yield return Case("CreateCollection", c => c.CreateCollectionAsync("c"), "POST", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
+		yield return Case("CreateCollectionDefinition", c => c.CreateCollectionAsync(new ChromaCollectionDefinition("c") { Configuration = new() { Space = ChromaSpace.Cosine } }), "POST", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
+		yield return Case("GetOrCreateCollectionDefinition", c => c.GetOrCreateCollectionAsync(new ChromaCollectionDefinition("c")), "POST", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
+		yield return Case("GetOrCreateCollection", c => c.GetOrCreateCollectionAsync("c"), "POST", "tenants/t/databases/d/collections", "collections?tenant=t&database=d");
+		yield return Case("DeleteCollection", c => c.DeleteCollectionAsync("c"), "DELETE", "tenants/t/databases/d/collections/c", "collections/c?tenant=t&database=d");
+		yield return Case("GetVersion", c => c.GetVersionAsync(), "GET", "version", "version");
+		yield return Case("GetUserIdentity", c => c.GetUserIdentityAsync(), "GET", "auth/identity", "auth/identity");
+		yield return Case("GetPreFlightChecks", c => c.GetPreFlightChecksAsync(), "GET", "pre-flight-checks", "pre-flight-checks");
+		yield return Case("Reset", c => c.ResetAsync(), "POST", "reset", "reset");
+		yield return Case("CountCollections", c => c.CountCollectionsAsync(), "GET", "tenants/t/databases/d/collections_count", "count_collections?tenant=t&database=d");
+		yield return Case("CreateTenant", c => c.CreateTenantAsync("t"), "POST", "tenants", "tenants");
+		yield return Case("GetTenant", c => c.GetTenantAsync("t"), "GET", "tenants/t", "tenants/t");
+		yield return Case("CreateDatabase", c => c.CreateDatabaseAsync("d"), "POST", "tenants/t/databases", "databases?tenant=t");
+		yield return Case("GetDatabase", c => c.GetDatabaseAsync("d"), "GET", "tenants/t/databases/d", "databases/d?tenant=t");
+		yield return Case("ListDatabases", c => c.ListDatabasesAsync(), "GET", "tenants/t/databases", "databases?tenant=t");
+		yield return Case("ListDatabasesPage", c => c.ListDatabasesAsync(limit: 2, offset: 1), "GET", "tenants/t/databases?limit=2&offset=1", "databases?tenant=t&limit=2&offset=1");
+		yield return Case("DeleteDatabase", c => c.DeleteDatabaseAsync("d"), "DELETE", "tenants/t/databases/d", "databases/d?tenant=t");
+		yield return Case("Get", c => c.GetAsync(), "POST", $"tenants/t/databases/d/collections/{Id}/get", $"collections/{Id}/get");
+		yield return Case("Query", c => c.QueryAsync(Embedding), "POST", $"tenants/t/databases/d/collections/{Id}/query", $"collections/{Id}/query");
+		yield return Case("QueryWithIds", c => c.QueryAsync(new ChromaQuery([Embedding]) { Ids = ["a"] }), "POST", $"tenants/t/databases/d/collections/{Id}/query", $"collections/{Id}/query");
+		yield return Case("Add", c => c.AddAsync(["a"], embeddings: [Embedding]), "POST", $"tenants/t/databases/d/collections/{Id}/add", $"collections/{Id}/add");
+		yield return Case("Update", c => c.UpdateAsync(["a"]), "POST", $"tenants/t/databases/d/collections/{Id}/update", $"collections/{Id}/update");
+		yield return Case("Upsert", c => c.UpsertAsync(["a"], embeddings: [Embedding]), "POST", $"tenants/t/databases/d/collections/{Id}/upsert", $"collections/{Id}/upsert");
+		yield return Case("Delete", c => c.DeleteAsync(["a"]), "POST", $"tenants/t/databases/d/collections/{Id}/delete", $"collections/{Id}/delete");
+		yield return Case("Count", c => c.CountAsync(), "GET", $"tenants/t/databases/d/collections/{Id}/count", $"collections/{Id}/count");
+		yield return Case("CountFromGetCollectionClient", c => c.GetCollectionClient(Guid.Parse(Id), "c").CountAsync(), "GET", $"tenants/t/databases/d/collections/{Id}/count", $"collections/{Id}/count");
+		yield return Case("Peek", c => c.PeekAsync(), "POST", $"tenants/t/databases/d/collections/{Id}/get", $"collections/{Id}/get");
+		yield return Case("Modify", c => c.ModifyAsync(name: "c2"), "PUT", $"tenants/t/databases/d/collections/{Id}", $"collections/{Id}");
 	}
 
 	static TestCaseData Case(string name, Func<ChromaClient, Task> call, string method, string v2, string v1)
@@ -71,7 +71,7 @@ public class ApiVersionTests
 		using var httpClient = new HttpClient(handler);
 		try
 		{
-			await new ChromaClient(new ChromaConfigurationOptions().WithApiVersion(apiVersion), httpClient).Heartbeat();
+			await new ChromaClient(new ChromaConfigurationOptions().WithApiVersion(apiVersion), httpClient).HeartbeatAsync();
 		}
 		catch (ChromaException)
 		{

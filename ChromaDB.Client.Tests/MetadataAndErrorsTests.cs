@@ -14,7 +14,7 @@ public class MetadataAndErrorsTests
 	[Test]
 	public async Task MetadataValuesAreExactByDefault()
 	{
-		var metadata = (await CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), Respond(Metadata)).Get()).Single().Metadata!;
+		var metadata = (await CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), Respond(Metadata)).GetAsync()).Single().Metadata!;
 		Assert.That(metadata["date"], Is.EqualTo("2026-10-04"));
 		Assert.That(metadata["texts"], Is.EqualTo(new List<object> { "x", "y" }));
 	}
@@ -24,7 +24,7 @@ public class MetadataAndErrorsTests
 	public async Task InferredMetadataValues()
 	{
 		var options = new ChromaConfigurationOptions("http://localhost:8000").WithMetadataValues(ChromaMetadataValues.Inferred);
-		var metadata = (await CollectionClient(options, Respond(Metadata)).Get()).Single().Metadata!;
+		var metadata = (await CollectionClient(options, Respond(Metadata)).GetAsync()).Single().Metadata!;
 		Assert.That(metadata["date"], Is.EqualTo(new DateTime(2026, 10, 4)));
 		Assert.That(metadata["texts"], Is.InstanceOf<JsonElement>());
 	}
@@ -33,7 +33,7 @@ public class MetadataAndErrorsTests
 	public async Task ExactMetadataValues()
 	{
 		var options = new ChromaConfigurationOptions("http://localhost:8000").WithMetadataValues(ChromaMetadataValues.Exact);
-		var metadata = (await CollectionClient(options, Respond(Metadata)).Get()).Single().Metadata!;
+		var metadata = (await CollectionClient(options, Respond(Metadata)).GetAsync()).Single().Metadata!;
 		Assert.That(metadata["date"], Is.EqualTo("2026-10-04"));
 		Assert.That(metadata["text"], Is.EqualTo("t"));
 		Assert.That(metadata["int"], Is.EqualTo(1L));
@@ -51,7 +51,7 @@ public class MetadataAndErrorsTests
 	{
 		var options = new ChromaConfigurationOptions("http://localhost:8000").WithMetadataValues(ChromaMetadataValues.Exact);
 		using var httpClient = new HttpClient(Respond("""{"id":"11111111-2222-3333-4444-555555555555","name":"c","metadata":{"date":"2026-10-04","texts":["x"]}}"""));
-		var collection = await new ChromaClient(options, httpClient).GetCollection("c");
+		var collection = await new ChromaClient(options, httpClient).GetCollectionAsync("c");
 		Assert.That(collection.Metadata!["date"], Is.EqualTo("2026-10-04"));
 		Assert.That(collection.Metadata["texts"], Is.EqualTo(new List<object> { "x" }));
 	}
@@ -63,8 +63,8 @@ public class MetadataAndErrorsTests
 		using var httpClient = new HttpClient(Respond("""{"id":"11111111-2222-3333-4444-555555555555","name":"c","metadata":{"date":"2026-10-04"}}"""));
 		var exact = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000", defaultTenant: "t"), httpClient);
 		var inferred = exact.WithMetadataValues(ChromaMetadataValues.Inferred);
-		Assert.That((await exact.GetCollection("c")).Metadata!["date"], Is.EqualTo("2026-10-04"));
-		Assert.That((await inferred.GetCollection("c")).Metadata!["date"], Is.EqualTo(new DateTime(2026, 10, 4)));
+		Assert.That((await exact.GetCollectionAsync("c")).Metadata!["date"], Is.EqualTo("2026-10-04"));
+		Assert.That((await inferred.GetCollectionAsync("c")).Metadata!["date"], Is.EqualTo(new DateTime(2026, 10, 4)));
 		Assert.That(exact.Options.MetadataValues, Is.EqualTo(ChromaMetadataValues.Exact));
 		Assert.That(inferred.Options.Tenant, Is.EqualTo("t"));
 		Assert.That(inferred.Options.MetadataValues, Is.EqualTo(ChromaMetadataValues.Inferred));
@@ -79,8 +79,8 @@ public class MetadataAndErrorsTests
 		var inferred = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
 		var exact = inferred.WithMetadataValues(ChromaMetadataValues.Exact);
 		var records = new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] };
-		await inferred.GetCollectionClient(Guid.NewGuid(), "a").Add(records);
-		await exact.GetCollectionClient(Guid.NewGuid(), "b").Add(records);
+		await inferred.GetCollectionClient(Guid.NewGuid(), "a").AddAsync(records);
+		await exact.GetCollectionClient(Guid.NewGuid(), "b").AddAsync(records);
 		Assert.That(handler.VersionRequests, Is.EqualTo(1));
 	}
 
@@ -96,8 +96,8 @@ public class MetadataAndErrorsTests
 			handler.Release.SetResult(true);
 			var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler)).GetCollectionClient(Guid.NewGuid(), "c");
 			var records = new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] };
-			await client.Add(records);
-			await client.Add(records);
+			await client.AddAsync(records);
+			await client.AddAsync(records);
 			Assert.That(handler.VersionRequests, Is.EqualTo(2));
 		}
 		finally
@@ -111,7 +111,7 @@ public class MetadataAndErrorsTests
 	public async Task MetadataValuesOfOtherTypes()
 	{
 		var handler = Respond("true");
-		await CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), handler).Add(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["span"] = TimeSpan.FromSeconds(1), ["text"] = "x", ["number"] = 1.5m }] });
+		await CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), handler).AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["span"] = TimeSpan.FromSeconds(1), ["text"] = "x", ["number"] = 1.5m }] });
 		Assert.That(handler.Bodies.Single().GetProperty("metadatas")[0].GetRawText(), Is.EqualTo("""{"span":"00:00:01","text":"x","number":1.5}"""));
 	}
 
@@ -126,7 +126,7 @@ public class MetadataAndErrorsTests
 	public async Task StatusCodeOfTheAnswer(HttpStatusCode statusCode, string body)
 	{
 		using var httpClient = new HttpClient(new FixedHandler(statusCode, body));
-		var ex = Assert.ThrowsAsync<ChromaException>(() => new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), httpClient).GetCollection("c"));
+		var ex = Assert.ThrowsAsync<ChromaException>(() => new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), httpClient).GetCollectionAsync("c"));
 		Assert.That(ex!.StatusCode, Is.EqualTo(statusCode));
 	}
 
@@ -134,7 +134,7 @@ public class MetadataAndErrorsTests
 	public async Task NoStatusCodeOnTimeout()
 	{
 		using var httpClient = new HttpClient(new PendingHandler()) { Timeout = TimeSpan.FromMilliseconds(100) };
-		var ex = Assert.ThrowsAsync<ChromaException>(() => new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), httpClient).Heartbeat());
+		var ex = Assert.ThrowsAsync<ChromaException>(() => new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), httpClient).HeartbeatAsync());
 		Assert.That(ex!.StatusCode, Is.Null);
 	}
 
@@ -145,7 +145,7 @@ public class MetadataAndErrorsTests
 	public async Task CollectionExists(HttpStatusCode statusCode, string body, bool expected)
 	{
 		using var httpClient = new HttpClient(new FixedHandler(statusCode, body));
-		Assert.That(await new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), httpClient).CollectionExists("c"), Is.EqualTo(expected));
+		Assert.That(await new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), httpClient).CollectionExistsAsync("c"), Is.EqualTo(expected));
 	}
 
 	// Other errors are not a missing collection.
@@ -157,7 +157,7 @@ public class MetadataAndErrorsTests
 	public async Task CollectionExistsThrowsOnOtherErrors(HttpStatusCode statusCode, string body)
 	{
 		using var httpClient = new HttpClient(new FixedHandler(statusCode, body));
-		await Assert.ThatAsync(() => new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), httpClient).CollectionExists("c"), Throws.InstanceOf<ChromaException>());
+		await Assert.ThatAsync(() => new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), httpClient).CollectionExistsAsync("c"), Throws.InstanceOf<ChromaException>());
 	}
 
 	[Test]
@@ -165,9 +165,9 @@ public class MetadataAndErrorsTests
 	{
 		var handler = Respond("""{"ids":[]}""");
 		var client = CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), handler);
-		await client.Get(where: ChromaWhereOperator.Contains("tags", "x"));
+		await client.GetAsync(where: ChromaWhereOperator.Contains("tags", "x"));
 		Assert.That(handler.Bodies.Last().GetProperty("where").GetRawText(), Is.EqualTo("""{"tags":{"$contains":"x"}}"""));
-		await client.Get(where: ChromaWhereOperator.NotContains("nums", 3));
+		await client.GetAsync(where: ChromaWhereOperator.NotContains("nums", 3));
 		Assert.That(handler.Bodies.Last().GetProperty("where").GetRawText(), Is.EqualTo("""{"nums":{"$not_contains":3}}"""));
 	}
 
@@ -177,11 +177,11 @@ public class MetadataAndErrorsTests
 	{
 		var handler = Respond("\"0.6.3\"");
 		var client = CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), handler);
-		var ex = Assert.ThrowsAsync<ChromaException>(() => client.Add(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] }));
+		var ex = Assert.ThrowsAsync<ChromaException>(() => client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] }));
 		Assert.That(ex!.Message, Does.Contain("1.5.0"));
 		Assert.That(ex.StatusCode, Is.Null);
-		await Assert.ThatAsync(() => client.Upsert(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new List<int> { 1 } }] }), Throws.InstanceOf<ChromaException>());
-		await Assert.ThatAsync(() => client.Update(new ChromaRecords(["a"]) { Metadatas = [new() { ["tags"] = new List<bool> { true } }] }), Throws.InstanceOf<ChromaException>());
+		await Assert.ThatAsync(() => client.UpsertAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new List<int> { 1 } }] }), Throws.InstanceOf<ChromaException>());
+		await Assert.ThatAsync(() => client.UpdateAsync(new ChromaRecords(["a"]) { Metadatas = [new() { ["tags"] = new List<bool> { true } }] }), Throws.InstanceOf<ChromaException>());
 		// The version is asked once, and no record is sent.
 		Assert.That(handler.Paths, Is.EqualTo(new[] { "/api/v2/version" }));
 	}
@@ -193,7 +193,7 @@ public class MetadataAndErrorsTests
 		var handler = Respond("\"0.6.3\"");
 		var client = CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), handler);
 		var list = JsonDocument.Parse("""["x"]""").RootElement.Clone();
-		Assert.ThrowsAsync<ChromaException>(() => client.Add(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = list }] }));
+		Assert.ThrowsAsync<ChromaException>(() => client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = list }] }));
 		Assert.That(handler.Paths, Is.EqualTo(new[] { "/api/v2/version" }));
 	}
 
@@ -202,7 +202,7 @@ public class MetadataAndErrorsTests
 	{
 		var handler = new VersionHandler();
 		var client = CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), handler);
-		var adds = Enumerable.Range(0, 5).Select(_ => client.Add(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] })).ToList();
+		var adds = Enumerable.Range(0, 5).Select(_ => client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] })).ToList();
 		handler.Release.SetResult(true);
 		await Task.WhenAll(adds);
 		Assert.That(handler.VersionRequests, Is.EqualTo(1));
@@ -215,9 +215,9 @@ public class MetadataAndErrorsTests
 		var handler = new VersionHandler();
 		var client = CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), handler);
 		using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
-		await Assert.ThatAsync(() => client.Add(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] }, cts.Token), Throws.InstanceOf<OperationCanceledException>());
+		await Assert.ThatAsync(() => client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] }, cts.Token), Throws.InstanceOf<OperationCanceledException>());
 		handler.Release.SetResult(true);
-		await client.Add(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] });
+		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] });
 		Assert.That(handler.VersionRequests, Is.EqualTo(2));
 	}
 
@@ -226,7 +226,7 @@ public class MetadataAndErrorsTests
 	{
 		var handler = Respond("\"1.0.0\"");
 		var client = CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), handler);
-		await client.Add(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] });
+		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["tags"] = new[] { "x" } }] });
 		// pre-flight-checks aside, asked for the base64 of the embeddings.
 		Assert.That(handler.Paths.Where(x => !x.EndsWith("/pre-flight-checks")), Is.EqualTo(new[] { "/api/v2/version", $"/api/v2/tenants/default_tenant/databases/default_database/collections/{client.Collection.Id}/add" }));
 		Assert.That(handler.Bodies.Last().GetProperty("metadatas")[0].GetProperty("tags").GetRawText(), Is.EqualTo("""["x"]"""));
@@ -238,7 +238,7 @@ public class MetadataAndErrorsTests
 	{
 		var handler = Respond("true");
 		var client = CollectionClient(new ChromaConfigurationOptions("http://localhost:8000"), handler);
-		await client.Add(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["text"] = "x", ["int"] = 1 }] });
+		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new() { ["text"] = "x", ["int"] = 1 }] });
 		Assert.That(handler.Paths, Has.None.EndsWith("/version"));
 		Assert.That(handler.Paths.Last(), Does.EndWith("/add"));
 	}

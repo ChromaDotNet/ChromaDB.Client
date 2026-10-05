@@ -36,21 +36,21 @@ var name = $"trimming{Guid.NewGuid():N}";
 ChromaCollectionClient collectionClient = null!;
 var embeddings = new List<ReadOnlyMemory<float>> { new([1f, 0f, 0f]), new([0f, 1f, 0f]) };
 
-await Check("Heartbeat", async () => (await client.Heartbeat()).NanosecondHeartbeat.ToString());
-await Check("GetVersion", async () => version = await client.GetVersion());
-await Check("GetPreFlightChecks", async () => (await client.GetPreFlightChecks()).MaxBatchSize.ToString());
+await Check("Heartbeat", async () => (await client.HeartbeatAsync()).NanosecondHeartbeat.ToString());
+await Check("GetVersion", async () => version = await client.GetVersionAsync());
+await Check("GetPreFlightChecks", async () => (await client.GetPreFlightChecksAsync()).MaxBatchSize.ToString());
 await Check("CreateCollection", async () =>
 {
-	var collection = await client.CreateCollection(new ChromaCollectionDefinition(name) { Metadata = new() { ["owner"] = "trimming", ["level"] = 1 }, Configuration = new() { Space = ChromaSpace.Cosine } });
+	var collection = await client.CreateCollectionAsync(new ChromaCollectionDefinition(name) { Metadata = new() { ["owner"] = "trimming", ["level"] = 1 }, Configuration = new() { Space = ChromaSpace.Cosine } });
 	collectionClient = client.GetCollectionClient(collection);
 	return Expect($"{collection.Name} {collection.Space}", collection.Space == ChromaSpace.Cosine, "Cosine");
 });
-await Check("GetOrCreateCollection", async () => (await client.GetOrCreateCollection(name)).Id.ToString());
-await Check("CollectionExists", async () => Expect((await client.CollectionExists(name)).ToString(), await client.CollectionExists(name), "True"));
-await Check("ListCollections", async () => (await client.ListCollections()).Count.ToString());
+await Check("GetOrCreateCollection", async () => (await client.GetOrCreateCollectionAsync(name)).Id.ToString());
+await Check("CollectionExists", async () => Expect((await client.CollectionExistsAsync(name)).ToString(), await client.CollectionExistsAsync(name), "True"));
+await Check("ListCollections", async () => (await client.ListCollectionsAsync()).Count.ToString());
 await Check("Add", async () =>
 {
-	await collectionClient.Add(new ChromaRecords(["a", "b"])
+	await collectionClient.AddAsync(new ChromaRecords(["a", "b"])
 	{
 		Embeddings = embeddings,
 		Metadatas = [new() { ["text"] = "x", ["int"] = 1, ["long"] = 2L, ["double"] = 1.5, ["float"] = 2.5f, ["bool"] = true }, new() { ["text"] = "y", ["int"] = 2 }],
@@ -69,32 +69,32 @@ await Check("Every type of single value", async () =>
 		["dateTime"] = new DateTime(2026, 10, 4, 12, 0, 0, DateTimeKind.Utc), ["dateTimeOffset"] = new DateTimeOffset(2026, 10, 4, 12, 0, 0, TimeSpan.FromHours(2)),
 		["guid"] = guid,
 	};
-	await collectionClient.Add(new ChromaRecords(["v"]) { Embeddings = [new([0f, 0f, 0.5f])], Metadatas = [values] });
+	await collectionClient.AddAsync(new ChromaRecords(["v"]) { Embeddings = [new([0f, 0f, 0.5f])], Metadatas = [values] });
 	var where = ChromaWhereOperator.Equal("short", (short)3) & ChromaWhereOperator.Equal("ulong", 8ul) & ChromaWhereOperator.Equal("decimal", 3.5m)
 		& ChromaWhereOperator.In("guid", guid.ToString()) & ChromaWhereOperator.Equal("sbyte", (sbyte)5);
 	var exact = client.WithMetadataValues(ChromaMetadataValues.Exact).GetCollectionClient(collectionClient.Collection);
-	var result = await exact.Get(where: where, include: ChromaGetInclude.Metadatas);
+	var result = await exact.GetAsync(where: where, include: ChromaGetInclude.Metadatas);
 	var metadata = result.FirstOrDefault()?.Metadata;
-	await collectionClient.Delete(["v"]);
+	await collectionClient.DeleteAsync(["v"]);
 	return Expect($"{result.Count} record, {metadata?.Count} values, guid {metadata?["guid"]}", result.Count == 1 && metadata?.Count == values.Count && Equals(metadata["guid"], guid.ToString()), $"1 record, {values.Count} values");
 });
-await Check("Count", async () => Expect((await collectionClient.Count()).ToString(), await collectionClient.Count() == 2, "2"));
+await Check("Count", async () => Expect((await collectionClient.CountAsync()).ToString(), await collectionClient.CountAsync() == 2, "2"));
 await Check("Get with filters", async () =>
 {
 	var where = ChromaWhereOperator.Equal("text", "x") & (ChromaWhereOperator.In("int", 1, 3) | ChromaWhereOperator.GreaterThan("double", 1.0));
-	var result = await collectionClient.Get(where: where, whereDocument: ChromaWhereDocumentOperator.Contains("fir"), include: ChromaGetInclude.Metadatas | ChromaGetInclude.Documents | ChromaGetInclude.Embeddings);
+	var result = await collectionClient.GetAsync(where: where, whereDocument: ChromaWhereDocumentOperator.Contains("fir"), include: ChromaGetInclude.Metadatas | ChromaGetInclude.Documents | ChromaGetInclude.Embeddings);
 	return Expect($"{string.Join(",", result.Select(x => x.Id))} {result.FirstOrDefault()?.Metadata?["bool"]}", result.Count == 1 && result[0].Id == "a", "a");
 });
 await Check("Query", async () =>
 {
-	var result = await collectionClient.Query(new ChromaQuery([new([1f, 0.1f, 0f])]) { NResults = 2, Include = ChromaQueryInclude.Distances | ChromaQueryInclude.Documents });
+	var result = await collectionClient.QueryAsync(new ChromaQuery([new([1f, 0.1f, 0f])]) { NResults = 2, Include = ChromaQueryInclude.Distances | ChromaQueryInclude.Documents });
 	return Expect($"{result[0][0].Id} {result[0][0].Distance}", result[0][0].Id == "a", "a first");
 });
 await Check("Exact metadata", async () =>
 {
 	var exact = client.WithMetadataValues(ChromaMetadataValues.Exact).GetCollectionClient(collectionClient.Collection);
-	await exact.Upsert(new ChromaRecords(["c"]) { Embeddings = [new([0f, 0f, 1f])], Metadatas = [new() { ["date"] = "2026-10-04" }] });
-	var value = (await exact.Get("c", include: ChromaGetInclude.Metadatas))?.Metadata?["date"];
+	await exact.UpsertAsync(new ChromaRecords(["c"]) { Embeddings = [new([0f, 0f, 1f])], Metadatas = [new() { ["date"] = "2026-10-04" }] });
+	var value = (await exact.GetAsync("c", include: ChromaGetInclude.Metadatas))?.Metadata?["date"];
 	return Expect($"{value?.GetType().Name} {value}", value is string, "a string");
 });
 await Check("Lists in metadata", async () =>
@@ -117,7 +117,7 @@ await Check("Lists in metadata", async () =>
 	{
 		try
 		{
-			await collectionClient.Add(records);
+			await collectionClient.AddAsync(records);
 			return "stored";
 		}
 		catch (ChromaException ex)
@@ -125,21 +125,21 @@ await Check("Lists in metadata", async () =>
 			return $"rejected on Chroma {version}: {ex.Message}";
 		}
 	}
-	await collectionClient.Add(records);
-	var result = await client.WithMetadataValues(ChromaMetadataValues.Exact).GetCollectionClient(collectionClient.Collection).Get(where: ChromaWhereOperator.Contains("tags", "red"), include: ChromaGetInclude.Metadatas);
+	await collectionClient.AddAsync(records);
+	var result = await client.WithMetadataValues(ChromaMetadataValues.Exact).GetCollectionClient(collectionClient.Collection).GetAsync(where: ChromaWhereOperator.Contains("tags", "red"), include: ChromaGetInclude.Metadatas);
 	var metadata = result.FirstOrDefault()?.Metadata;
 	return Expect($"{result.Count} records, {metadata?.Count} lists", result.Count == 1 && metadata?.Count == lists.Count && metadata.Values.All(x => x is List<object>), $"1 record, {lists.Count} lists");
 });
 await Check("Update and Delete", async () =>
 {
-	await collectionClient.Update(["a"], documents: ["first updated"]);
-	await collectionClient.Delete(["b"]);
-	return (await collectionClient.Peek()).Count.ToString();
+	await collectionClient.UpdateAsync(["a"], documents: ["first updated"]);
+	await collectionClient.DeleteAsync(["b"]);
+	return (await collectionClient.PeekAsync()).Count.ToString();
 });
 await Check("Modify", async () =>
 {
-	await collectionClient.Modify(metadata: new() { ["owner"] = "trimming2" });
-	return (await client.GetCollection(name)).Metadata?["owner"]?.ToString() ?? "null";
+	await collectionClient.ModifyAsync(metadata: new() { ["owner"] = "trimming2" });
+	return (await client.GetCollectionAsync(name)).Metadata?["owner"]?.ToString() ?? "null";
 });
 await Check("Filters as JSON", async () =>
 {
@@ -150,7 +150,7 @@ await Check("Missing collection", async () =>
 {
 	try
 	{
-		await client.GetCollection(name + "missing");
+		await client.GetCollectionAsync(name + "missing");
 		throw new Exception("no exception");
 	}
 	catch (ChromaException ex)
@@ -166,15 +166,15 @@ await Check("Tenants and databases", async () =>
 	var tenant = $"tenant{Guid.NewGuid():N}";
 	try
 	{
-		await client.CreateTenant(tenant);
+		await client.CreateTenantAsync(tenant);
 	}
 	catch (ChromaException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
 	{
 		// Chroma Cloud does not let a key create tenants.
 		return $"skipped: {ex.Message}";
 	}
-	await client.CreateDatabase("database", tenant: tenant);
-	return $"{(await client.GetTenant(tenant)).Name}/{(await client.GetDatabase("database", tenant: tenant)).Name}";
+	await client.CreateDatabaseAsync("database", tenant: tenant);
+	return $"{(await client.GetTenantAsync(tenant)).Name}/{(await client.GetDatabaseAsync("database", tenant: tenant)).Name}";
 });
 await Check("DependencyInjection", async () =>
 {
@@ -182,13 +182,13 @@ await Check("DependencyInjection", async () =>
 	services.AddChromaClient(_ => options);
 	services.AddKeyedChromaClient("k", _ => options);
 	using var provider = services.BuildServiceProvider();
-	await provider.GetRequiredKeyedService<ChromaClient>("k").Heartbeat();
-	return (await provider.GetRequiredService<ChromaClient>().Heartbeat()).NanosecondHeartbeat.ToString();
+	await provider.GetRequiredKeyedService<ChromaClient>("k").HeartbeatAsync();
+	return (await provider.GetRequiredService<ChromaClient>().HeartbeatAsync()).NanosecondHeartbeat.ToString();
 });
 await Check("DeleteCollection", async () =>
 {
-	await client.DeleteCollection(name);
-	return Expect((await client.CollectionExists(name)).ToString(), !await client.CollectionExists(name), "False");
+	await client.DeleteCollectionAsync(name);
+	return Expect((await client.CollectionExistsAsync(name)).ToString(), !await client.CollectionExistsAsync(name), "False");
 });
 
 Console.WriteLine(failures == 0 ? "ALL OK" : $"{failures} FAILED");

@@ -21,9 +21,9 @@ public class Base64AndLimitsTests
 	{
 		var handler = new Handler(WithBase64);
 		var client = Client(Options, handler);
-		await client.Add(["a"], embeddings: [Embedding]);
-		await client.Update(["a"], embeddings: [Embedding]);
-		await client.Upsert(["a"], embeddings: [Embedding]);
+		await client.AddAsync(["a"], embeddings: [Embedding]);
+		await client.UpdateAsync(["a"], embeddings: [Embedding]);
+		await client.UpsertAsync(["a"], embeddings: [Embedding]);
 		Assert.That(handler.Paths.Select(Last), Is.EqualTo(new[] { "pre-flight-checks", "add", "update", "upsert" }));
 		foreach (var body in handler.Bodies)
 		{
@@ -39,7 +39,7 @@ public class Base64AndLimitsTests
 	public async Task QueriesSendNumbers()
 	{
 		var handler = new Handler(WithBase64);
-		await Client(Options, handler).Query(Embedding);
+		await Client(Options, handler).QueryAsync(Embedding);
 		Assert.That(handler.Bodies.Single().GetProperty("query_embeddings")[0].GetRawText(), Is.EqualTo("[0.1,-2.5,3.25,1E-07]"));
 	}
 
@@ -51,7 +51,7 @@ public class Base64AndLimitsTests
 	public async Task NumbersWhereTheServerDoesNotDeclareIt(string? preFlightChecks)
 	{
 		var handler = new Handler(preFlightChecks);
-		await Client(Options, handler).Add(["a"], embeddings: [Embedding]);
+		await Client(Options, handler).AddAsync(["a"], embeddings: [Embedding]);
 		Assert.That(handler.Bodies.Single().GetProperty("embeddings")[0].GetRawText(), Is.EqualTo("[0.1,-2.5,3.25,1E-07]"));
 	}
 
@@ -60,7 +60,7 @@ public class Base64AndLimitsTests
 	public async Task NoPreFlightChecksWithoutEmbeddings()
 	{
 		var handler = new Handler(WithBase64);
-		await Client(Options.WithBatchSplitting(false), handler).Update(["a"], documents: ["d"]);
+		await Client(Options.WithBatchSplitting(false), handler).UpdateAsync(["a"], documents: ["d"]);
 		Assert.That(handler.Paths.Select(Last), Is.EqualTo(new[] { "update" }));
 	}
 
@@ -71,7 +71,7 @@ public class Base64AndLimitsTests
 	public async Task BatchesOfTheSmallerLimit(int maxBatchSize, string? preFlightChecks, int[] batches)
 	{
 		var handler = new Handler(preFlightChecks);
-		await Client(Options.WithBatchSplitting(maxBatchSize), handler).Add(["a", "b", "c", "d", "e"], embeddings: Enumerable.Repeat(Embedding, 5).ToList());
+		await Client(Options.WithBatchSplitting(maxBatchSize), handler).AddAsync(["a", "b", "c", "d", "e"], embeddings: Enumerable.Repeat(Embedding, 5).ToList());
 		Assert.That(handler.Bodies.Select(b => b.GetProperty("ids").GetArrayLength()), Is.EqualTo(batches));
 	}
 
@@ -100,7 +100,7 @@ public class Base64AndLimitsTests
 	public async Task ErrorTypeOfTheServer(HttpStatusCode statusCode, string body, string? errorType, string message)
 	{
 		using var httpClient = new HttpClient(new FixedHandler(statusCode, body));
-		var ex = Assert.ThrowsAsync<ChromaException>(() => new ChromaClient(Options, httpClient).GetCollection("c"));
+		var ex = Assert.ThrowsAsync<ChromaException>(() => new ChromaClient(Options, httpClient).GetCollectionAsync("c"));
 		Assert.That(ex!.ErrorType, Is.EqualTo(errorType));
 		Assert.That(ex.Message, Is.EqualTo(message));
 		await Task.CompletedTask;
@@ -115,11 +115,11 @@ public class Base64AndLimitsTests
 		var client = new ChromaClient(Options, httpClient);
 		if (expected is { } exists)
 		{
-			Assert.That(await client.CollectionExists("c"), Is.EqualTo(exists));
+			Assert.That(await client.CollectionExistsAsync("c"), Is.EqualTo(exists));
 		}
 		else
 		{
-			Assert.ThrowsAsync<ChromaException>(() => client.CollectionExists("c"));
+			Assert.ThrowsAsync<ChromaException>(() => client.CollectionExistsAsync("c"));
 		}
 	}
 
@@ -140,14 +140,14 @@ public class Base64AndLimitsTests
 		using var provider = services.BuildServiceProvider();
 		var plain = provider.GetRequiredService<ChromaClient>();
 		var keyed = provider.GetRequiredKeyedService<ChromaClient>("k");
-		await plain.Heartbeat();
-		await keyed.Heartbeat();
+		await plain.HeartbeatAsync();
+		await keyed.HeartbeatAsync();
 		Assert.That(headers, Is.EqualTo(new[] { "plain", "keyed" }));
 		// The timeout of 300 ms, not the 100 s of a default HttpClient.
 		foreach (var client in new[] { plain, keyed })
 		{
 			var watch = System.Diagnostics.Stopwatch.StartNew();
-			var timeout = Assert.ThrowsAsync<ChromaException>(() => client.GetVersion());
+			var timeout = Assert.ThrowsAsync<ChromaException>(() => client.GetVersionAsync());
 			Assert.That(timeout!.InnerException, Is.InstanceOf<TaskCanceledException>());
 			Assert.That(watch.Elapsed, Is.LessThan(TimeSpan.FromSeconds(10)));
 		}

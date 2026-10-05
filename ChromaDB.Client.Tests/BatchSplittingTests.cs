@@ -13,14 +13,14 @@ public class BatchSplittingTests : ChromaTestsBase
 		Assume.That(PreFlightChecksSupported, Is.True, "Chroma 0.4.10 has no pre-flight-checks, so the client does not know its limit.");
 		var options = TestMaxBatchSize is { } limit ? BaseConfigurationOptions.WithBatchSplitting(limit) : BaseConfigurationOptions.WithBatchSplitting();
 		var client = new ChromaClient(options, HttpClient);
-		var count = (await client.GetPreFlightChecks()).MaxBatchSize + 1;
-		var collectionClient = client.GetCollectionClient(await client.CreateCollection($"collection{Random.Shared.Next()}"));
+		var count = (await client.GetPreFlightChecksAsync()).MaxBatchSize + 1;
+		var collectionClient = client.GetCollectionClient(await client.CreateCollectionAsync($"collection{Random.Shared.Next()}"));
 		var ids = Enumerable.Range(0, count).Select(i => $"r{i}").ToList();
 
-		await collectionClient.Add(new ChromaRecords(ids) { Embeddings = Enumerable.Repeat(new ReadOnlyMemory<float>([0.5f, 0.5f]), count).ToList() });
-		Assert.That(await collectionClient.Count(), Is.EqualTo(count));
-		await collectionClient.Delete(ids);
-		Assert.That(await collectionClient.Count(), Is.EqualTo(0));
+		await collectionClient.AddAsync(new ChromaRecords(ids) { Embeddings = Enumerable.Repeat(new ReadOnlyMemory<float>([0.5f, 0.5f]), count).ToList() });
+		Assert.That(await collectionClient.CountAsync(), Is.EqualTo(count));
+		await collectionClient.DeleteAsync(ids);
+		Assert.That(await collectionClient.CountAsync(), Is.EqualTo(0));
 	}
 
 	// Get in pages of the batch size: all the records, a limit and an offset across pages, and ids beyond the batch size.
@@ -28,15 +28,15 @@ public class BatchSplittingTests : ChromaTestsBase
 	public async Task GetBeyondTheBatchSize()
 	{
 		var client = new ChromaClient(BaseConfigurationOptions.WithBatchSplitting(3), HttpClient);
-		var collectionClient = client.GetCollectionClient(await client.CreateCollection($"collection{Random.Shared.Next()}"));
+		var collectionClient = client.GetCollectionClient(await client.CreateCollectionAsync($"collection{Random.Shared.Next()}"));
 		var ids = Enumerable.Range(0, 7).Select(i => $"r{i}").ToList();
-		await collectionClient.Add(new ChromaRecords(ids) { Embeddings = Enumerable.Repeat(new ReadOnlyMemory<float>([0.5f, 0.5f]), 7).ToList() });
+		await collectionClient.AddAsync(new ChromaRecords(ids) { Embeddings = Enumerable.Repeat(new ReadOnlyMemory<float>([0.5f, 0.5f]), 7).ToList() });
 
-		var all = await collectionClient.Get();
+		var all = await collectionClient.GetAsync();
 		Assert.That(all.Select(x => x.Id), Is.EquivalentTo(ids));
-		var page = await collectionClient.Get(limit: 5, offset: 1);
+		var page = await collectionClient.GetAsync(limit: 5, offset: 1);
 		Assert.That(page.Select(x => x.Id), Is.EqualTo(all.Skip(1).Take(5).Select(x => x.Id)));
-		Assert.That((await collectionClient.Get(ids)).Select(x => x.Id), Is.EquivalentTo(ids));
+		Assert.That((await collectionClient.GetAsync(ids)).Select(x => x.Id), Is.EquivalentTo(ids));
 	}
 
 	// Chroma Cloud declares a max_batch_size of 1000 but takes 300 records per write: by default the client sends 300 at a time; with a
@@ -48,10 +48,10 @@ public class BatchSplittingTests : ChromaTestsBase
 		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has the quota of 300 records.");
 		var options = maxBatchSize is { } limit ? BaseConfigurationOptions.WithBatchSplitting(limit) : BaseConfigurationOptions;
 		var client = new ChromaClient(options, HttpClient);
-		var collectionClient = client.GetCollectionClient(await client.CreateCollection($"collection{Random.Shared.Next()}"));
+		var collectionClient = client.GetCollectionClient(await client.CreateCollectionAsync($"collection{Random.Shared.Next()}"));
 		var ids = Enumerable.Range(0, 301).Select(i => $"r{i}").ToList();
-		await collectionClient.Add(new ChromaRecords(ids) { Embeddings = Enumerable.Repeat(new ReadOnlyMemory<float>([0.5f, 0.5f]), 301).ToList() });
-		Assert.That(await collectionClient.Count(), Is.EqualTo(301));
-		Assert.That((await collectionClient.Get()).Count, Is.EqualTo(301));
+		await collectionClient.AddAsync(new ChromaRecords(ids) { Embeddings = Enumerable.Repeat(new ReadOnlyMemory<float>([0.5f, 0.5f]), 301).ToList() });
+		Assert.That(await collectionClient.CountAsync(), Is.EqualTo(301));
+		Assert.That((await collectionClient.GetAsync()).Count, Is.EqualTo(301));
 	}
 }

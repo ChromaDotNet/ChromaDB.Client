@@ -68,7 +68,7 @@ public class ChromaBm25Tests
 	{
 		var handler = new RecordingHandler();
 		var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
-		await client.CreateCollection(new ChromaCollectionDefinition("c") { Schema = new ChromaCollectionSchema().WithSparseVectorIndex("v", "#document", bm25: true, reference) });
+		await client.CreateCollectionAsync(new ChromaCollectionDefinition("c") { Schema = new ChromaCollectionSchema().WithSparseVectorIndex("v", "#document", bm25: true, reference) });
 		using var body = System.Text.Json.JsonDocument.Parse(handler.Body!);
 		return body.RootElement.GetProperty("schema").GetProperty("keys").GetProperty("v").GetProperty("sparse_vector").GetProperty("sparse_vector_index")
 			.GetProperty("config").GetProperty("embedding_function").GetRawText();

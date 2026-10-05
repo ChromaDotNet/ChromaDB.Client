@@ -10,14 +10,14 @@ public class CollectionClientCUDTests : ChromaTestsBase
 	public async Task AddJustIds()
 	{
 		var client = await Init();
-		await WithoutEmbeddings(() => client.Add([$"{Guid.NewGuid()}"]));
+		await WithoutEmbeddings(() => client.AddAsync([$"{Guid.NewGuid()}"]));
 	}
 
 	[Test]
 	public async Task AddWithEmbeddings()
 	{
 		var client = await Init();
-		await client.Add([$"{Guid.NewGuid()}"],
+		await client.AddAsync([$"{Guid.NewGuid()}"],
 			embeddings: [new([1f, 0.5f, 0f, -0.5f, -1f])]);
 	}
 
@@ -25,7 +25,7 @@ public class CollectionClientCUDTests : ChromaTestsBase
 	public async Task AddWithMetadatas()
 	{
 		var client = await Init();
-		await WithoutEmbeddings(() => client.Add([$"{Guid.NewGuid()}"],
+		await WithoutEmbeddings(() => client.AddAsync([$"{Guid.NewGuid()}"],
 			metadatas: [new Dictionary<string, object>
 			{
 				{ "key", "value" },
@@ -37,7 +37,7 @@ public class CollectionClientCUDTests : ChromaTestsBase
 	public async Task AddWithDocuments()
 	{
 		var client = await Init();
-		await WithoutEmbeddings(() => client.Add([$"{Guid.NewGuid()}"],
+		await WithoutEmbeddings(() => client.AddAsync([$"{Guid.NewGuid()}"],
 			documents: ["test"]));
 	}
 
@@ -45,7 +45,7 @@ public class CollectionClientCUDTests : ChromaTestsBase
 	public async Task AddWithAll()
 	{
 		var client = await Init();
-		await client.Add([$"{Guid.NewGuid()}"],
+		await client.AddAsync([$"{Guid.NewGuid()}"],
 			embeddings: [new([1f, 0.5f, 0f, -0.5f, -1f])],
 			metadatas: [new Dictionary<string, object>
 			{
@@ -61,8 +61,8 @@ public class CollectionClientCUDTests : ChromaTestsBase
 		var id = $"{Guid.NewGuid()}";
 
 		var client = await Init();
-		await client.Add([id], embeddings: Embeddings(1));
-		await client.Update([id]);
+		await client.AddAsync([id], embeddings: Embeddings(1));
+		await client.UpdateAsync([id]);
 	}
 
 	[Test]
@@ -71,8 +71,8 @@ public class CollectionClientCUDTests : ChromaTestsBase
 		var id = $"{Guid.NewGuid()}";
 
 		var client = await Init();
-		await client.Add([id], embeddings: Embeddings(1));
-		await client.Update([id],
+		await client.AddAsync([id], embeddings: Embeddings(1));
+		await client.UpdateAsync([id],
 			embeddings: [new([1f, 0.5f, 0f, -0.5f, -1f])]);
 	}
 
@@ -82,8 +82,8 @@ public class CollectionClientCUDTests : ChromaTestsBase
 		var id = $"{Guid.NewGuid()}";
 
 		var client = await Init();
-		await client.Add([id], embeddings: Embeddings(1));
-		await client.Update([id],
+		await client.AddAsync([id], embeddings: Embeddings(1));
+		await client.UpdateAsync([id],
 			metadatas: [new Dictionary<string, object>
 			{
 				{ "key", "value" },
@@ -97,8 +97,8 @@ public class CollectionClientCUDTests : ChromaTestsBase
 		var id = $"{Guid.NewGuid()}";
 
 		var client = await Init();
-		await client.Add([id], embeddings: Embeddings(1));
-		await client.Update([id],
+		await client.AddAsync([id], embeddings: Embeddings(1));
+		await client.UpdateAsync([id],
 			documents: ["test"]);
 	}
 
@@ -108,8 +108,8 @@ public class CollectionClientCUDTests : ChromaTestsBase
 		var id = $"{Guid.NewGuid()}";
 
 		var client = await Init();
-		await client.Add([id], embeddings: Embeddings(1));
-		await client.Update([id],
+		await client.AddAsync([id], embeddings: Embeddings(1));
+		await client.UpdateAsync([id],
 			embeddings: [new([1f, 0.5f, 0f, -0.5f, -1f])],
 			metadatas: [new Dictionary<string, object>
 			{
@@ -123,14 +123,14 @@ public class CollectionClientCUDTests : ChromaTestsBase
 	public async Task UpsertJustIds()
 	{
 		var client = await Init();
-		await WithoutEmbeddings(() => client.Upsert([$"{Guid.NewGuid()}"]));
+		await WithoutEmbeddings(() => client.UpsertAsync([$"{Guid.NewGuid()}"]));
 	}
 
 	[Test]
 	public async Task UpsertWithEmbeddings()
 	{
 		var client = await Init();
-		await client.Upsert([$"{Guid.NewGuid()}"],
+		await client.UpsertAsync([$"{Guid.NewGuid()}"],
 			embeddings: [new([1f, 0.5f, 0f, -0.5f, -1f])]);
 	}
 
@@ -138,7 +138,7 @@ public class CollectionClientCUDTests : ChromaTestsBase
 	public async Task UpsertWithMetadatas()
 	{
 		var client = await Init();
-		await WithoutEmbeddings(() => client.Upsert([$"{Guid.NewGuid()}"],
+		await WithoutEmbeddings(() => client.UpsertAsync([$"{Guid.NewGuid()}"],
 			metadatas: [new Dictionary<string, object>
 			{
 				{ "key", "value" },
@@ -150,7 +150,7 @@ public class CollectionClientCUDTests : ChromaTestsBase
 	public async Task UpsertWithDocuments()
 	{
 		var client = await Init();
-		await WithoutEmbeddings(() => client.Upsert([$"{Guid.NewGuid()}"],
+		await WithoutEmbeddings(() => client.UpsertAsync([$"{Guid.NewGuid()}"],
 			documents: ["test"]));
 	}
 
@@ -158,7 +158,7 @@ public class CollectionClientCUDTests : ChromaTestsBase
 	public async Task UpsertWithAll()
 	{
 		var client = await Init();
-		await client.Upsert([$"{Guid.NewGuid()}"],
+		await client.UpsertAsync([$"{Guid.NewGuid()}"],
 			embeddings: [new([1f, 0.5f, 0f, -0.5f, -1f])],
 			metadatas: [new Dictionary<string, object>
 			{
@@ -174,8 +174,8 @@ public class CollectionClientCUDTests : ChromaTestsBase
 		var id = $"{Guid.NewGuid()}";
 
 		var client = await Init();
-		await client.Add([id], embeddings: Embeddings(1));
-		await client.Delete([id]);
+		await client.AddAsync([id], embeddings: Embeddings(1));
+		await client.DeleteAsync([id]);
 	}
 
 	[Test]
@@ -184,7 +184,7 @@ public class CollectionClientCUDTests : ChromaTestsBase
 		var id = $"{Guid.NewGuid()}";
 
 		var client = await Init();
-		await client.Delete([id]);
+		await client.DeleteAsync([id]);
 	}
 
 	[Test]
@@ -194,8 +194,8 @@ public class CollectionClientCUDTests : ChromaTestsBase
 		var id2 = $"{Guid.NewGuid()}";
 
 		var client = await Init();
-		await client.Add([id1, id2], embeddings: Embeddings(2));
-		await client.Delete([id1, id2]);
+		await client.AddAsync([id1, id2], embeddings: Embeddings(2));
+		await client.DeleteAsync([id1, id2]);
 	}
 
 	[Test]
@@ -205,8 +205,8 @@ public class CollectionClientCUDTests : ChromaTestsBase
 		var id2 = $"{Guid.NewGuid()}";
 
 		var client = await Init();
-		await client.Add([id1], embeddings: Embeddings(1));
-		await client.Delete([id1, id2]);
+		await client.AddAsync([id1], embeddings: Embeddings(1));
+		await client.DeleteAsync([id1, id2]);
 	}
 
 	[Test]
@@ -216,7 +216,7 @@ public class CollectionClientCUDTests : ChromaTestsBase
 		var id2 = $"{Guid.NewGuid()}";
 
 		var client = await Init();
-		await client.Add([id1, id2],
+		await client.AddAsync([id1, id2],
 			embeddings: Embeddings(2),
 			metadatas: [new Dictionary<string, object>
 			{
@@ -224,7 +224,7 @@ public class CollectionClientCUDTests : ChromaTestsBase
 			{
 				{ "key", "value" },
 			}]);
-		await client.Delete([id1, id2],
+		await client.DeleteAsync([id1, id2],
 			where: ChromaWhereOperator.Equal("key", "value"));
 	}
 
@@ -235,10 +235,10 @@ public class CollectionClientCUDTests : ChromaTestsBase
 		var id2 = $"{Guid.NewGuid()}";
 
 		var client = await Init();
-		await client.Add([id1, id2],
+		await client.AddAsync([id1, id2],
 			embeddings: Embeddings(2),
 			documents: ["Doc1", "Doc2"]);
-		await client.Delete([id1, id2],
+		await client.DeleteAsync([id1, id2],
 			whereDocument: ChromaWhereDocumentOperator.Contains("2"));
 	}
 
@@ -247,7 +247,7 @@ public class CollectionClientCUDTests : ChromaTestsBase
 	{
 		Assume.That(EmbeddingDimensionsChecked, Is.True, "Before Chroma 0.5.20 the server accepts embeddings of different dimensions.");
 		var client = await Init();
-		var exception = Assert.ThrowsAsync<ChromaException>(() => client.Add(["a", "b"], embeddings: [new([1f, 2f]), new([1f, 2f, 3f])]));
+		var exception = Assert.ThrowsAsync<ChromaException>(() => client.AddAsync(["a", "b"], embeddings: [new([1f, 2f]), new([1f, 2f, 3f])]));
 		Assert.That(exception!.Message, Does.Contain("dimension").IgnoreCase.And.Not.Contain("{"));
 	}
 
@@ -256,12 +256,12 @@ public class CollectionClientCUDTests : ChromaTestsBase
 	{
 		Assume.That(UrisSupported, Is.True, "Chroma 0.4.15 and earlier do not return the URIs of the records.");
 		var client = await Init();
-		await client.Add(new ChromaRecords(["a", "b"]) { Embeddings = Embeddings(2), Uris = ["file://a", null] });
-		await client.Update(new ChromaRecords(["b"]) { Uris = ["file://b2"] });
-		await client.Upsert(new ChromaRecords(["c"]) { Embeddings = Embeddings(1), Uris = ["file://c"] });
-		var entries = await client.Get(["a", "b", "c"], include: ChromaGetInclude.Uris);
+		await client.AddAsync(new ChromaRecords(["a", "b"]) { Embeddings = Embeddings(2), Uris = ["file://a", null] });
+		await client.UpdateAsync(new ChromaRecords(["b"]) { Uris = ["file://b2"] });
+		await client.UpsertAsync(new ChromaRecords(["c"]) { Embeddings = Embeddings(1), Uris = ["file://c"] });
+		var entries = await client.GetAsync(["a", "b", "c"], include: ChromaGetInclude.Uris);
 		Assert.That(entries.ToDictionary(x => x.Id, x => x.Uri), Is.EquivalentTo(new Dictionary<string, string?> { ["a"] = "file://a", ["b"] = "file://b2", ["c"] = "file://c" }));
-		var nearest = await client.Query(new ReadOnlyMemory<float>([1f, 0.5f, 0f, -0.5f, -1f]), nResults: 3, include: ChromaQueryInclude.Uris);
+		var nearest = await client.QueryAsync(new ReadOnlyMemory<float>([1f, 0.5f, 0f, -0.5f, -1f]), nResults: 3, include: ChromaQueryInclude.Uris);
 		Assert.That(nearest.Select(x => x.Uri), Is.EquivalentTo(new[] { "file://a", "file://b2", "file://c" }));
 	}
 
@@ -271,7 +271,7 @@ public class CollectionClientCUDTests : ChromaTestsBase
 	{
 		Assume.That(UrisSupported, Is.False, "This server returns the URIs of the records.");
 		var client = await Init();
-		await Assert.ThatAsync(() => client.Get(include: ChromaGetInclude.Uris),
+		await Assert.ThatAsync(() => client.GetAsync(include: ChromaGetInclude.Uris),
 			Throws.InstanceOf<ChromaException>().With.Message.StartsWith("body.include.0").And.Message.Contains("documents"));
 	}
 
@@ -279,7 +279,7 @@ public class CollectionClientCUDTests : ChromaTestsBase
 	{
 		var name = $"collection{Random.Shared.Next()}";
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		var collection = await client.GetOrCreateCollection(name);
+		var collection = await client.GetOrCreateCollectionAsync(name);
 		return new ChromaCollectionClient(collection, BaseConfigurationOptions, HttpClient);
 	}
 }

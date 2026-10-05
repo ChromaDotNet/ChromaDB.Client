@@ -66,10 +66,10 @@ public class DependencyInjectionLifetimeTests
 			.SetHandlerLifetime(TimeSpan.FromSeconds(1));
 		using var provider = services.BuildServiceProvider();
 		var client = provider.GetRequiredService<ChromaClient>();
-		await client.Heartbeat();
-		await client.Heartbeat();
+		await client.HeartbeatAsync();
+		await client.HeartbeatAsync();
 		await Task.Delay(TimeSpan.FromSeconds(2));
-		await client.Heartbeat();
+		await client.HeartbeatAsync();
 		Assert.That(handlers, Is.EqualTo(new[] { 1, 1, 2 }));
 	}
 

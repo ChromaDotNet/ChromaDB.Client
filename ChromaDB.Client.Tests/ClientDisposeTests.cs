@@ -17,11 +17,11 @@ public class ClientDisposeTests
 		Assert.That(client.Options.Uri, Is.EqualTo(new ChromaConfigurationOptions("http://localhost:8000").Uri));
 		var collectionClient = client.GetCollectionClient(Guid.Parse("11111111-2222-3333-4444-555555555555"), "c");
 		client.WithMetadataValues(ChromaMetadataValues.Exact).Dispose();
-		await Assert.ThatAsync(() => client.Heartbeat(cancelled.Token), Throws.InstanceOf<OperationCanceledException>());
+		await Assert.ThatAsync(() => client.HeartbeatAsync(cancelled.Token), Throws.InstanceOf<OperationCanceledException>());
 
 		client.Dispose();
-		await Assert.ThatAsync(() => client.Heartbeat(cancelled.Token), Throws.InstanceOf<ChromaException>().With.InnerException.InstanceOf<ObjectDisposedException>());
-		await Assert.ThatAsync(() => collectionClient.Count(cancelled.Token), Throws.InstanceOf<ChromaException>().With.InnerException.InstanceOf<ObjectDisposedException>());
+		await Assert.ThatAsync(() => client.HeartbeatAsync(cancelled.Token), Throws.InstanceOf<ChromaException>().With.InnerException.InstanceOf<ObjectDisposedException>());
+		await Assert.ThatAsync(() => collectionClient.CountAsync(cancelled.Token), Throws.InstanceOf<ChromaException>().With.InnerException.InstanceOf<ObjectDisposedException>());
 	}
 
 	[Test]

@@ -16,7 +16,7 @@ public class SearchRequestsTests
 	public async Task SearchWithEverything()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, Empty));
-		await Client(server).Search(new ChromaSearch
+		await Client(server).SearchAsync(new ChromaSearch
 		{
 			Where = ChromaWhereOperator.GreaterThanOrEqual("year", 2021),
 			WhereDocument = ChromaWhereDocumentOperator.Contains("apple"),
@@ -41,7 +41,7 @@ public class SearchRequestsTests
 	public async Task SearchWithNothing()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, Empty));
-		await Client(server).Search(new ChromaSearch());
+		await Client(server).SearchAsync(new ChromaSearch());
 		Assert.That(server.Requests.Single().Body.GetRawText(), Is.EqualTo("""{"searches":[{"filter":null,"rank":null,"group_by":{},"limit":{"offset":0},"select":{"keys":[]}}]}"""));
 	}
 
@@ -50,7 +50,7 @@ public class SearchRequestsTests
 	public async Task SearchWithOneFilter()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, Empty));
-		await Client(server).Search(new ChromaSearch { WhereDocument = ChromaWhereDocumentOperator.Contains("a") | ChromaWhereDocumentOperator.Regex("^b") });
+		await Client(server).SearchAsync(new ChromaSearch { WhereDocument = ChromaWhereDocumentOperator.Contains("a") | ChromaWhereDocumentOperator.Regex("^b") });
 		Assert.That(server.Requests.Single().Body.GetProperty("searches")[0].GetProperty("filter").GetRawText(),
 			Is.EqualTo("""{"$or":[{"#document":{"$contains":"a"}},{"#document":{"$regex":"^b"}}]}"""));
 	}
@@ -108,7 +108,7 @@ public class SearchRequestsTests
 			{"ids":[["a","d"],["c"]],"documents":[["apple pie","apple juice"],null],"embeddings":[[[1.0,0.0],null],null],
 			"metadatas":[[{"category":"dessert"},{"category":"drink"}],null],"scores":[[0.0,0.5],null],"select":[["#document","#score","category"],[]]}
 			"""));
-		var results = await Client(server).Search([new ChromaSearch(), new ChromaSearch()]);
+		var results = await Client(server).SearchAsync([new ChromaSearch(), new ChromaSearch()]);
 		Assert.That(results.Select(x => x.Select(e => e.Id)), Is.EqualTo(new[] { new[] { "a", "d" }, new[] { "c" } }));
 		var first = results[0][0];
 		Assert.That((first.Document, first.Score, first.Metadata!["category"]), Is.EqualTo(("apple pie", 0f, (object)"dessert")));
@@ -124,10 +124,10 @@ public class SearchRequestsTests
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, Empty));
 		var client = Client(server);
-		await Assert.ThatAsync(() => client.Search([]), Throws.ArgumentException);
-		await Assert.ThatAsync(() => client.Search(new ChromaSearch { Offset = -1 }), Throws.InstanceOf<ArgumentOutOfRangeException>());
-		await Assert.ThatAsync(() => client.Search(new ChromaSearch { Limit = 0 }), Throws.InstanceOf<ArgumentOutOfRangeException>());
-		await Assert.ThatAsync(() => client.Search(new ChromaSearch { Ids = [] }), Throws.ArgumentException);
+		await Assert.ThatAsync(() => client.SearchAsync([]), Throws.ArgumentException);
+		await Assert.ThatAsync(() => client.SearchAsync(new ChromaSearch { Offset = -1 }), Throws.InstanceOf<ArgumentOutOfRangeException>());
+		await Assert.ThatAsync(() => client.SearchAsync(new ChromaSearch { Limit = 0 }), Throws.InstanceOf<ArgumentOutOfRangeException>());
+		await Assert.ThatAsync(() => client.SearchAsync(new ChromaSearch { Ids = [] }), Throws.ArgumentException);
 		Assert.That(server.Requests, Is.Empty);
 		Assert.That(() => new ChromaSearchGroupBy(ChromaSearchAggregate.MinK(1, ChromaSearchKeys.Score)), Throws.ArgumentException);
 		Assert.That(() => ChromaSearchAggregate.MaxK(0, ChromaSearchKeys.Score), Throws.InstanceOf<ArgumentOutOfRangeException>());

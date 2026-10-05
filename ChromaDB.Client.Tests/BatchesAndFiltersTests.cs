@@ -24,7 +24,7 @@ public class BatchesAndFiltersTests
 	public async Task OneRequestWithoutBatchSplitting()
 	{
 		var handler = new Handler("""{"max_batch_size":2}""");
-		await Client(Options.WithBatchSplitting(false), handler).Add(FiveRecords());
+		await Client(Options.WithBatchSplitting(false), handler).AddAsync(FiveRecords());
 		Assert.That(handler.Paths.Select(Last), Is.EqualTo(new[] { "pre-flight-checks", "add" }));
 		Assert.That(handler.Bodies.Single().GetProperty("ids").GetArrayLength(), Is.EqualTo(5));
 	}
@@ -34,7 +34,7 @@ public class BatchesAndFiltersTests
 	public async Task BatchesByDefault()
 	{
 		var handler = new Handler("""{"max_batch_size":2}""");
-		await Client(new ChromaConfigurationOptions("http://localhost:8000"), handler).Add(FiveRecords());
+		await Client(new ChromaConfigurationOptions("http://localhost:8000"), handler).AddAsync(FiveRecords());
 		Assert.That(handler.Bodies.Select(b => b.GetProperty("ids").GetArrayLength()), Is.EqualTo(new[] { 2, 2, 1 }));
 	}
 
@@ -42,7 +42,7 @@ public class BatchesAndFiltersTests
 	public async Task BatchesOfTheMaxBatchSize()
 	{
 		var handler = new Handler("""{"max_batch_size":2}""");
-		await Client(Options.WithBatchSplitting(), handler).Add(FiveRecords());
+		await Client(Options.WithBatchSplitting(), handler).AddAsync(FiveRecords());
 		Assert.That(handler.Paths.Select(Last), Is.EqualTo(new[] { "pre-flight-checks", "add", "add", "add" }));
 		Assert.That(handler.Bodies.Select(b => Strings(b, "ids")), Is.EqualTo(new[] { new[] { "a", "b" }, new[] { "c", "d" }, new[] { "e" } }));
 		Assert.That(handler.Bodies.Select(b => Strings(b, "documents")), Is.EqualTo(new[] { new[] { "1", "2" }, new[] { "3", "4" }, new[] { "5" } }));
@@ -57,9 +57,9 @@ public class BatchesAndFiltersTests
 	{
 		var handler = new Handler("""{"max_batch_size":2}""");
 		var client = Client(Options.WithBatchSplitting(), handler);
-		await client.Update(FiveRecords());
-		await client.Upsert(FiveRecords());
-		await client.Delete(["a", "b", "c"], where: ChromaWhereOperator.Equal("k", 1));
+		await client.UpdateAsync(FiveRecords());
+		await client.UpsertAsync(FiveRecords());
+		await client.DeleteAsync(["a", "b", "c"], where: ChromaWhereOperator.Equal("k", 1));
 		Assert.That(handler.Paths.Select(Last), Is.EqualTo(new[] { "pre-flight-checks", "update", "update", "update", "upsert", "upsert", "upsert", "delete", "delete" }));
 		Assert.That(handler.Bodies.Skip(6).Select(b => Strings(b, "ids")), Is.EqualTo(new[] { new[] { "a", "b" }, new[] { "c" } }));
 		Assert.That(handler.Bodies.Skip(6).Select(b => b.GetProperty("where").GetRawText()), Is.All.EqualTo("""{"k":{"$eq":1}}"""));
@@ -69,7 +69,7 @@ public class BatchesAndFiltersTests
 	public async Task OneRequestWithinTheLimit()
 	{
 		var handler = new Handler("""{"max_batch_size":5}""");
-		await Client(Options.WithBatchSplitting(), handler).Add(FiveRecords());
+		await Client(Options.WithBatchSplitting(), handler).AddAsync(FiveRecords());
 		Assert.That(handler.Paths.Select(Last), Is.EqualTo(new[] { "pre-flight-checks", "add" }));
 	}
 
@@ -78,7 +78,7 @@ public class BatchesAndFiltersTests
 	public async Task OneRequestWithoutPreFlightChecks()
 	{
 		var handler = new Handler(null);
-		await Client(Options.WithBatchSplitting(), handler).Add(FiveRecords());
+		await Client(Options.WithBatchSplitting(), handler).AddAsync(FiveRecords());
 		Assert.That(handler.Paths.Select(Last), Is.EqualTo(new[] { "pre-flight-checks", "add" }));
 		Assert.That(handler.Bodies.Single().GetProperty("ids").GetArrayLength(), Is.EqualTo(5));
 	}
@@ -88,7 +88,7 @@ public class BatchesAndFiltersTests
 	public async Task FailedBatchStops()
 	{
 		var handler = new Handler("""{"max_batch_size":2}""") { FailAt = 2 };
-		Assert.ThrowsAsync<ChromaException>(() => Client(Options.WithBatchSplitting(), handler).Add(FiveRecords()));
+		Assert.ThrowsAsync<ChromaException>(() => Client(Options.WithBatchSplitting(), handler).AddAsync(FiveRecords()));
 		Assert.That(handler.Paths.Select(Last), Is.EqualTo(new[] { "pre-flight-checks", "add", "add" }));
 	}
 
@@ -105,7 +105,7 @@ public class BatchesAndFiltersTests
 		Assert.That(whereDocument.ToString(), Is.EqualTo("""{"$or":[{"$contains":"foo"},{"$not_contains":"bar"}]}"""));
 
 		var handler = new Handler("""{"ids":[]}""");
-		await Client(Options, handler).Get(where: where, whereDocument: whereDocument);
+		await Client(Options, handler).GetAsync(where: where, whereDocument: whereDocument);
 		Assert.That(handler.Bodies.Single().GetProperty("where").GetRawText(), Is.EqualTo(where.ToString()));
 		Assert.That(handler.Bodies.Single().GetProperty("where_document").GetRawText(), Is.EqualTo(whereDocument.ToString()));
 	}

@@ -18,7 +18,7 @@ public class ConfigurationUriTests
 		var handler = new RecordingHandler();
 		using var httpClient = new HttpClient(handler);
 		var client = new ChromaClient(new ChromaConfigurationOptions(uri: uri), httpClient);
-		await client.Heartbeat();
+		await client.HeartbeatAsync();
 		Assert.That(handler.RequestUri?.AbsoluteUri, Is.EqualTo(expected));
 	}
 

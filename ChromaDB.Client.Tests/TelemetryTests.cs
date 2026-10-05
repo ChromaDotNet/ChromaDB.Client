@@ -17,7 +17,7 @@ public class TelemetryTests
 		var port = Port();
 		using var recorder = new Recorder(port);
 		var server = new FakeServer(_ => (HttpStatusCode.OK, "3"));
-		Assert.That(await CollectionClient(server, port, "articles").Count(), Is.EqualTo(3));
+		Assert.That(await CollectionClient(server, port, "articles").CountAsync(), Is.EqualTo(3));
 
 		var span = recorder.Spans.Single();
 		Assert.That((span.DisplayName, span.Kind, span.Status), Is.EqualTo(("count articles", ActivityKind.Client, ActivityStatusCode.Unset)));
@@ -43,7 +43,7 @@ public class TelemetryTests
 		var port = Port();
 		using var recorder = new Recorder(port);
 		var server = new FakeServer(_ => (HttpStatusCode.NotFound, """{"error":"NotFoundError","message":"Collection [articles] does not exist"}"""));
-		await Assert.ThatAsync(() => CollectionClient(server, port, "articles").Count(), Throws.InstanceOf<ChromaException>());
+		await Assert.ThatAsync(() => CollectionClient(server, port, "articles").CountAsync(), Throws.InstanceOf<ChromaException>());
 
 		var span = recorder.Spans.Single();
 		Assert.That(span.Status, Is.EqualTo(ActivityStatusCode.Error));
@@ -59,7 +59,7 @@ public class TelemetryTests
 		var port = Port();
 		using var recorder = new Recorder(port);
 		var server = new FakeServer(_ => throw new HttpRequestException("Connection refused"));
-		await Assert.ThatAsync(() => CollectionClient(server, port, "articles").Count(), Throws.InstanceOf<ChromaException>());
+		await Assert.ThatAsync(() => CollectionClient(server, port, "articles").CountAsync(), Throws.InstanceOf<ChromaException>());
 
 		var span = recorder.Spans.Single();
 		Assert.That(span.Status, Is.EqualTo(ActivityStatusCode.Error));
@@ -73,7 +73,7 @@ public class TelemetryTests
 		var port = Port();
 		using var recorder = new Recorder(port);
 		var server = new FakeServer(_ => (HttpStatusCode.NotFound, """{"error":"NotFoundError","message":"Collection [articles] does not exist"}"""));
-		Assert.That(await Client(server, port).CollectionExists("articles"), Is.False);
+		Assert.That(await Client(server, port).CollectionExistsAsync("articles"), Is.False);
 
 		var span = recorder.Spans.Single();
 		Assert.That((span.DisplayName, span.Status, span.GetTagItem("error.type")), Is.EqualTo(("collection_exists articles", ActivityStatusCode.Unset, (object?)null)));
@@ -89,10 +89,10 @@ public class TelemetryTests
 			: r.EndsWith("/databases") ? (HttpStatusCode.OK, "[]")
 			: (HttpStatusCode.OK, "{}"));
 		var client = Client(server, port);
-		await client.Heartbeat();
-		await client.ListDatabases("tenant1");
-		await client.CreateDatabase("database1", "tenant1");
-		await client.DeleteCollection("articles");
+		await client.HeartbeatAsync();
+		await client.ListDatabasesAsync("tenant1");
+		await client.CreateDatabaseAsync("database1", "tenant1");
+		await client.DeleteCollectionAsync("articles");
 
 		Assert.That(recorder.Spans.Select(x => (x.DisplayName, x.GetTagItem("db.namespace"))), Is.EqualTo(new (string, object?)[]
 		{

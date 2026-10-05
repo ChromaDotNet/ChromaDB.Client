@@ -4,7 +4,7 @@ namespace ChromaDB.Client.Models;
 
 /// <summary>
 /// A function of Chroma Cloud attached to a collection, which writes its results to an output collection.
-/// <c>AttachFunction</c> fills <c>Id</c>, <c>Name</c> and <c>FunctionName</c>; <c>GetAttachedFunction</c> fills the rest too.
+/// <c>AttachFunctionAsync</c> fills <c>Id</c>, <c>Name</c> and <c>FunctionName</c>; <c>GetAttachedFunctionAsync</c> fills the rest too.
 /// </summary>
 public class ChromaAttachedFunction
 {

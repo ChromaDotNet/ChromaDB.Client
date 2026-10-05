@@ -26,7 +26,7 @@ public class ChromaQuery
 	/// </summary>
 	public ChromaQueryInclude? Include { get; init; }
 	/// <summary>
-	/// Searches only the records with these ids. Chroma 0.x ignores them: then <c>Query</c> throws a
+	/// Searches only the records with these ids. Chroma 0.x ignores them: then <c>QueryAsync</c> throws a
 	/// <c>ChromaException</c>.
 	/// </summary>
 	public IReadOnlyList<string>? Ids { get; init; }

@@ -47,8 +47,8 @@ public class ChromaConfigurationOptions
 	/// </summary>
 	public ChromaMetadataValues MetadataValues { get; init; } = ChromaMetadataValues.Exact;
 	/// <summary>
-	/// Whether <c>Add</c>, <c>Update</c>, <c>Upsert</c> and <c>Delete</c> send their records in batches of the
-	/// <c>max_batch_size</c> of the server, and <c>Get</c> reads in pages of it; on by default.
+	/// Whether <c>AddAsync</c>, <c>UpdateAsync</c>, <c>UpsertAsync</c> and <c>DeleteAsync</c> send their records in batches of the
+	/// <c>max_batch_size</c> of the server, and <c>GetAsync</c> reads in pages of it; on by default.
 	/// </summary>
 	public bool BatchSplitting { get; init; } = true;
 	private readonly int? _maxBatchSize;
@@ -156,7 +156,7 @@ public class ChromaConfigurationOptions
 		=> new(this) { MetadataValues = metadataValues };
 
 	/// <summary>
-	/// <c>Add</c>, <c>Update</c>, <c>Upsert</c> and <c>Delete</c> send their records in batches of the <c>max_batch_size</c>
+	/// <c>AddAsync</c>, <c>UpdateAsync</c>, <c>UpsertAsync</c> and <c>DeleteAsync</c> send their records in batches of the <c>max_batch_size</c>
 	/// of the server, one request after the other, as by default. If a batch fails, the earlier ones stay written. With
 	/// <c>false</c> the records go in one request.
 	/// </summary>

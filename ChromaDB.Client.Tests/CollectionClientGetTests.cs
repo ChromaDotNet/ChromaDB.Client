@@ -10,7 +10,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetSingleIdIncludeNothing()
 	{
 		var client = await Init();
-		var result = await client.Get(Id1,
+		var result = await client.GetAsync(Id1,
 			include: ChromaGetInclude.None);
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result.Id, Is.EqualTo(Id1));
@@ -23,7 +23,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetSingleIdIncludeEmbeddings()
 	{
 		var client = await Init();
-		var result = await client.Get(Id1,
+		var result = await client.GetAsync(Id1,
 			include: ChromaGetInclude.Embeddings);
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result.Id, Is.EqualTo(Id1));
@@ -36,7 +36,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetSingleIdIncludeMetadatas()
 	{
 		var client = await Init();
-		var result = await client.Get(Id1,
+		var result = await client.GetAsync(Id1,
 			include: ChromaGetInclude.Metadatas);
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result.Id, Is.EqualTo(Id1));
@@ -49,7 +49,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetSingleIdIncludeDocuments()
 	{
 		var client = await Init();
-		var result = await client.Get(Id1,
+		var result = await client.GetAsync(Id1,
 			include: ChromaGetInclude.Documents);
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result.Id, Is.EqualTo(Id1));
@@ -62,7 +62,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetSingleIdIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Get(Id1,
+		var result = await client.GetAsync(Id1,
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result.Id, Is.EqualTo(Id1));
@@ -75,7 +75,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetMultipleIdsIncludeNothing()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			ids: [Id1, Id2],
 			include: ChromaGetInclude.None);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -93,7 +93,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetMultipleIdsIncludeEmbeddings()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			ids: [Id1, Id2],
 			include: ChromaGetInclude.Embeddings);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -111,7 +111,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetMultipleIdsIncludeMetadatas()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			ids: [Id1, Id2],
 			include: ChromaGetInclude.Metadatas);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -129,7 +129,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetMultipleIdsIncludeDocuments()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			ids: [Id1, Id2],
 			include: ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -147,7 +147,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetMultipleIdsIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			ids: [Id1, Id2],
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -165,7 +165,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetLimitIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			ids: [Id1, Id2],
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents,
 			limit: 1);
@@ -180,7 +180,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetLimitOffsetIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			ids: [Id1, Id2],
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents,
 			limit: 1,
@@ -196,7 +196,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetWhereEqualIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			where: ChromaWhereOperator.Equal(MetadataKey2, Metadata2[MetadataKey2]),
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
@@ -210,7 +210,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetWhereNotEqualIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			where: ChromaWhereOperator.NotEqual(MetadataKey2, Metadata1[MetadataKey2]),
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
@@ -224,7 +224,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetWhereInIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			where: ChromaWhereOperator.In(MetadataKey2, Metadata2[MetadataKey2]),
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
@@ -238,7 +238,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetWhereNotInIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			where: ChromaWhereOperator.NotIn(MetadataKey2, Metadata1[MetadataKey2]),
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
@@ -252,7 +252,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetWhereGreaterThanIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			where: ChromaWhereOperator.GreaterThan(MetadataKey2, Metadata1[MetadataKey2]),
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
@@ -266,7 +266,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetWhereLessThanIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			where: ChromaWhereOperator.LessThan(MetadataKey2, Metadata2[MetadataKey2]),
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
@@ -280,7 +280,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetWhereGreaterThanOrEqualIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			where: ChromaWhereOperator.GreaterThanOrEqual(MetadataKey2, Metadata2[MetadataKey2]),
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
@@ -294,7 +294,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetWhereLessThanOrEqualIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			where: ChromaWhereOperator.LessThanOrEqual(MetadataKey2, Metadata1[MetadataKey2]),
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
@@ -308,7 +308,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetWhereAndIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			where: ChromaWhereOperator.Equal(MetadataKey2, Metadata2[MetadataKey2]) && ChromaWhereOperator.NotEqual(MetadataKey2, Metadata1[MetadataKey2]),
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
@@ -322,7 +322,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetWhereOrIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			where: ChromaWhereOperator.Equal(MetadataKey2, Metadata2[MetadataKey2]) || ChromaWhereOperator.NotEqual(MetadataKey2, Metadata1[MetadataKey2]),
 			include: ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
@@ -336,7 +336,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	public async Task GetWhereDocumentContainsIncludeDocuments()
 	{
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			whereDocument: ChromaWhereDocumentOperator.Contains(Doc1[^1]),
 			include: ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
@@ -351,7 +351,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	{
 		Assume.That(CountCollectionsAndNotContainsSupported, Is.True, "Chroma 0.4.15 has no count_collections, no $not_contains filter and no tenant and database in the collections.");
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			whereDocument: ChromaWhereDocumentOperator.NotContains(Doc2[^1]),
 			include: ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
@@ -366,7 +366,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	{
 		Assume.That(CountCollectionsAndNotContainsSupported, Is.True, "Chroma 0.4.15 has no count_collections, no $not_contains filter and no tenant and database in the collections.");
 		var client = await Init();
-		var result = await client.Get(
+		var result = await client.GetAsync(
 			whereDocument: ChromaWhereDocumentOperator.Contains(Doc1) && ChromaWhereDocumentOperator.NotContains(Doc1) || ChromaWhereDocumentOperator.NotContains(Doc2),
 			include: ChromaGetInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(1));
@@ -399,9 +399,9 @@ public class CollectionClientGetTests : ChromaTestsBase
 	{
 		var name = $"collection{Random.Shared.Next()}";
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		var collection = await client.CreateCollection(name);
+		var collection = await client.CreateCollectionAsync(name);
 		var collectionClient = new ChromaCollectionClient(collection, BaseConfigurationOptions, HttpClient);
-		await collectionClient.Add([Id1, Id2],
+		await collectionClient.AddAsync([Id1, Id2],
 			embeddings: [Embeddings1, Embeddings2],
 			metadatas: [Metadata1, Metadata2],
 			documents: [Doc1, Doc2]);

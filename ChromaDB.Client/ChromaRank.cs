@@ -18,7 +18,7 @@ public abstract class ChromaRank
 
 	/// <summary>
 	/// The JSON of the expression, as the client sends it in <c>rank</c>. A text query of <c>SparseKnn</c> is in it as the text:
-	/// <c>ChromaCollectionClient.Search</c> sends its sparse vector instead.
+	/// <c>ChromaCollectionClient.SearchAsync</c> sends its sparse vector instead.
 	/// </summary>
 	public override string ToString()
 		=> System.Text.Json.JsonSerializer.Serialize(ToRank(), Common.HttpClientHelpers.TypeInfo<Dictionary<string, object>>(Common.HttpClientHelpers.PostJsonSerializerOptions));
@@ -39,9 +39,9 @@ public abstract class ChromaRank
 		=> new ChromaKnnRank(query, key, limit, defaultScore, returnRank);
 
 	/// <summary>
-	/// The same as <c>SparseKnn</c> with the sparse vector of a text, which <c>ChromaCollectionClient.Search</c> computes with the function
+	/// The same as <c>SparseKnn</c> with the sparse vector of a text, which <c>ChromaCollectionClient.SearchAsync</c> computes with the function
 	/// of the sparse vector index of the key, <c>chroma_bm25</c>, as the Python client of Chroma does. The collection of the client needs
-	/// its schema, as <c>GetCollection</c> and <c>CreateCollection</c> return it.
+	/// its schema, as <c>GetCollectionAsync</c> and <c>CreateCollectionAsync</c> return it.
 	/// </summary>
 	public static ChromaRank SparseKnn(string query, string key, int limit = 16, double? defaultScore = null, bool returnRank = false)
 		=> new ChromaKnnRank(query, key, limit, defaultScore, returnRank);

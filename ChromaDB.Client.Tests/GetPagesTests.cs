@@ -13,7 +13,7 @@ public class GetPagesTests
 	public async Task AllTheRecordsInPages()
 	{
 		var server = new Server(records: 7, cap: 3);
-		var entries = await Client(server, 3).Get();
+		var entries = await Client(server, 3).GetAsync();
 		Assert.That(entries.Select(x => x.Id), Is.EqualTo(Ids(0, 7)));
 		Assert.That(server.Pages, Is.EqualTo(new (int?, int?, int?)[] { (null, 3, 0), (null, 3, 3), (null, 3, 6) }));
 	}
@@ -23,7 +23,7 @@ public class GetPagesTests
 	public async Task OneRequestWithoutBatchSplitting()
 	{
 		var server = new Server(records: 7, cap: 3);
-		var entries = await new ChromaCollectionClient(Guid.Empty, "c", new ChromaConfigurationOptions("http://localhost:8000").WithBatchSplitting(false), new HttpClient(server)).Get();
+		var entries = await new ChromaCollectionClient(Guid.Empty, "c", new ChromaConfigurationOptions("http://localhost:8000").WithBatchSplitting(false), new HttpClient(server)).GetAsync();
 		Assert.That(entries.Select(x => x.Id), Is.EqualTo(Ids(0, 3)));
 		Assert.That(server.Pages, Is.EqualTo(new (int?, int?, int?)[] { (null, null, null) }));
 	}
@@ -33,7 +33,7 @@ public class GetPagesTests
 	public async Task FullLastPage()
 	{
 		var server = new Server(records: 6, cap: 3);
-		Assert.That((await Client(server, 3).Get()).Count, Is.EqualTo(6));
+		Assert.That((await Client(server, 3).GetAsync()).Count, Is.EqualTo(6));
 		Assert.That(server.Pages, Is.EqualTo(new (int?, int?, int?)[] { (null, 3, 0), (null, 3, 3), (null, 3, 6) }));
 	}
 
@@ -41,7 +41,7 @@ public class GetPagesTests
 	public async Task LimitAndOffsetInPages()
 	{
 		var server = new Server(records: 7, cap: 3);
-		var entries = await Client(server, 3).Get(limit: 5, offset: 1);
+		var entries = await Client(server, 3).GetAsync(limit: 5, offset: 1);
 		Assert.That(entries.Select(x => x.Id), Is.EqualTo(Ids(1, 5)));
 		Assert.That(server.Pages, Is.EqualTo(new (int?, int?, int?)[] { (null, 3, 1), (null, 2, 4) }));
 	}
@@ -51,12 +51,12 @@ public class GetPagesTests
 	public async Task IdsInBatches()
 	{
 		var server = new Server(records: 7, cap: 3);
-		var entries = await Client(server, 3).Get(Ids(0, 7));
+		var entries = await Client(server, 3).GetAsync(Ids(0, 7));
 		Assert.That(entries.Select(x => x.Id), Is.EqualTo(Ids(0, 7)));
 		Assert.That(server.Pages, Is.EqualTo(new (int?, int?, int?)[] { (3, null, null), (3, null, null), (1, null, null) }));
 
 		server.Pages.Clear();
-		entries = await Client(server, 3).Get(Ids(0, 7), limit: 2, offset: 4);
+		entries = await Client(server, 3).GetAsync(Ids(0, 7), limit: 2, offset: 4);
 		Assert.That(entries.Select(x => x.Id), Is.EqualTo(Ids(4, 2)));
 		Assert.That(server.Pages, Has.Count.EqualTo(3));
 	}
@@ -66,8 +66,8 @@ public class GetPagesTests
 	public async Task SmallReadsInOneRequest()
 	{
 		var server = new Server(records: 7, cap: 3);
-		await Client(server, 3).Get(limit: 3, offset: 2);
-		await Client(server, 3).Get(Ids(0, 3));
+		await Client(server, 3).GetAsync(limit: 3, offset: 2);
+		await Client(server, 3).GetAsync(Ids(0, 3));
 		Assert.That(server.Pages, Is.EqualTo(new (int?, int?, int?)[] { (null, 3, 2), (3, null, null) }));
 	}
 

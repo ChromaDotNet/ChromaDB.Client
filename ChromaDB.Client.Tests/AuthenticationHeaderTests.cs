@@ -57,10 +57,10 @@ public class AuthenticationHeaderTests
 		var first = new ChromaClient(Options.WithChromaToken("first"), httpClient);
 		var second = new ChromaClient(Options.WithChromaToken("second", ChromaTokenTransportHeader.Authorization), httpClient);
 		var third = new ChromaClient(Options, httpClient);
-		await first.Heartbeat();
-		await second.Heartbeat();
-		await third.Heartbeat();
-		await first.Heartbeat();
+		await first.HeartbeatAsync();
+		await second.HeartbeatAsync();
+		await third.HeartbeatAsync();
+		await first.HeartbeatAsync();
 		Assert.That(handler.Requests.Select(x => x.ChromaToken), Is.EqualTo(new[] { "first", null, null, "first" }));
 		Assert.That(handler.Requests.Select(x => x.Authorization), Is.EqualTo(new[] { null, "Bearer second", null, null }));
 	}
@@ -77,7 +77,7 @@ public class AuthenticationHeaderTests
 	{
 		var handler = new RecordingHandler();
 		using var httpClient = new HttpClient(handler);
-		await new ChromaClient(options, httpClient).Heartbeat();
+		await new ChromaClient(options, httpClient).HeartbeatAsync();
 		return handler.Requests;
 	}
 

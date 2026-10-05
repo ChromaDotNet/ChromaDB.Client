@@ -12,7 +12,7 @@ public class ResponseCompatibilityTests
 	public async Task GetWithoutUris()
 	{
 		var client = Client("""{"ids":["a"],"embeddings":null,"metadatas":[null],"documents":["first"]}""");
-		var result = await client.Get(["a"]);
+		var result = await client.GetAsync(["a"]);
 		Assert.That(result.Single().Id, Is.EqualTo("a"));
 		Assert.That(result.Single().Document, Is.EqualTo("first"));
 	}
@@ -21,7 +21,7 @@ public class ResponseCompatibilityTests
 	public async Task QueryWithoutUris()
 	{
 		var client = Client("""{"ids":[["a"]],"embeddings":null,"metadatas":[[null]],"documents":[["first"]],"distances":[[0.5]]}""");
-		var result = await client.Query(new ReadOnlyMemory<float>([1f, 0f]), nResults: 1);
+		var result = await client.QueryAsync(new ReadOnlyMemory<float>([1f, 0f]), nResults: 1);
 		Assert.That(result.Single().Id, Is.EqualTo("a"));
 		Assert.That(result.Single().Document, Is.EqualTo("first"));
 		Assert.That(result.Single().Distance, Is.EqualTo(0.5f));
@@ -31,7 +31,7 @@ public class ResponseCompatibilityTests
 	public async Task GetWithIdsOnly()
 	{
 		var client = Client("""{"ids":["a","b"]}""");
-		var result = await client.Get();
+		var result = await client.GetAsync();
 		Assert.That(result.Select(x => x.Id), Is.EqualTo(new[] { "a", "b" }));
 	}
 
@@ -39,7 +39,7 @@ public class ResponseCompatibilityTests
 	public async Task QueryWithIdsOnly()
 	{
 		var client = Client("""{"ids":[["a","b"]]}""");
-		var result = await client.Query(new ReadOnlyMemory<float>([1f, 0f]), nResults: 2);
+		var result = await client.QueryAsync(new ReadOnlyMemory<float>([1f, 0f]), nResults: 2);
 		Assert.That(result.Select(x => x.Id), Is.EqualTo(new[] { "a", "b" }));
 		Assert.That(result.Select(x => x.Distance), Has.All.Null);
 	}

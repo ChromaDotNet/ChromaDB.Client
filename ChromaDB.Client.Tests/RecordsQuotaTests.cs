@@ -16,8 +16,8 @@ public class RecordsQuotaTests
 	{
 		var server = new Server(quota: 3);
 		var client = Client(server, "http://localhost:8000");
-		await client.Add(Records(0, 7));
-		await client.Upsert(Records(7, 5));
+		await client.AddAsync(Records(0, 7));
+		await client.UpsertAsync(Records(7, 5));
 		Assert.That(server.Requests, Is.EqualTo(new[] { ("add", 7), ("add", 3), ("add", 3), ("add", 1), ("upsert", 3), ("upsert", 2) }));
 		Assert.That(server.Written, Is.EqualTo(Ids(0, 12)));
 	}
@@ -26,7 +26,7 @@ public class RecordsQuotaTests
 	public async Task DeleteInBatchesOfTheQuota()
 	{
 		var server = new Server(quota: 3);
-		await Client(server, "http://localhost:8000").Delete(Ids(0, 7));
+		await Client(server, "http://localhost:8000").DeleteAsync(Ids(0, 7));
 		Assert.That(server.Requests, Is.EqualTo(new[] { ("delete", 7), ("delete", 3), ("delete", 3), ("delete", 1) }));
 	}
 
@@ -36,7 +36,7 @@ public class RecordsQuotaTests
 	{
 		var server = new Server(quota: 3);
 		var client = new ChromaCollectionClient(Guid.Empty, "c", new ChromaConfigurationOptions("http://localhost:8000").WithBatchSplitting(false), new HttpClient(server));
-		await Assert.ThatAsync(() => client.Add(Records(0, 7)), Throws.InstanceOf<ChromaException>().With.Message.Contains("exceeds limit of 3"));
+		await Assert.ThatAsync(() => client.AddAsync(Records(0, 7)), Throws.InstanceOf<ChromaException>().With.Message.Contains("exceeds limit of 3"));
 		Assert.That(server.Requests, Is.EqualTo(new[] { ("add", 7) }));
 	}
 
@@ -45,7 +45,7 @@ public class RecordsQuotaTests
 	public async Task OtherQuotasAreErrors()
 	{
 		var server = new Server(quota: 3, quotaName: "Number of metadata keys");
-		await Assert.ThatAsync(() => Client(server, "http://localhost:8000").Add(Records(0, 7)), Throws.InstanceOf<ChromaException>());
+		await Assert.ThatAsync(() => Client(server, "http://localhost:8000").AddAsync(Records(0, 7)), Throws.InstanceOf<ChromaException>());
 		Assert.That(server.Requests, Is.EqualTo(new[] { ("add", 7) }));
 	}
 
@@ -54,7 +54,7 @@ public class RecordsQuotaTests
 	public async Task BatchesOf300OnChromaCloud()
 	{
 		var server = new Server(quota: 300);
-		await Client(server, "https://api.trychroma.com").Add(Records(0, 301));
+		await Client(server, "https://api.trychroma.com").AddAsync(Records(0, 301));
 		Assert.That(server.Requests, Is.EqualTo(new[] { ("add", 300), ("add", 1) }));
 	}
 

@@ -14,7 +14,7 @@ public class QueryIdsTests
 	public async Task QuerySendsIds()
 	{
 		var handler = new RecordingHandler("""{"ids":[["a"]]}""");
-		await Client(handler).Query(new ChromaQuery([Embedding]) { Ids = ["a", "c"] });
+		await Client(handler).QueryAsync(new ChromaQuery([Embedding]) { Ids = ["a", "c"] });
 		Assert.That(handler.Body.GetProperty("ids").EnumerateArray().Select(x => x.GetString()), Is.EqualTo(new[] { "a", "c" }));
 	}
 
@@ -22,7 +22,7 @@ public class QueryIdsTests
 	public async Task QueryWithoutIdsDoesNotSendThem()
 	{
 		var handler = new RecordingHandler("""{"ids":[["a"]]}""");
-		await Client(handler).Query(Embedding);
+		await Client(handler).QueryAsync(Embedding);
 		Assert.That(handler.Body.TryGetProperty("ids", out _), Is.False);
 	}
 
@@ -30,7 +30,7 @@ public class QueryIdsTests
 	public async Task QuerySendsTheOtherFields()
 	{
 		var handler = new RecordingHandler("""{"ids":[["a"]]}""");
-		await Client(handler).Query(new ChromaQuery([Embedding]) { NResults = 3, Where = ChromaWhereOperator.Equal("k", 1), WhereDocument = ChromaWhereDocumentOperator.Contains("x"), Include = ChromaQueryInclude.Documents });
+		await Client(handler).QueryAsync(new ChromaQuery([Embedding]) { NResults = 3, Where = ChromaWhereOperator.Equal("k", 1), WhereDocument = ChromaWhereDocumentOperator.Contains("x"), Include = ChromaQueryInclude.Documents });
 		Assert.That(handler.Body.GetProperty("n_results").GetInt32(), Is.EqualTo(3));
 		Assert.That(handler.Body.GetProperty("where").GetProperty("k").GetProperty("$eq").GetInt32(), Is.EqualTo(1));
 		Assert.That(handler.Body.GetProperty("where_document").GetProperty("$contains").GetString(), Is.EqualTo("x"));
@@ -42,14 +42,14 @@ public class QueryIdsTests
 	public async Task ResultOutsideTheIdsThrows()
 	{
 		var handler = new RecordingHandler("""{"ids":[["a"],["a","b"]]}""");
-		await Assert.ThatAsync(() => Client(handler).Query(new ChromaQuery([Embedding, Embedding]) { Ids = ["a", "c"] }), Throws.InstanceOf<ChromaException>().With.Message.Contains("outside the ids"));
+		await Assert.ThatAsync(() => Client(handler).QueryAsync(new ChromaQuery([Embedding, Embedding]) { Ids = ["a", "c"] }), Throws.InstanceOf<ChromaException>().With.Message.Contains("outside the ids"));
 	}
 
 	[Test]
 	public async Task ResultsAmongTheIdsAreReturned()
 	{
 		var handler = new RecordingHandler("""{"ids":[["c","a"]]}""");
-		var result = await Client(handler).Query(new ChromaQuery([Embedding]) { Ids = ["a", "c"] });
+		var result = await Client(handler).QueryAsync(new ChromaQuery([Embedding]) { Ids = ["a", "c"] });
 		Assert.That(result.Single().Select(x => x.Id), Is.EqualTo(new[] { "c", "a" }));
 	}
 
@@ -58,7 +58,7 @@ public class QueryIdsTests
 	public async Task EmptyIdsWithResultsThrows()
 	{
 		var handler = new RecordingHandler("""{"ids":[["a"]]}""");
-		await Assert.ThatAsync(() => Client(handler).Query(new ChromaQuery([Embedding]) { Ids = [] }), Throws.InstanceOf<ChromaException>());
+		await Assert.ThatAsync(() => Client(handler).QueryAsync(new ChromaQuery([Embedding]) { Ids = [] }), Throws.InstanceOf<ChromaException>());
 	}
 
 	static ChromaCollectionClient Client(HttpMessageHandler handler)

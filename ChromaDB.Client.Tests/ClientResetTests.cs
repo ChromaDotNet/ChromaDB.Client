@@ -14,7 +14,7 @@ public class ClientResetTests
 		public async Task ResetSimple()
 		{
 			var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-			await Assert.ThatAsync(() => client.Reset(), Throws.InstanceOf<ChromaException>().With.Message.StartsWith(IsChroma1 ? "Reset is disabled by config" : "Resetting is not allowed by this configuration"));
+			await Assert.ThatAsync(() => client.ResetAsync(), Throws.InstanceOf<ChromaException>().With.Message.StartsWith(IsChroma1 ? "Reset is disabled by config" : "Resetting is not allowed by this configuration"));
 		}
 	}
 
@@ -27,7 +27,7 @@ public class ClientResetTests
 		public async Task ResetSimple()
 		{
 			var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-			var result = await client.Reset();
+			var result = await client.ResetAsync();
 			Assert.That(result, Is.True);
 		}
 

@@ -71,14 +71,14 @@ public abstract class ChromaTestsBase
 			var client = new ChromaClient(WithServerCredentials(_baseConfigurationOptions), HttpClient);
 			if (TestTenant is not null)
 			{
-				await client.CreateTenant(TestTenant);
+				await client.CreateTenantAsync(TestTenant);
 				_baseConfigurationOptions = _baseConfigurationOptions.WithTenant(TestTenant);
 			}
 			// A new tenant has no databases: without CHROMA_TEST_DATABASE, the tests use a default_database created in it.
 			var database = TestDatabase ?? (TestTenant is not null ? "default_database" : null);
 			if (database is not null)
 			{
-				await client.CreateDatabase(database, tenant: TestTenant);
+				await client.CreateDatabaseAsync(database, tenant: TestTenant);
 				_baseConfigurationOptions = _baseConfigurationOptions.WithDatabase(database);
 			}
 		}
@@ -110,7 +110,7 @@ public abstract class ChromaTestsBase
 			IReadOnlyList<ChromaCollection> collections;
 			try
 			{
-				collections = await client.ListCollections(place.Key.Tenant, place.Key.Database);
+				collections = await client.ListCollectionsAsync(place.Key.Tenant, place.Key.Database);
 			}
 			catch (ChromaException)
 			{
@@ -119,14 +119,14 @@ public abstract class ChromaTestsBase
 			}
 			foreach (var collection in collections.Where(x => place.Contains(x.Id)))
 			{
-				await client.DeleteCollection(collection.Name, place.Key.Tenant, place.Key.Database);
+				await client.DeleteCollectionAsync(collection.Name, place.Key.Tenant, place.Key.Database);
 			}
 		}
 		foreach (var (tenant, name) in _created.Databases.Keys)
 		{
 			try
 			{
-				await client.DeleteDatabase(name, tenant);
+				await client.DeleteDatabaseAsync(name, tenant);
 			}
 			catch (ChromaException)
 			{

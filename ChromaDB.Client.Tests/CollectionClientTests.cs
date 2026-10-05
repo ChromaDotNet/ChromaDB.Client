@@ -10,7 +10,7 @@ public class CollectionClientTests : ChromaTestsBase
 	public async Task CountEmptyCollection()
 	{
 		var client = await Init();
-		var result = await client.Count();
+		var result = await client.CountAsync();
 		Assert.That(result, Is.EqualTo(0));
 	}
 
@@ -18,8 +18,8 @@ public class CollectionClientTests : ChromaTestsBase
 	public async Task CountNonEmptyCollection()
 	{
 		var client = await Init();
-		await client.Add([$"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}"], embeddings: Embeddings(6));
-		var result = await client.Count();
+		await client.AddAsync([$"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}"], embeddings: Embeddings(6));
+		var result = await client.CountAsync();
 		Assert.That(result, Is.EqualTo(6));
 	}
 
@@ -27,8 +27,8 @@ public class CollectionClientTests : ChromaTestsBase
 	public async Task PeekDefault()
 	{
 		var client = await Init();
-		await client.Add([$"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}"], embeddings: Embeddings(11));
-		var result = await client.Peek();
+		await client.AddAsync([$"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}"], embeddings: Embeddings(11));
+		var result = await client.PeekAsync();
 		Assert.That(result, Is.Not.Empty);
 	}
 
@@ -36,8 +36,8 @@ public class CollectionClientTests : ChromaTestsBase
 	public async Task PeekExplicitLimit()
 	{
 		var client = await Init();
-		await client.Add([$"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}"], embeddings: Embeddings(11));
-		var result = await client.Peek(
+		await client.AddAsync([$"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}", $"{Guid.NewGuid()}"], embeddings: Embeddings(11));
+		var result = await client.PeekAsync(
 			limit: 2);
 		Assert.That(result, Has.Count.EqualTo(2));
 	}
@@ -46,7 +46,7 @@ public class CollectionClientTests : ChromaTestsBase
 	public async Task ModifyCollectionName()
 	{
 		var client = await Init();
-		await client.Modify(
+		await client.ModifyAsync(
 			name: $"{client.Collection.Name}_modified");
 		var result = await GetCollection($"{client.Collection.Name}_modified");
 		Assert.That(result.Id, Is.EqualTo(client.Collection.Id));
@@ -62,7 +62,7 @@ public class CollectionClientTests : ChromaTestsBase
 		};
 
 		var client = await Init();
-		await client.Modify(
+		await client.ModifyAsync(
 			metadata: metadata);
 		var result = await GetCollection(client.Collection.Name);
 		Assert.That(result.Metadata, Is.Not.Null);
@@ -80,7 +80,7 @@ public class CollectionClientTests : ChromaTestsBase
 		};
 
 		var client = await Init();
-		await client.Modify(
+		await client.ModifyAsync(
 			name: $"{client.Collection.Name}_modified",
 			metadata: metadata);
 		var result = await GetCollection($"{client.Collection.Name}_modified");
@@ -94,10 +94,10 @@ public class CollectionClientTests : ChromaTestsBase
 	{
 		var name = $"collection{Random.Shared.Next()}";
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		var collection = await client.CreateCollection(name);
+		var collection = await client.CreateCollectionAsync(name);
 		return new ChromaCollectionClient(collection, BaseConfigurationOptions, HttpClient);
 	}
 
 	Task<ChromaCollection> GetCollection(string name)
-		=> new ChromaClient(BaseConfigurationOptions, HttpClient).GetCollection(name);
+		=> new ChromaClient(BaseConfigurationOptions, HttpClient).GetCollectionAsync(name);
 }

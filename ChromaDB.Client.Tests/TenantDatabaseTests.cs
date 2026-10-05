@@ -16,8 +16,8 @@ public class TenantDatabaseTests : ChromaTestsBase
 		var name = $"tenant{Random.Shared.Next()}";
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		await client.CreateTenant(name);
-		var result = await client.GetTenant(name);
+		await client.CreateTenantAsync(name);
+		var result = await client.GetTenantAsync(name);
 		Assert.That(result.Name, Is.EqualTo(name));
 	}
 
@@ -28,8 +28,8 @@ public class TenantDatabaseTests : ChromaTestsBase
 		var name = $"tenant{Random.Shared.Next()}";
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		await client.CreateTenant(name);
-		await Assert.ThatAsync(() => client.CreateTenant(name), Throws.InstanceOf<ChromaException>().With.Message.Contains("already exists"));
+		await client.CreateTenantAsync(name);
+		await Assert.ThatAsync(() => client.CreateTenantAsync(name), Throws.InstanceOf<ChromaException>().With.Message.Contains("already exists"));
 	}
 
 	[Test]
@@ -37,7 +37,7 @@ public class TenantDatabaseTests : ChromaTestsBase
 	{
 		Assume.That(OtherTenantsAndDatabasesTested, Is.True, "A server already running may not let the tests create or look up other tenants and databases.");
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		await Assert.ThatAsync(() => client.GetTenant($"tenant{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("not found"));
+		await Assert.ThatAsync(() => client.GetTenantAsync($"tenant{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("not found"));
 	}
 
 	[Test]
@@ -48,9 +48,9 @@ public class TenantDatabaseTests : ChromaTestsBase
 		var name = $"database{Random.Shared.Next()}";
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		await client.CreateTenant(tenant);
-		await client.CreateDatabase(name, tenant: tenant);
-		var result = await client.GetDatabase(name, tenant: tenant);
+		await client.CreateTenantAsync(tenant);
+		await client.CreateDatabaseAsync(name, tenant: tenant);
+		var result = await client.GetDatabaseAsync(name, tenant: tenant);
 		Assert.That(result.Name, Is.EqualTo(name));
 		Assert.That(result.Tenant, Is.EqualTo(tenant));
 	}
@@ -62,8 +62,8 @@ public class TenantDatabaseTests : ChromaTestsBase
 		var name = $"database{Random.Shared.Next()}";
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		await client.CreateDatabase(name);
-		var result = await client.GetDatabase(name);
+		await client.CreateDatabaseAsync(name);
+		var result = await client.GetDatabaseAsync(name);
 		Assert.That(result.Name, Is.EqualTo(name));
 		Assert.That(result.Tenant, Is.EqualTo(BaseConfigurationOptions.Tenant ?? "default_tenant"));
 	}
@@ -75,8 +75,8 @@ public class TenantDatabaseTests : ChromaTestsBase
 		var name = $"database{Random.Shared.Next()}";
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		await client.CreateDatabase(name);
-		await Assert.ThatAsync(() => client.CreateDatabase(name), Throws.InstanceOf<ChromaException>().With.Message.Contains("already exists"));
+		await client.CreateDatabaseAsync(name);
+		await Assert.ThatAsync(() => client.CreateDatabaseAsync(name), Throws.InstanceOf<ChromaException>().With.Message.Contains("already exists"));
 	}
 
 	[Test]
@@ -84,7 +84,7 @@ public class TenantDatabaseTests : ChromaTestsBase
 	{
 		Assume.That(OtherTenantsAndDatabasesTested, Is.True, "A server already running may not let the tests create or look up other tenants and databases.");
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		await Assert.ThatAsync(() => client.GetDatabase($"database{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("not found"));
+		await Assert.ThatAsync(() => client.GetDatabaseAsync($"database{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("not found"));
 	}
 
 	[Test]
@@ -95,12 +95,12 @@ public class TenantDatabaseTests : ChromaTestsBase
 		var tenant = $"tenant{Random.Shared.Next()}";
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		await client.CreateTenant(tenant);
+		await client.CreateTenantAsync(tenant);
 		foreach (var name in new[] { "db_b", "db_a", "db_c" })
 		{
-			await client.CreateDatabase(name, tenant: tenant);
+			await client.CreateDatabaseAsync(name, tenant: tenant);
 		}
-		var result = await client.ListDatabases(tenant: tenant);
+		var result = await client.ListDatabasesAsync(tenant: tenant);
 		Assert.That(result.Select(x => x.Name), Is.EqualTo(new[] { "db_a", "db_b", "db_c" }));
 		Assert.That(result.Select(x => x.Tenant), Is.All.EqualTo(tenant));
 	}
@@ -113,8 +113,8 @@ public class TenantDatabaseTests : ChromaTestsBase
 		var name = $"database{Random.Shared.Next()}";
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		await client.CreateDatabase(name);
-		var result = await client.ListDatabases();
+		await client.CreateDatabaseAsync(name);
+		var result = await client.ListDatabasesAsync();
 		Assert.That(result.Select(x => x.Name), Contains.Item(name));
 		Assert.That(result.Select(x => x.Tenant), Is.All.EqualTo(BaseConfigurationOptions.Tenant ?? "default_tenant"));
 	}
@@ -127,13 +127,13 @@ public class TenantDatabaseTests : ChromaTestsBase
 		var tenant = $"tenant{Random.Shared.Next()}";
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		await client.CreateTenant(tenant);
+		await client.CreateTenantAsync(tenant);
 		foreach (var name in new[] { "db_a", "db_b", "db_c" })
 		{
-			await client.CreateDatabase(name, tenant: tenant);
+			await client.CreateDatabaseAsync(name, tenant: tenant);
 		}
-		Assert.That((await client.ListDatabases(limit: 2, tenant: tenant)).Select(x => x.Name), Is.EqualTo(new[] { "db_a", "db_b" }));
-		Assert.That((await client.ListDatabases(limit: 2, offset: 2, tenant: tenant)).Select(x => x.Name), Is.EqualTo(new[] { "db_c" }));
+		Assert.That((await client.ListDatabasesAsync(limit: 2, tenant: tenant)).Select(x => x.Name), Is.EqualTo(new[] { "db_a", "db_b" }));
+		Assert.That((await client.ListDatabasesAsync(limit: 2, offset: 2, tenant: tenant)).Select(x => x.Name), Is.EqualTo(new[] { "db_c" }));
 	}
 
 	[Test]
@@ -144,12 +144,12 @@ public class TenantDatabaseTests : ChromaTestsBase
 		var tenant = $"tenant{Random.Shared.Next()}";
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		await client.CreateTenant(tenant);
-		await client.CreateDatabase("db_a", tenant: tenant);
-		await client.CreateDatabase("db_b", tenant: tenant);
-		await client.DeleteDatabase("db_a", tenant: tenant);
-		Assert.That((await client.ListDatabases(tenant: tenant)).Select(x => x.Name), Is.EqualTo(new[] { "db_b" }));
-		await Assert.ThatAsync(() => client.GetDatabase("db_a", tenant: tenant), Throws.InstanceOf<ChromaException>().With.Message.Contains("not found"));
+		await client.CreateTenantAsync(tenant);
+		await client.CreateDatabaseAsync("db_a", tenant: tenant);
+		await client.CreateDatabaseAsync("db_b", tenant: tenant);
+		await client.DeleteDatabaseAsync("db_a", tenant: tenant);
+		Assert.That((await client.ListDatabasesAsync(tenant: tenant)).Select(x => x.Name), Is.EqualTo(new[] { "db_b" }));
+		await Assert.ThatAsync(() => client.GetDatabaseAsync("db_a", tenant: tenant), Throws.InstanceOf<ChromaException>().With.Message.Contains("not found"));
 	}
 
 	[Test]
@@ -159,7 +159,7 @@ public class TenantDatabaseTests : ChromaTestsBase
 		Assume.That(DatabaseListingSupported, Is.True, "Only the v2 API of Chroma 0.6.3 and later deletes databases.");
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		await Assert.ThatAsync(() => client.DeleteDatabase($"database{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("not found"));
+		await Assert.ThatAsync(() => client.DeleteDatabaseAsync($"database{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("not found"));
 	}
 
 	// The older servers answer 405 Method Not Allowed: the client reports it with a ChromaException.
@@ -170,10 +170,10 @@ public class TenantDatabaseTests : ChromaTestsBase
 		var name = $"database{Random.Shared.Next()}";
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		await client.CreateDatabase(name);
-		await Assert.ThatAsync(() => client.ListDatabases(), Throws.InstanceOf<ChromaException>().With.Message.StartsWith("Method Not Allowed: GET "));
-		await Assert.ThatAsync(() => client.DeleteDatabase(name), Throws.InstanceOf<ChromaException>().With.Message.StartsWith("Method Not Allowed: DELETE "));
-		Assert.That((await client.GetDatabase(name)).Name, Is.EqualTo(name));
+		await client.CreateDatabaseAsync(name);
+		await Assert.ThatAsync(() => client.ListDatabasesAsync(), Throws.InstanceOf<ChromaException>().With.Message.StartsWith("Method Not Allowed: GET "));
+		await Assert.ThatAsync(() => client.DeleteDatabaseAsync(name), Throws.InstanceOf<ChromaException>().With.Message.StartsWith("Method Not Allowed: DELETE "));
+		Assert.That((await client.GetDatabaseAsync(name)).Name, Is.EqualTo(name));
 	}
 
 	[Test]
@@ -186,21 +186,21 @@ public class TenantDatabaseTests : ChromaTestsBase
 		var name = $"collection{Random.Shared.Next()}";
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		await client.CreateTenant(tenant);
-		await client.CreateDatabase(database, tenant: tenant);
+		await client.CreateTenantAsync(tenant);
+		await client.CreateDatabaseAsync(database, tenant: tenant);
 		var options = BaseConfigurationOptions.WithTenant(tenant).WithDatabase(database);
-		var collection = await new ChromaClient(options, HttpClient).CreateCollection(name);
+		var collection = await new ChromaClient(options, HttpClient).CreateCollectionAsync(name);
 		Assert.That(collection.Tenant, Is.EqualTo(tenant));
 		Assert.That(collection.Database, Is.EqualTo(database));
 
 		var collectionClient = new ChromaCollectionClient(collection, options, HttpClient);
-		await collectionClient.Add(["a", "b"], embeddings: [new([1f, 0f]), new([0f, 1f])], documents: ["first", "second"]);
-		Assert.That((await collectionClient.Get("a"))?.Document, Is.EqualTo("first"));
-		Assert.That((await collectionClient.Query(new ReadOnlyMemory<float>([1f, 0.1f]), nResults: 1)).Single().Id, Is.EqualTo("a"));
-		await collectionClient.Delete(["a"]);
-		Assert.That(await collectionClient.Count(), Is.EqualTo(1));
+		await collectionClient.AddAsync(["a", "b"], embeddings: [new([1f, 0f]), new([0f, 1f])], documents: ["first", "second"]);
+		Assert.That((await collectionClient.GetAsync("a"))?.Document, Is.EqualTo("first"));
+		Assert.That((await collectionClient.QueryAsync(new ReadOnlyMemory<float>([1f, 0.1f]), nResults: 1)).Single().Id, Is.EqualTo("a"));
+		await collectionClient.DeleteAsync(["a"]);
+		Assert.That(await collectionClient.CountAsync(), Is.EqualTo(1));
 
-		Assert.That((await client.ListCollections()).Select(x => x.Name), Does.Not.Contain(name));
-		Assert.That((await client.ListCollections(tenant: tenant, database: database)).Select(x => x.Name), Contains.Item(name));
+		Assert.That((await client.ListCollectionsAsync()).Select(x => x.Name), Does.Not.Contain(name));
+		Assert.That((await client.ListCollectionsAsync(tenant: tenant, database: database)).Select(x => x.Name), Contains.Item(name));
 	}
 }

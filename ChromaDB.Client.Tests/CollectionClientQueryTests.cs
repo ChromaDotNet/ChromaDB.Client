@@ -13,7 +13,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task SimpleQuerySingle()
 	{
 		var client = await Init();
-		var result = await client.Query(Embeddings1,
+		var result = await client.QueryAsync(Embeddings1,
 			include: ChromaQueryInclude.Distances | ChromaQueryInclude.Embeddings);
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -30,7 +30,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task SimpleQuerySingleIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Query(Embeddings1,
+		var result = await client.QueryAsync(Embeddings1,
 			include: ChromaQueryInclude.Distances | ChromaQueryInclude.Embeddings | ChromaQueryInclude.Metadatas | ChromaQueryInclude.Documents);
 		Assert.That(result, Is.Not.Null);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -47,7 +47,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task SimpleQuerySingleWithoutDistances()
 	{
 		var client = await Init();
-		var result = await client.Query(Embeddings1,
+		var result = await client.QueryAsync(Embeddings1,
 			include: ChromaQueryInclude.Embeddings);
 		Assert.That(result, Has.Count.EqualTo(2));
 		Assert.That(result.Select(x => x.Distance), Has.All.Null);
@@ -57,7 +57,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task SimpleQueryMultiple()
 	{
 		var client = await Init();
-		var result = await client.Query([Embeddings1, Embeddings2],
+		var result = await client.QueryAsync([Embeddings1, Embeddings2],
 			include: ChromaQueryInclude.Distances | ChromaQueryInclude.Embeddings);
 		Assert.That(result, Has.Count.EqualTo(2));
 		Assert.That(result[0], Has.Count.EqualTo(2));
@@ -82,7 +82,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task SimpleQueryMultipleIncludeAll()
 	{
 		var client = await Init();
-		var result = await client.Query([Embeddings1, Embeddings2],
+		var result = await client.QueryAsync([Embeddings1, Embeddings2],
 			include: ChromaQueryInclude.Distances | ChromaQueryInclude.Embeddings | ChromaQueryInclude.Metadatas | ChromaQueryInclude.Documents);
 		Assert.That(result, Has.Count.EqualTo(2));
 		Assert.That(result[0], Has.Count.EqualTo(2));
@@ -107,7 +107,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task QuerySingleNResults1()
 	{
 		var client = await Init();
-		var result = await client.Query(Embeddings1,
+		var result = await client.QueryAsync(Embeddings1,
 			include: ChromaQueryInclude.Distances | ChromaQueryInclude.Embeddings,
 			nResults: 1);
 		Assert.That(result, Is.Not.Null);
@@ -122,7 +122,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task QueryWithWhereEqual()
 	{
 		var client = await Init();
-		var result = await client.Query([Embeddings1, Embeddings2],
+		var result = await client.QueryAsync([Embeddings1, Embeddings2],
 			where: ChromaWhereOperator.Equal(MetadataKey2, Metadata1[MetadataKey2]),
 			include: ChromaQueryInclude.Distances);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -144,7 +144,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task QueryWithWhereNotEqual()
 	{
 		var client = await Init();
-		var result = await client.Query([Embeddings1, Embeddings2],
+		var result = await client.QueryAsync([Embeddings1, Embeddings2],
 			where: ChromaWhereOperator.NotEqual(MetadataKey2, Metadata2[MetadataKey2]),
 			include: ChromaQueryInclude.Distances);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -166,7 +166,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task QueryWithWhereIn()
 	{
 		var client = await Init();
-		var result = await client.Query([Embeddings1, Embeddings2],
+		var result = await client.QueryAsync([Embeddings1, Embeddings2],
 			where: ChromaWhereOperator.In(MetadataKey2, Metadata1[MetadataKey2]),
 			include: ChromaQueryInclude.Distances);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -188,7 +188,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task QueryWithWhereNotIn()
 	{
 		var client = await Init();
-		var result = await client.Query([Embeddings1, Embeddings2],
+		var result = await client.QueryAsync([Embeddings1, Embeddings2],
 			where: ChromaWhereOperator.NotIn(MetadataKey2, Metadata2[MetadataKey2]),
 			include: ChromaQueryInclude.Distances);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -210,7 +210,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task QueryWithWhereGreaterThan()
 	{
 		var client = await Init();
-		var result = await client.Query([Embeddings1, Embeddings2],
+		var result = await client.QueryAsync([Embeddings1, Embeddings2],
 			where: ChromaWhereOperator.GreaterThan(MetadataKey2, Metadata1[MetadataKey2]),
 			include: ChromaQueryInclude.Distances);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -232,7 +232,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task QueryWithWhereLessThan()
 	{
 		var client = await Init();
-		var result = await client.Query([Embeddings1, Embeddings2],
+		var result = await client.QueryAsync([Embeddings1, Embeddings2],
 			where: ChromaWhereOperator.LessThan(MetadataKey2, Metadata2[MetadataKey2]),
 			include: ChromaQueryInclude.Distances);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -254,7 +254,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task QueryWithWhereGreaterThanOrEqual()
 	{
 		var client = await Init();
-		var result = await client.Query([Embeddings1, Embeddings2],
+		var result = await client.QueryAsync([Embeddings1, Embeddings2],
 			where: ChromaWhereOperator.GreaterThanOrEqual(MetadataKey2, Metadata2[MetadataKey2]),
 			include: ChromaQueryInclude.Distances);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -276,7 +276,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task QueryWithWhereLessThanOrEqual()
 	{
 		var client = await Init();
-		var result = await client.Query([Embeddings1, Embeddings2],
+		var result = await client.QueryAsync([Embeddings1, Embeddings2],
 			where: ChromaWhereOperator.LessThanOrEqual(MetadataKey2, Metadata1[MetadataKey2]),
 			include: ChromaQueryInclude.Distances);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -298,7 +298,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task QueryWithWhereAndOr()
 	{
 		var client = await Init();
-		var result = await client.Query([Embeddings1, Embeddings2],
+		var result = await client.QueryAsync([Embeddings1, Embeddings2],
 			where: ChromaWhereOperator.Equal(MetadataKey2, Metadata1[MetadataKey2]) && ChromaWhereOperator.NotEqual(MetadataKey2, Metadata1[MetadataKey2]) || ChromaWhereOperator.NotEqual(MetadataKey2, Metadata2[MetadataKey2]),
 			include: ChromaQueryInclude.Distances);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -320,7 +320,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	public async Task QueryWithWhereDocumentContains()
 	{
 		var client = await Init();
-		var result = await client.Query([Embeddings1, Embeddings2],
+		var result = await client.QueryAsync([Embeddings1, Embeddings2],
 			whereDocument: ChromaWhereDocumentOperator.Contains(Doc1[^1]),
 			include: ChromaQueryInclude.Distances);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -343,7 +343,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	{
 		Assume.That(CountCollectionsAndNotContainsSupported, Is.True, "Chroma 0.4.15 has no count_collections, no $not_contains filter and no tenant and database in the collections.");
 		var client = await Init();
-		var result = await client.Query([Embeddings1, Embeddings2],
+		var result = await client.QueryAsync([Embeddings1, Embeddings2],
 			whereDocument: ChromaWhereDocumentOperator.NotContains(Doc2[^1]),
 			include: ChromaQueryInclude.Distances);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -366,7 +366,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	{
 		Assume.That(CountCollectionsAndNotContainsSupported, Is.True, "Chroma 0.4.15 has no count_collections, no $not_contains filter and no tenant and database in the collections.");
 		var client = await Init();
-		var result = await client.Query([Embeddings1, Embeddings2],
+		var result = await client.QueryAsync([Embeddings1, Embeddings2],
 			whereDocument: ChromaWhereDocumentOperator.Contains(Doc1) && ChromaWhereDocumentOperator.NotContains(Doc1) || ChromaWhereDocumentOperator.NotContains(Doc2),
 			include: ChromaQueryInclude.Distances);
 		Assert.That(result, Has.Count.EqualTo(2));
@@ -392,10 +392,10 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		if (!IdsInQuerySupported)
 		{
 			// The server searches all the records, and Id1 is the nearest to Embeddings1.
-			await Assert.ThatAsync(() => client.Query(query), Throws.InstanceOf<ChromaException>().With.Message.Contains("outside the ids"));
+			await Assert.ThatAsync(() => client.QueryAsync(query), Throws.InstanceOf<ChromaException>().With.Message.Contains("outside the ids"));
 			return;
 		}
-		var result = await client.Query(query);
+		var result = await client.QueryAsync(query);
 		Assert.That(result, Has.Count.EqualTo(2));
 		Assert.That(result[0].Select(x => x.Id), Is.EquivalentTo(new[] { Id2, Id3 }));
 		Assert.That(result[1].Select(x => x.Id), Is.EquivalentTo(new[] { Id2, Id3 }));
@@ -408,7 +408,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	{
 		Assume.That(IdsInQuerySupported, Is.True, "Chroma 0.6.3 and earlier ignore the ids of a query.");
 		var client = await Init(withThird: true);
-		var result = await client.Query(new ChromaQuery([Embeddings1]) { Ids = [Id2, Id3], NResults = 1 });
+		var result = await client.QueryAsync(new ChromaQuery([Embeddings1]) { Ids = [Id2, Id3], NResults = 1 });
 		Assert.That(result.Single().Select(x => x.Id), Is.EqualTo(new[] { Id3 }));
 	}
 
@@ -417,7 +417,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	{
 		Assume.That(IdsInQuerySupported, Is.True, "Chroma 0.6.3 and earlier ignore the ids of a query.");
 		var client = await Init(withThird: true);
-		var result = await client.Query(new ChromaQuery([Embeddings1]) { Ids = [Id1, Id3], Where = ChromaWhereOperator.Equal(MetadataKey2, Metadata2[MetadataKey2]) });
+		var result = await client.QueryAsync(new ChromaQuery([Embeddings1]) { Ids = [Id1, Id3], Where = ChromaWhereOperator.Equal(MetadataKey2, Metadata2[MetadataKey2]) });
 		Assert.That(result.Single().Select(x => x.Id), Is.EqualTo(new[] { Id3 }));
 	}
 
@@ -428,10 +428,10 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		var query = new ChromaQuery([Embeddings1]) { Ids = [] };
 		if (!IdsInQuerySupported)
 		{
-			await Assert.ThatAsync(() => client.Query(query), Throws.InstanceOf<ChromaException>().With.Message.Contains("outside the ids"));
+			await Assert.ThatAsync(() => client.QueryAsync(query), Throws.InstanceOf<ChromaException>().With.Message.Contains("outside the ids"));
 			return;
 		}
-		Assert.That((await client.Query(query)).Single(), Is.Empty);
+		Assert.That((await client.QueryAsync(query)).Single(), Is.Empty);
 	}
 
 	// Chroma 1.x answers 500 "Error finding id" when an id of the query does not exist; Chroma 0.x ignores the ids.
@@ -440,7 +440,7 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	{
 		Assume.That(RunningServer, Is.False, "On a server already running the answer may differ: Chroma Cloud leaves out the ids that do not exist.");
 		var client = await Init(withThird: true);
-		await Assert.ThatAsync(() => client.Query(new ChromaQuery([Embeddings1]) { Ids = [Id1, "missing"] }),
+		await Assert.ThatAsync(() => client.QueryAsync(new ChromaQuery([Embeddings1]) { Ids = [Id1, "missing"] }),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains(IdsInQuerySupported ? "Error finding id" : "outside the ids"));
 	}
 
@@ -470,15 +470,15 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	{
 		var name = $"collection{Random.Shared.Next()}";
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		var collection = await client.CreateCollection(name);
+		var collection = await client.CreateCollectionAsync(name);
 		var collectionClient = new ChromaCollectionClient(collection, BaseConfigurationOptions, HttpClient);
-		await collectionClient.Add([Id1, Id2],
+		await collectionClient.AddAsync([Id1, Id2],
 			embeddings: [Embeddings1, Embeddings2],
 			metadatas: [Metadata1, Metadata2],
 			documents: [Doc1, Doc2]);
 		if (withThird)
 		{
-			await collectionClient.Add([Id3], embeddings: [Embeddings3], metadatas: [Metadata2], documents: [Doc2]);
+			await collectionClient.AddAsync([Id3], embeddings: [Embeddings3], metadatas: [Metadata2], documents: [Doc2]);
 		}
 		return collectionClient;
 	}

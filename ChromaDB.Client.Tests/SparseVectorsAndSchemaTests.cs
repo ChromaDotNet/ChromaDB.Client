@@ -56,7 +56,7 @@ public class SparseVectorsAndSchemaTests
 			var path when path.EndsWith("/add") => (HttpStatusCode.Created, "{}"),
 			_ => (HttpStatusCode.NotFound, ""),
 		});
-		await CollectionClient(server).Add(new ChromaRecords(["a"]) { Metadatas = [new() { ["doc_bm25"] = new ChromaSparseVector([1], [0.5f]), ["x"] = 1 }] });
+		await CollectionClient(server).AddAsync(new ChromaRecords(["a"]) { Metadatas = [new() { ["doc_bm25"] = new ChromaSparseVector([1], [0.5f]), ["x"] = 1 }] });
 		var add = server.Requests.Single(x => x.Path.EndsWith("/add"));
 		Assert.That(add.Body.GetProperty("metadatas")[0].GetRawText(), Is.EqualTo("""{"doc_bm25":{"#type":"sparse_vector","indices":[1],"values":[0.5]},"x":1}"""));
 	}
@@ -71,7 +71,7 @@ public class SparseVectorsAndSchemaTests
 		object vector = asJsonElement
 			? JsonDocument.Parse("""{"#type":"sparse_vector","indices":[1],"values":[0.5],"tokens":null}""").RootElement.Clone()
 			: new ChromaSparseVector([1], [0.5f]);
-		await Assert.ThatAsync(() => CollectionClient(server).Add(new ChromaRecords(["a"]) { Embeddings = [new([1f])], Metadatas = [new() { ["v"] = vector }] }),
+		await Assert.ThatAsync(() => CollectionClient(server).AddAsync(new ChromaRecords(["a"]) { Embeddings = [new([1f])], Metadatas = [new() { ["v"] = vector }] }),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains("sparse vectors"));
 		Assert.That(server.Requests.Any(x => x.Path.EndsWith("/add")), Is.False);
 	}
@@ -83,7 +83,7 @@ public class SparseVectorsAndSchemaTests
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"ids":["a"],"metadatas":[{"doc_bm25":{"#type":"sparse_vector","indices":[1,4294967295],"values":[0.5,0.7],"tokens":null},"x":1}]}"""));
 		var options = new ChromaConfigurationOptions("http://localhost:8000").WithMetadataValues(metadataValues);
-		var value = (await CollectionClient(server, options).Get("a", include: ChromaGetInclude.Metadatas))!.Metadata!["doc_bm25"];
+		var value = (await CollectionClient(server, options).GetAsync("a", include: ChromaGetInclude.Metadatas))!.Metadata!["doc_bm25"];
 		if (metadataValues == ChromaMetadataValues.Exact)
 		{
 			var vector = (ChromaSparseVector)value;
@@ -100,7 +100,7 @@ public class SparseVectorsAndSchemaTests
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, $$$"""{"id":"11111111-2222-3333-4444-555555555555","name":"c","schema":{{{Bm25Schema}}}}"""));
 		var definition = new ChromaCollectionDefinition("c") { Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, ChromaEmbeddingFunctionReference.ChromaBm25()) };
-		var collection = await Client(server).CreateCollection(definition);
+		var collection = await Client(server).CreateCollectionAsync(definition);
 		Assert.That(server.Requests.Single().Body.GetProperty("schema").GetRawText(), Is.EqualTo(Bm25Schema));
 		var index = collection.SparseVectorIndexes.Single();
 		Assert.That((index.Key, index.SourceKey, index.Bm25, index.EmbeddingFunction), Is.EqualTo(("doc_bm25", "#document", true, "chroma_bm25")));
@@ -120,7 +120,7 @@ public class SparseVectorsAndSchemaTests
 			Configuration = new() { Space = ChromaSpace.Cosine },
 			Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, ChromaEmbeddingFunctionReference.ChromaBm25()),
 		};
-		var collection = operation == "create" ? await Client(server).CreateCollection(definition) : await Client(server).GetOrCreateCollection(definition);
+		var collection = operation == "create" ? await Client(server).CreateCollectionAsync(definition) : await Client(server).GetOrCreateCollectionAsync(definition);
 		Assert.That(collection.Space, Is.EqualTo(ChromaSpace.Cosine));
 		var body = server.Requests.Single().Body;
 		Assert.That(body.GetProperty("metadata").GetRawText(), Is.EqualTo("""{"x":1}"""));
@@ -140,7 +140,7 @@ public class SparseVectorsAndSchemaTests
 		var server = new FakeServer(r => r.Method == "DELETE" ? (HttpStatusCode.OK, "{}")
 			: (HttpStatusCode.OK, """{"id":"11111111-2222-3333-4444-555555555555","name":"c","configuration_json":{"hnsw":{"space":"l2"}},"schema":{"defaults":{},"keys":{}}}"""));
 		var definition = new ChromaCollectionDefinition("c") { Configuration = new() { Space = ChromaSpace.Cosine }, Schema = new ChromaCollectionSchema() };
-		await Assert.ThatAsync(() => operation == "create" ? Client(server).CreateCollection(definition) : Client(server).GetOrCreateCollection(definition),
+		await Assert.ThatAsync(() => operation == "create" ? Client(server).CreateCollectionAsync(definition) : Client(server).GetOrCreateCollectionAsync(definition),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains("space l2, not cosine").And.Message.Contains("1.3.2"));
 		Assert.That(server.Requests.Any(x => x.Method == "DELETE"), Is.EqualTo(deleted));
 	}
@@ -150,7 +150,7 @@ public class SparseVectorsAndSchemaTests
 	public async Task CreateCollectionWithoutASchema()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"id":"11111111-2222-3333-4444-555555555555","name":"c"}"""));
-		var collection = await Client(server).CreateCollection("c");
+		var collection = await Client(server).CreateCollectionAsync("c");
 		Assert.That(server.Requests.Single().Body.TryGetProperty("schema", out _), Is.False);
 		Assert.That(collection.SparseVectorIndexes, Is.Empty);
 	}
@@ -163,7 +163,7 @@ public class SparseVectorsAndSchemaTests
 		var server = new FakeServer(r => r.Method == "DELETE" ? (HttpStatusCode.OK, "{}") : (HttpStatusCode.OK, """{"id":"11111111-2222-3333-4444-555555555555","name":"c","schema":null}"""));
 		var definition = new ChromaCollectionDefinition("c") { Schema = new ChromaCollectionSchema().WithSparseVectorIndex("v") };
 		var client = Client(server);
-		await Assert.ThatAsync(() => getOrCreate ? client.GetOrCreateCollection(definition) : client.CreateCollection(definition),
+		await Assert.ThatAsync(() => getOrCreate ? client.GetOrCreateCollectionAsync(definition) : client.CreateCollectionAsync(definition),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains("Chroma 1.3.0"));
 		Assert.That(server.Requests.Select(x => x.Line), Is.EqualTo(getOrCreate
 			? new[] { $"POST {CollectionsPath}" }
@@ -187,7 +187,7 @@ public class SparseVectorsAndSchemaTests
 		var handler = new CancelAfterAnswer(cancellation, requests);
 		var definition = new ChromaCollectionDefinition("c") { Schema = new ChromaCollectionSchema().WithSparseVectorIndex("v") };
 		var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
-		await Assert.ThatAsync(() => client.CreateCollection(definition, cancellationToken: cancellation.Token), Throws.InstanceOf<ChromaException>());
+		await Assert.ThatAsync(() => client.CreateCollectionAsync(definition, cancellationToken: cancellation.Token), Throws.InstanceOf<ChromaException>());
 		Assert.That(requests, Is.EqualTo(new[] { "POST", "DELETE" }));
 	}
 
@@ -227,7 +227,7 @@ public class SparseVectorsAndSchemaTests
 		var schema = new ChromaCollectionSchema().WithSparseVectorIndex("v", embeddingFunction: ChromaEmbeddingFunctionReference.Known("f", config));
 		config["k"] = 2;
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"id":"11111111-2222-3333-4444-555555555555","name":"c","schema":{"defaults":{},"keys":{}}}"""));
-		await Client(server).CreateCollection(new ChromaCollectionDefinition("c") { Schema = schema });
+		await Client(server).CreateCollectionAsync(new ChromaCollectionDefinition("c") { Schema = schema });
 		Assert.That(server.Requests.Single().Body.GetProperty("schema").GetProperty("keys").GetProperty("v").GetRawText(), Does.Contain("""{"k":1}"""));
 	}
 
@@ -279,7 +279,7 @@ public class SparseVectorsAndSchemaTests
 		};
 		var records = new ChromaRecords(["a", "b", "c", "d"]) { Documents = ["apple pie", "banana split", null!, "cherry tart"], Metadatas = metadatas };
 		var client = CollectionClient(server, TwoSourcesSchema);
-		await (operation switch { "add" => client.Add(records), "upsert" => client.Upsert(records), _ => client.Update(records) });
+		await (operation switch { "add" => client.AddAsync(records), "upsert" => client.UpsertAsync(records), _ => client.UpdateAsync(records) });
 
 		var sent = server.Requests.Single(x => x.Path.EndsWith("/" + operation)).Body.GetProperty("metadatas");
 		var bm25 = new ChromaBm25();
@@ -298,7 +298,7 @@ public class SparseVectorsAndSchemaTests
 	public async Task SparseVectorsWithoutMetadata()
 	{
 		var server = new FakeServer(r => r.Path.EndsWith("/version") ? (HttpStatusCode.OK, "\"1.5.9\"") : (HttpStatusCode.OK, "true"));
-		await CollectionClient(server, TwoSourcesSchema).Add(new ChromaRecords(["a", "b"]) { Documents = ["apple pie", null!] });
+		await CollectionClient(server, TwoSourcesSchema).AddAsync(new ChromaRecords(["a", "b"]) { Documents = ["apple pie", null!] });
 		Assert.That(server.Requests.Single(x => x.Path.EndsWith("/add")).Body.GetProperty("metadatas").GetRawText(),
 			Is.EqualTo("""[{"doc_bm25":""" + new ChromaBm25().Embed("apple pie") + "},null]"));
 	}
@@ -309,7 +309,7 @@ public class SparseVectorsAndSchemaTests
 	public async Task NoSparseVectorsToCompute(string? schema)
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, "true"));
-		await CollectionClient(server, schema).Add(new ChromaRecords(["a"]) { Documents = ["apple pie"] });
+		await CollectionClient(server, schema).AddAsync(new ChromaRecords(["a"]) { Documents = ["apple pie"] });
 		Assert.That(server.Requests.Single(x => x.Path.EndsWith("/add")).Body.TryGetProperty("metadatas", out var metadatas) ? metadatas.ValueKind : JsonValueKind.Undefined, Is.AnyOf(JsonValueKind.Null, JsonValueKind.Undefined));
 	}
 
@@ -319,10 +319,10 @@ public class SparseVectorsAndSchemaTests
 	{
 		var server = new FakeServer(r => r.Path.EndsWith("/version") ? (HttpStatusCode.OK, "\"1.5.9\"") : (HttpStatusCode.OK, "true"));
 		var client = CollectionClient(server, """{"defaults":{},"keys":{"doc_splade":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"splade","config":{}},"source_key":"#document"}}}}}}""");
-		await Assert.ThatAsync(() => client.Add(new ChromaRecords(["a"]) { Documents = ["apple pie"] }),
+		await Assert.ThatAsync(() => client.AddAsync(new ChromaRecords(["a"]) { Documents = ["apple pie"] }),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains("\"doc_splade\"").And.Message.Contains("\"splade\""));
 		Assert.That(server.Requests, Is.Empty);
-		await client.Add(new ChromaRecords(["a"]) { Documents = ["apple pie"], Metadatas = [new() { ["doc_splade"] = new ChromaSparseVector([1], [0.5f]) }] });
+		await client.AddAsync(new ChromaRecords(["a"]) { Documents = ["apple pie"], Metadatas = [new() { ["doc_splade"] = new ChromaSparseVector([1], [0.5f]) }] });
 		Assert.That(server.Requests.Count(x => x.Path.EndsWith("/add")), Is.EqualTo(1));
 	}
 
@@ -333,7 +333,7 @@ public class SparseVectorsAndSchemaTests
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"ids":[[]],"documents":[null],"embeddings":[null],"metadatas":[null],"scores":[null],"select":[[]]}"""));
 		var rank = ChromaRank.Rrf([ChromaRank.Knn(new([1f, 0f]), returnRank: true), ChromaRank.SparseKnn("Red apples", "title_bm25", returnRank: true)]);
 		Assert.That(rank.ToString(), Does.Contain("""{"$knn":{"query":"Red apples","key":"title_bm25","limit":16,"return_rank":true}}"""));
-		await CollectionClient(server, TwoSourcesSchema).Search(new ChromaSearch { Rank = rank });
+		await CollectionClient(server, TwoSourcesSchema).SearchAsync(new ChromaSearch { Rank = rank });
 		Assert.That(server.Requests.Single().Body.GetProperty("searches")[0].GetProperty("rank").GetRawText(),
 			Does.Contain($$$"""{"$knn":{"query":{{{new ChromaBm25(k: 1.5).Embed("Red apples")}}},"key":"title_bm25","limit":16,"return_rank":true}}"""));
 	}
@@ -345,7 +345,7 @@ public class SparseVectorsAndSchemaTests
 	public async Task SearchWithATextItCannotEmbed(string? schema, string key)
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, "{}"));
-		await Assert.ThatAsync(() => CollectionClient(server, schema).Search(new ChromaSearch { Rank = ChromaRank.SparseKnn("apple", key) }),
+		await Assert.ThatAsync(() => CollectionClient(server, schema).SearchAsync(new ChromaSearch { Rank = ChromaRank.SparseKnn("apple", key) }),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains($"\"{key}\""));
 		Assert.That(server.Requests, Is.Empty);
 	}

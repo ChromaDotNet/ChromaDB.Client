@@ -12,7 +12,7 @@ public class ClientAuthTests
 		public async Task Success()
 		{
 			var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-			await Assert.ThatAsync(() => client.CreateCollection($"collection{Random.Shared.Next()}"), Throws.Nothing);
+			await Assert.ThatAsync(() => client.CreateCollectionAsync($"collection{Random.Shared.Next()}"), Throws.Nothing);
 		}
 	}
 
@@ -25,28 +25,28 @@ public class ClientAuthTests
 		public async Task Success()
 		{
 			var client = new ChromaClient(BaseConfigurationOptions.WithChromaToken("random-ToKen"), HttpClient);
-			await Assert.ThatAsync(() => client.CreateCollection($"collection{Random.Shared.Next()}"), Throws.Nothing);
+			await Assert.ThatAsync(() => client.CreateCollectionAsync($"collection{Random.Shared.Next()}"), Throws.Nothing);
 		}
 
 		[Test]
 		public async Task NoToken()
 		{
 			var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-			await Assert.ThatAsync(() => client.CreateCollection($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("Forbidden"));
+			await Assert.ThatAsync(() => client.CreateCollectionAsync($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("Forbidden"));
 		}
 
 		[Test]
 		public async Task WrongToken()
 		{
 			var client = new ChromaClient(BaseConfigurationOptions.WithChromaToken("wrong"), HttpClient);
-			await Assert.ThatAsync(() => client.CreateCollection($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("Forbidden"));
+			await Assert.ThatAsync(() => client.CreateCollectionAsync($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("Forbidden"));
 		}
 
 		[Test]
 		public async Task WrongTokenCasing()
 		{
 			var client = new ChromaClient(BaseConfigurationOptions.WithChromaToken("random-token"), HttpClient);
-			await Assert.ThatAsync(() => client.CreateCollection($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("Forbidden"));
+			await Assert.ThatAsync(() => client.CreateCollectionAsync($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("Forbidden"));
 		}
 
 		protected override ChromaConfigurationOptions WithServerCredentials(ChromaConfigurationOptions options)
@@ -69,21 +69,21 @@ public class ClientAuthTests
 		public async Task Success()
 		{
 			var client = new ChromaClient(BaseConfigurationOptions.WithChromaToken("random-ToKen", ChromaTokenTransportHeader.Authorization), HttpClient);
-			await Assert.ThatAsync(() => client.CreateCollection($"collection{Random.Shared.Next()}"), Throws.Nothing);
+			await Assert.ThatAsync(() => client.CreateCollectionAsync($"collection{Random.Shared.Next()}"), Throws.Nothing);
 		}
 
 		[Test]
 		public async Task NoToken()
 		{
 			var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-			await Assert.ThatAsync(() => client.CreateCollection($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("Forbidden"));
+			await Assert.ThatAsync(() => client.CreateCollectionAsync($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("Forbidden"));
 		}
 
 		[Test]
 		public async Task TokenInXChromaTokenHeader()
 		{
 			var client = new ChromaClient(BaseConfigurationOptions.WithChromaToken("random-ToKen"), HttpClient);
-			await Assert.ThatAsync(() => client.CreateCollection($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("Forbidden"));
+			await Assert.ThatAsync(() => client.CreateCollectionAsync($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("Forbidden"));
 		}
 
 		protected override ChromaConfigurationOptions WithServerCredentials(ChromaConfigurationOptions options)
@@ -107,21 +107,21 @@ public class ClientAuthTests
 		public async Task Success()
 		{
 			var client = new ChromaClient(BaseConfigurationOptions.WithBasicAuth("admin", "secret"), HttpClient);
-			await Assert.ThatAsync(() => client.CreateCollection($"collection{Random.Shared.Next()}"), Throws.Nothing);
+			await Assert.ThatAsync(() => client.CreateCollectionAsync($"collection{Random.Shared.Next()}"), Throws.Nothing);
 		}
 
 		[Test]
 		public async Task NoCredentials()
 		{
 			var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-			await Assert.ThatAsync(() => client.CreateCollection($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("Forbidden"));
+			await Assert.ThatAsync(() => client.CreateCollectionAsync($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("Forbidden"));
 		}
 
 		[Test]
 		public async Task WrongPassword()
 		{
 			var client = new ChromaClient(BaseConfigurationOptions.WithBasicAuth("admin", "wrong"), HttpClient);
-			await Assert.ThatAsync(() => client.CreateCollection($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("Forbidden"));
+			await Assert.ThatAsync(() => client.CreateCollectionAsync($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>().With.Message.Contains("Forbidden"));
 		}
 
 		protected override ChromaConfigurationOptions WithServerCredentials(ChromaConfigurationOptions options)

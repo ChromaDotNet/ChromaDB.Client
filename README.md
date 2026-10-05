@@ -10,12 +10,12 @@ _ChromaDB.Client_ is a .NET SDK that offers a seamless connection to the Chroma 
 |---|---|---|
 | 0.5.16 – 1.5.9 | v2, the default | all the tests pass on each release tested |
 | 0.5.1 – 0.5.15 | v1, with `ChromaApiVersion.V1` | all the tests pass on each release tested |
-| 0.4.10 – 0.5.0 | v1, with `ChromaApiVersion.V1` | collections and records work on each release tested; some of these servers miss tenants, `CountCollections` or the `$not_contains` filter |
-| Chroma Cloud | v2 | the tests pass against it, apart from the operations it does not allow to an API key, like `CreateTenant` and `Reset`; see [Chroma Cloud](#chroma-cloud) |
+| 0.4.10 – 0.5.0 | v1, with `ChromaApiVersion.V1` | collections and records work on each release tested; some of these servers miss tenants, `CountCollectionsAsync` or the `$not_contains` filter |
+| Chroma Cloud | v2 | the tests pass against it, apart from the operations it does not allow to an API key, like `CreateTenantAsync` and `ResetAsync`; see [Chroma Cloud](#chroma-cloud) |
 
 Each release tested, the differences between them and the versions in the CI are listed in [docs/COMPATIBILITY.md](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/COMPATIBILITY.md).
 
-Since Chroma 1.0.16 the server requires embeddings in `Add` and `Upsert`: the client does not compute them, so pass them explicitly.
+Since Chroma 1.0.16 the server requires embeddings in `AddAsync` and `UpsertAsync`: the client does not compute them, so pass them explicitly.
 
 The package targets .NET 8 and .NET Standard 2.0; the tests run against both builds.
 
@@ -40,17 +40,17 @@ var configOptions = new ChromaConfigurationOptions(uri: "http://localhost:8000/a
 using var httpClient = new HttpClient();
 var client = new ChromaClient(configOptions, httpClient);
 
-Console.WriteLine(await client.GetVersion());
+Console.WriteLine(await client.GetVersionAsync());
 
-var string5Collection = await client.GetOrCreateCollection("string5");
+var string5Collection = await client.GetOrCreateCollectionAsync("string5");
 var string5Client = new ChromaCollectionClient(string5Collection, configOptions, httpClient);
 
-await string5Client.Add(["340a36ad-c38a-406c-be38-250174aee5a4"], embeddings: [new([1f, 0.5f, 0f, -0.5f, -1f])]);
+await string5Client.AddAsync(["340a36ad-c38a-406c-be38-250174aee5a4"], embeddings: [new([1f, 0.5f, 0f, -0.5f, -1f])]);
 
-var getResult = await string5Client.Get("340a36ad-c38a-406c-be38-250174aee5a4", include: ChromaGetInclude.Metadatas | ChromaGetInclude.Documents | ChromaGetInclude.Embeddings);
+var getResult = await string5Client.GetAsync("340a36ad-c38a-406c-be38-250174aee5a4", include: ChromaGetInclude.Metadatas | ChromaGetInclude.Documents | ChromaGetInclude.Embeddings);
 Console.WriteLine($"ID: {getResult!.Id}");
 
-var queryData = await string5Client.Query([new([1f, 0.5f, 0f, -0.5f, -1f]), new([1.5f, 0f, 2f, -1f, -1.5f])], include: ChromaQueryInclude.Metadatas | ChromaQueryInclude.Distances);
+var queryData = await string5Client.QueryAsync([new([1f, 0.5f, 0f, -0.5f, -1f]), new([1.5f, 0f, 2f, -1f, -1.5f])], include: ChromaQueryInclude.Metadatas | ChromaQueryInclude.Distances);
 foreach (var item in queryData)
 {
 	foreach (var entry in item)
@@ -76,21 +76,21 @@ Chroma 0.5.16 to 0.5.20 serve both APIs. The v1 API of Chroma 0.6.3 fails on man
 ## Records with URIs
 
 ```csharp
-await collectionClient.Add(new ChromaRecords(["a"]) { Embeddings = [new([1f, 0.5f, 0f])], Uris = ["s3://bucket/a.png"] });
+await collectionClient.AddAsync(new ChromaRecords(["a"]) { Embeddings = [new([1f, 0.5f, 0f])], Uris = ["s3://bucket/a.png"] });
 
-var entries = await collectionClient.Get(["a"], include: ChromaGetInclude.Uris);
+var entries = await collectionClient.GetAsync(["a"], include: ChromaGetInclude.Uris);
 Console.WriteLine(entries[0].Uri);
 ```
 
-`ChromaRecords` holds the ids, embeddings, metadatas, documents and URIs of the records for `Add`, `Update` and `Upsert`.
+`ChromaRecords` holds the ids, embeddings, metadatas, documents and URIs of the records for `AddAsync`, `UpdateAsync` and `UpsertAsync`.
 
 ## Querying some records only
 
 ```csharp
-var results = await collectionClient.Query(new ChromaQuery([new([1f, 0.5f, 0f])]) { Ids = ["a", "c"], NResults = 1 });
+var results = await collectionClient.QueryAsync(new ChromaQuery([new([1f, 0.5f, 0f])]) { Ids = ["a", "c"], NResults = 1 });
 ```
 
-`ChromaQuery` holds the query embeddings, the number of results, the filters, what to include and the ids to search among. Chroma 1.0.0 and later search only the records with those ids. Chroma 0.x ignores them and searches all the records: when a result falls outside the ids, `Query` throws a `ChromaException` instead of returning it.
+`ChromaQuery` holds the query embeddings, the number of results, the filters, what to include and the ids to search among. Chroma 1.0.0 and later search only the records with those ids. Chroma 0.x ignores them and searches all the records: when a result falls outside the ids, `QueryAsync` throws a `ChromaException` instead of returning it.
 
 ## Metadata values
 
@@ -103,11 +103,11 @@ var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithM
 A list in metadata, written and filtered:
 
 ```csharp
-await collectionClient.Add(new ChromaRecords(["a"]) { Embeddings = [new([1f, 0.5f, 0f])], Metadatas = [new() { ["tags"] = new[] { "red", "blue" } }] });
-var tagged = await collectionClient.Get(where: ChromaWhereOperator.Contains("tags", "red"));
+await collectionClient.AddAsync(new ChromaRecords(["a"]) { Embeddings = [new([1f, 0.5f, 0f])], Metadatas = [new() { ["tags"] = new[] { "red", "blue" } }] });
+var tagged = await collectionClient.GetAsync(where: ChromaWhereOperator.Contains("tags", "red"));
 ```
 
-Chroma 1.5.0 and later store lists in metadata and filter them with `Contains` and `NotContains`. Chroma 1.0.0 to 1.4.1 reject them. Chroma 0.x accepts them but drops them without an error, so `Add`, `Update` and `Upsert` throw a `ChromaException` before sending them: the client asks the server its version once, only when a record has a list.
+Chroma 1.5.0 and later store lists in metadata and filter them with `Contains` and `NotContains`. Chroma 1.0.0 to 1.4.1 reject them. Chroma 0.x accepts them but drops them without an error, so `AddAsync`, `UpdateAsync` and `UpsertAsync` throw a `ChromaException` before sending them: the client asks the server its version once, only when a record has a list.
 
 A `ChromaClient` that already exists, for example from dependency injection, gives one that reads the other way, with the same `HttpClient`, options and what it learned about the server; `Options` returns the options of a client:
 
@@ -121,15 +121,15 @@ Console.WriteLine(inferred.Options.MetadataValues); // Inferred
 A failed request throws a `ChromaException`. Its `StatusCode` is the status code of the answer of the server, or null when there was no answer, like on a timeout. Its `ErrorType` is the kind of error the server names: `NotFoundError` or `InvalidArgumentError` from Chroma 1.x, `InvalidCollection` from Chroma 0.5 and 0.6, `ValueError` from the v1 API of Chroma 0.4, null when it names none.
 
 ```csharp
-if (!await client.CollectionExists("my_collection"))
+if (!await client.CollectionExistsAsync("my_collection"))
 {
-	await client.CreateCollection("my_collection");
+	await client.CreateCollectionAsync("my_collection");
 }
 ```
 
 When the 0.x servers reject a request with validation errors, the message lists them, like `body.n_results: Input should be a valid integer`.
 
-`CollectionExists` tells a missing collection from the other errors on every tested server: Chroma 1.x answers `404`, the 0.x servers `400` or `500`, always with "does not exist" in the message. Any other error, like a bare `404` from a wrong address, throws.
+`CollectionExistsAsync` tells a missing collection from the other errors on every tested server: Chroma 1.x answers `404`, the 0.x servers `400` or `500`, always with "does not exist" in the message. Any other error, like a bare `404` from a wrong address, throws.
 
 ## Filters
 
@@ -145,18 +145,18 @@ Console.WriteLine(where); // {"$and":[{"year":{"$eq":2026}},{"lang":{"$in":["en"
 `ChromaWhereDocumentOperator.Regex` and `NotRegex` filter the documents with a regular expression, from Chroma 1.0.12; the earlier versions fail on them.
 
 ```csharp
-var apples = await collectionClient.Get(whereDocument: ChromaWhereDocumentOperator.Regex("^apple"));
+var apples = await collectionClient.GetAsync(whereDocument: ChromaWhereDocumentOperator.Regex("^apple"));
 ```
 
 ## Large writes
 
-By default `Add`, `Update`, `Upsert` and `Delete` send their records in batches of the `max_batch_size` of the server, one request after the other; the client asks `pre-flight-checks` once. If a batch fails, the earlier ones stay written. Chroma 0.4.10 has no `pre-flight-checks`, and a server whose answer the client cannot read gets the records in one request too. `WithBatchSplitting(false)` sends them in one request, as before 2.8.0: up to Chroma 1.0.13 a request beyond the limit fails, later versions accept it.
+By default `AddAsync`, `UpdateAsync`, `UpsertAsync` and `DeleteAsync` send their records in batches of the `max_batch_size` of the server, one request after the other; the client asks `pre-flight-checks` once. If a batch fails, the earlier ones stay written. Chroma 0.4.10 has no `pre-flight-checks`, and a server whose answer the client cannot read gets the records in one request too. `WithBatchSplitting(false)` sends them in one request, as before 2.8.0: up to Chroma 1.0.13 a request beyond the limit fails, later versions accept it.
 
 ```csharp
 var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithBatchSplitting(false);
 ```
 
-`Get` reads more records than the batch size in pages: pages of the batch size from the offset, until the limit or the last record, and ids beyond the batch size in batches, with the limit and the offset applied to all of them together. The pages are separate requests: records written in between can be read twice or missed.
+`GetAsync` reads more records than the batch size in pages: pages of the batch size from the offset, until the limit or the last record, and ids beyond the batch size in batches, with the limit and the offset applied to all of them together. The pages are separate requests: records written in between can be read twice or missed.
 
 `WithBatchSplitting(maxBatchSize)` uses the smaller of that limit and the one of the server, or that limit alone where the server declares none. Chroma Cloud declares 1000, but takes 300 records per write and answers at most 300 records per read, without an error, unless the quota is raised. So on Chroma Cloud, at `*.trychroma.com`, the client uses 300 when no limit is given. A server that rejects a batch beyond its quota of records, "current usage of 301 exceeds limit of 300" as Chroma Cloud answers before writing any of it, gets that batch and the rest in batches of the quota, and the next writes too. A raised quota needs its limit:
 
@@ -169,20 +169,20 @@ var options = new ChromaConfigurationOptions(uri: "https://api.trychroma.com").W
 ## Deleting records
 
 ```csharp
-var deleted = await collectionClient.Delete(new ChromaDelete { WhereDocument = ChromaWhereDocumentOperator.Contains("draft"), Limit = 100 });
+var deleted = await collectionClient.DeleteAsync(new ChromaDelete { WhereDocument = ChromaWhereDocumentOperator.Contains("draft"), Limit = 100 });
 ```
 
-`ChromaDelete` holds the ids, the filters and the limit of a delete. Without ids it deletes by the filters only; without ids and filters it throws an `ArgumentException`, since it would select every record. As in Chroma and its Python client, the ids cannot be an empty list, and the limit needs a `where` or `where_document` filter and cannot be negative. Chroma 1.5.3 and later apply `Limit` and answer how many records they deleted, which `Delete` returns; on the earlier servers it returns null. Those servers ignore the limit and would delete every matching record: before a delete with a limit the client reads the OpenAPI description of the server, once, and throws a `ChromaException` without sending the delete if it does not declare the limit.
+`ChromaDelete` holds the ids, the filters and the limit of a delete. Without ids it deletes by the filters only; without ids and filters it throws an `ArgumentException`, since it would select every record. As in Chroma and its Python client, the ids cannot be an empty list, and the limit needs a `where` or `where_document` filter and cannot be negative. Chroma 1.5.3 and later apply `Limit` and answer how many records they deleted, which `DeleteAsync` returns; on the earlier servers it returns null. Those servers ignore the limit and would delete every matching record: before a delete with a limit the client reads the OpenAPI description of the server, once, and throws a `ChromaException` without sending the delete if it does not declare the limit.
 
 ## Embeddings in base64
 
-Where `pre-flight-checks` declares `supports_base64_encoding`, from Chroma 1.0.13, `Add`, `Update` and `Upsert` send the embeddings as base64 strings of their float32 values, about half the size of the numbers; the server stores the same values. Queries always send numbers, since the servers reject base64 there. Elsewhere, or when `pre-flight-checks` does not answer, the embeddings go as numbers.
+Where `pre-flight-checks` declares `supports_base64_encoding`, from Chroma 1.0.13, `AddAsync`, `UpdateAsync` and `UpsertAsync` send the embeddings as base64 strings of their float32 values, about half the size of the numbers; the server stores the same values. Queries always send numbers, since the servers reject base64 there. Elsewhere, or when `pre-flight-checks` does not answer, the embeddings go as numbers.
 
 ## Tenants and databases
 
 ```csharp
-await client.CreateTenant("my_tenant");
-await client.CreateDatabase("my_database", tenant: "my_tenant");
+await client.CreateTenantAsync("my_tenant");
+await client.CreateDatabaseAsync("my_database", tenant: "my_tenant");
 
 var options = new ChromaConfigurationOptions(uri: "http://localhost:8000", defaultTenant: "my_tenant", defaultDatabase: "my_database");
 ```
@@ -190,20 +190,20 @@ var options = new ChromaConfigurationOptions(uri: "http://localhost:8000", defau
 The collections created with these options belong to that tenant and database.
 
 ```csharp
-var databases = await client.ListDatabases(tenant: "my_tenant");
-var page = await client.ListDatabases(limit: 10, offset: 20, tenant: "my_tenant");
-await client.DeleteDatabase("my_database", tenant: "my_tenant");
+var databases = await client.ListDatabasesAsync(tenant: "my_tenant");
+var page = await client.ListDatabasesAsync(limit: 10, offset: 20, tenant: "my_tenant");
+await client.DeleteDatabaseAsync("my_database", tenant: "my_tenant");
 ```
 
-`ListDatabases` and `DeleteDatabase` need the v2 API of Chroma 0.6.3 or later: the older servers answer `405 Method Not Allowed`.
+`ListDatabasesAsync` and `DeleteDatabaseAsync` need the v2 API of Chroma 0.6.3 or later: the older servers answer `405 Method Not Allowed`.
 
 ## Collections by id
 
 ```csharp
-var collection = await client.GetCollectionById(id);
+var collection = await client.GetCollectionByIdAsync(id);
 ```
 
-`GetCollectionById` looks for the id in the tenant and database of the options, or in the ones it is given. It needs the v2 API of Chroma 1.5.7 or later: the older servers answer `404 Not Found`.
+`GetCollectionByIdAsync` looks for the id in the tenant and database of the options, or in the ones it is given. It needs the v2 API of Chroma 1.5.7 or later: the older servers answer `404 Not Found`.
 
 A `ChromaClient` hands out the clients for the records of its collections, with its options and `HttpClient` and without sending a request, also from the id and the name alone:
 
@@ -218,37 +218,37 @@ var standalone = new ChromaCollectionClient(collectionId, "my_collection", optio
 ## Distance of a collection
 
 ```csharp
-var collection = await client.CreateCollection(new ChromaCollectionDefinition("my_collection")
+var collection = await client.CreateCollectionAsync(new ChromaCollectionDefinition("my_collection")
 {
 	Configuration = new() { Space = ChromaSpace.Cosine },
 });
 Console.WriteLine(collection.Space);
 ```
 
-`ChromaSpace` is `L2` (the default of Chroma), `Cosine` or `InnerProduct`. The client sends it as the `hnsw:space` metadata, which every tested Chroma applies; `GetOrCreateCollection` takes a `ChromaCollectionDefinition` too. `ChromaCollection.Space` reads it back from that metadata, or from the configuration that Chroma 1.0.6 and later and Chroma Cloud send; it is null for a collection created without a space on the older servers, which do not report it reliably. `ChromaCollection.ConfigurationJson` holds the configuration as the server sends it.
+`ChromaSpace` is `L2` (the default of Chroma), `Cosine` or `InnerProduct`. The client sends it as the `hnsw:space` metadata, which every tested Chroma applies; `GetOrCreateCollectionAsync` takes a `ChromaCollectionDefinition` too. `ChromaCollection.Space` reads it back from that metadata, or from the configuration that Chroma 1.0.6 and later and Chroma Cloud send; it is null for a collection created without a space on the older servers, which do not report it reliably. `ChromaCollection.ConfigurationJson` holds the configuration as the server sends it.
 
 ## Settings of the index
 
 ```csharp
-await collectionClient.ModifyConfiguration(new() { Hnsw = new() { EfSearch = 200 } });
+await collectionClient.ModifyConfigurationAsync(new() { Hnsw = new() { EfSearch = 200 } });
 ```
 
-`ModifyConfiguration` changes the settings of the index that Chroma lets change after the creation: those of HNSW, like `EfSearch`, and those of the SPANN index of Chroma Cloud, `EfSearch` and `SearchNprobe`. Chroma 1.0.6 and later apply them. The earlier versions answer without applying them: the client tells them by the configuration they send with the collection, and throws a `ChromaException` without sending the request.
+`ModifyConfigurationAsync` changes the settings of the index that Chroma lets change after the creation: those of HNSW, like `EfSearch`, and those of the SPANN index of Chroma Cloud, `EfSearch` and `SearchNprobe`. Chroma 1.0.6 and later apply them. The earlier versions answer without applying them: the client tells them by the configuration they send with the collection, and throws a `ChromaException` without sending the request.
 
 The settings must be those of the index of the collection: `Hnsw` on a single Chroma server, `Spann` on Chroma Cloud. Chroma Cloud answers `500` to `Hnsw` settings, and a single server answers without applying `Spann` settings: for the settings of the other index the client throws a `ChromaException` without sending them. On Chroma Cloud:
 
 ```csharp
-await collectionClient.ModifyConfiguration(new() { Spann = new() { SearchNprobe = 32 } });
+await collectionClient.ModifyConfigurationAsync(new() { Spann = new() { SearchNprobe = 32 } });
 ```
 
 ## Health of the server
 
 ```csharp
-var health = await client.Healthcheck();
+var health = await client.HealthcheckAsync();
 Console.WriteLine(health.IsExecutorReady);
 ```
 
-`Healthcheck` needs Chroma 1.0.0 or later: the 0.x servers answer `404 Not Found`. A server that is not ready answers `503`, a `ChromaException`.
+`HealthcheckAsync` needs Chroma 1.0.0 or later: the 0.x servers answer `404 Not Found`. A server that is not ready answers `503`, a `ChromaException`.
 
 ## Traces and metrics
 
@@ -265,57 +265,57 @@ builder.Services.AddOpenTelemetry()
   - `server.address` and `server.port`;
   - on a failure, `error.type` and `db.response.status_code`, the HTTP status.
 - **Metrics:** the duration of each operation in the histogram `db.client.operation.duration`, in seconds, with the same attributes.
-- **Cost:** without a listener nothing is measured. A missing collection in `CollectionExists` is an answer, not an error.
+- **Cost:** without a listener nothing is measured. A missing collection in `CollectionExistsAsync` is an answer, not an error.
 
 ## Chroma Cloud
 
 ```csharp
 var options = new ChromaConfigurationOptions(uri: "https://api.trychroma.com").WithChromaToken(apiKey);
-var client = await new ChromaClient(options, httpClient).WithTenantAndDatabaseFromIdentity();
+var client = await new ChromaClient(options, httpClient).WithTenantAndDatabaseFromIdentityAsync();
 ```
 
-`WithTenantAndDatabaseFromIdentity` takes the tenant and the database from the credentials, as the `CloudClient` of the Python client of Chroma does: an API key for one database gives both, an API key for a whole tenant gives only the tenant, so the database goes in the options. A tenant or a database set in the options, other than the default ones, must match the one the key gives, when it gives one. A single Chroma server always answers with `default_tenant` and `default_database`.
+`WithTenantAndDatabaseFromIdentityAsync` takes the tenant and the database from the credentials, as the `CloudClient` of the Python client of Chroma does: an API key for one database gives both, an API key for a whole tenant gives only the tenant, so the database goes in the options. A tenant or a database set in the options, other than the default ones, must match the one the key gives, when it gives one. A single Chroma server always answers with `default_tenant` and `default_database`.
 
 These operations exist on Chroma Cloud only; a single Chroma server answers them with an error.
 
 ```csharp
-var copy = await collectionClient.Fork("my_collection_copy");
-var forks = await collectionClient.ForkCount();
-var status = await collectionClient.GetIndexingStatus();
-var indexed = await collectionClient.Count(ChromaReadLevel.IndexOnly);
+var copy = await collectionClient.ForkAsync("my_collection_copy");
+var forks = await collectionClient.ForkCountAsync();
+var status = await collectionClient.GetIndexingStatusAsync();
+var indexed = await collectionClient.CountAsync(ChromaReadLevel.IndexOnly);
 ```
 
-`Fork` copies a collection with its records under a new name. `GetIndexingStatus` tells how many writes are indexed. `Count(ChromaReadLevel.IndexOnly)` counts only the records already indexed: Chroma Cloud indexes them later, so right after a write the count can be lower, even 0, while `Count()` already sees them. A single server indexes them at once and gives the same count.
+`ForkAsync` copies a collection with its records under a new name. `GetIndexingStatusAsync` tells how many writes are indexed. `CountAsync(ChromaReadLevel.IndexOnly)` counts only the records already indexed: Chroma Cloud indexes them later, so right after a write the count can be lower, even 0, while `CountAsync()` already sees them. A single server indexes them at once and gives the same count.
 
 ```csharp
-await collectionClient.Add(ids, embeddings: embeddings);                  // 6 records
-var all = await collectionClient.Count();                                 // 6
-var indexed = await collectionClient.Count(ChromaReadLevel.IndexOnly);    // on Chroma Cloud, from 0 to 6 until they are indexed
+await collectionClient.AddAsync(ids, embeddings: embeddings);                  // 6 records
+var all = await collectionClient.CountAsync();                                 // 6
+var indexed = await collectionClient.CountAsync(ChromaReadLevel.IndexOnly);    // on Chroma Cloud, from 0 to 6 until they are indexed
 ```
 
 ```csharp
-var (attached, created) = await collectionClient.AttachFunction(ChromaFunctions.Statistics, "my_stats", "my_stats_output");
-var function = await collectionClient.GetAttachedFunction("my_stats");
-await collectionClient.DetachFunction("my_stats", deleteOutputCollection: true);
+var (attached, created) = await collectionClient.AttachFunctionAsync(ChromaFunctions.Statistics, "my_stats", "my_stats_output");
+var function = await collectionClient.GetAttachedFunctionAsync("my_stats");
+await collectionClient.DetachFunctionAsync("my_stats", deleteOutputCollection: true);
 ```
 
 The functions of Chroma Cloud, `ChromaFunctions.Statistics` and `ChromaFunctions.RecordCounter`, run on the records of a collection and write their results to an output collection.
 
 ```csharp
-await client.UpdateTenant("my_tenant", resourceName: "my_org");
-var collection = await client.GetCollectionByCrn("my_org:my_database:my_collection");
+await client.UpdateTenantAsync("my_tenant", resourceName: "my_org");
+var collection = await client.GetCollectionByCrnAsync("my_org:my_database:my_collection");
 ```
 
-`UpdateTenant` sets the resource name of a tenant, which `GetTenant` returns as `ResourceName`, and `GetCollectionByCrn` gets a collection by its Chroma Resource Name. A single Chroma server from 1.0.17 accepts `UpdateTenant` but does not keep the name.
+`UpdateTenantAsync` sets the resource name of a tenant, which `GetTenantAsync` returns as `ResourceName`, and `GetCollectionByCrnAsync` gets a collection by its Chroma Resource Name. A single Chroma server from 1.0.17 accepts `UpdateTenantAsync` but does not keep the name.
 
-`GetCollectionByCrn` is there as in the official JavaScript client of Chroma, but the operation is hidden in the OpenAPI description of Chroma and missing from its documentation. On Chroma Cloud, `GetCollectionByCrn` sent with an API key limited to one database, and with an API key for the whole tenant, got `403 Permission denied`, also for a collection of that tenant.
+`GetCollectionByCrnAsync` is there as in the official JavaScript client of Chroma, but the operation is hidden in the OpenAPI description of Chroma and missing from its documentation. On Chroma Cloud, `GetCollectionByCrnAsync` sent with an API key limited to one database, and with an API key for the whole tenant, got `403 Permission denied`, also for a collection of that tenant.
 
 ## Search
 
 The Search API of Chroma, which only Chroma Cloud serves; a single Chroma server answers `501`.
 
 ```csharp
-var results = await collectionClient.Search(new ChromaSearch
+var results = await collectionClient.SearchAsync(new ChromaSearch
 {
 	Where = ChromaWhereOperator.GreaterThanOrEqual("year", 2021),
 	WhereDocument = ChromaWhereDocumentOperator.Contains("apple"),
@@ -339,28 +339,28 @@ foreach (var result in results)
 ```csharp
 var fused = ChromaRank.Rrf([ChromaRank.Knn(vector1, returnRank: true), ChromaRank.Knn(vector2, returnRank: true)]);
 var perCategory = new ChromaSearchGroupBy(ChromaSearchAggregate.MinK(3, ChromaSearchKeys.Score), "category");
-var many = await collectionClient.Search([new ChromaSearch { Rank = fused, Limit = 5 }, new ChromaSearch { GroupBy = perCategory, Rank = fused }]);
+var many = await collectionClient.SearchAsync([new ChromaSearch { Rank = fused, Limit = 5 }, new ChromaSearch { GroupBy = perCategory, Rank = fused }]);
 ```
 
-`ChromaSearchGroupBy` keeps, for each value of the metadata keys, the records the aggregate chooses. Several searches go in one request, and their results come in order. `ToString()` of a `ChromaRank` gives its JSON; a text query of `SparseKnn` is in it as the text, where `Search` sends its sparse vector.
+`ChromaSearchGroupBy` keeps, for each value of the metadata keys, the records the aggregate chooses. Several searches go in one request, and their results come in order. `ToString()` of a `ChromaRank` gives its JSON; a text query of `SparseKnn` is in it as the text, where `SearchAsync` sends its sparse vector.
 
 ## Sparse vectors and schema
 
 Chroma Cloud keeps sparse vectors, like the BM25 vectors of the documents, in a metadata key with a sparse vector index, which the schema of the collection declares:
 
 ```csharp
-var collection = await client.CreateCollection(new ChromaCollectionDefinition("articles")
+var collection = await client.CreateCollectionAsync(new ChromaCollectionDefinition("articles")
 {
 	Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, ChromaEmbeddingFunctionReference.ChromaBm25()),
 });
 var collectionClient = client.GetCollectionClient(collection);
-await collectionClient.Add(new ChromaRecords(["a"])
+await collectionClient.AddAsync(new ChromaRecords(["a"])
 {
 	Embeddings = [embedding],
 	Documents = ["apple pie"],
 	Metadatas = [new() { ["doc_bm25"] = new ChromaSparseVector([17, 4242], [0.8f, 1.1f]) }],
 });
-var results = await collectionClient.Search(new ChromaSearch { Rank = ChromaRank.SparseKnn(queryVector, "doc_bm25"), Limit = 10 });
+var results = await collectionClient.SearchAsync(new ChromaSearch { Rank = ChromaRank.SparseKnn(queryVector, "doc_bm25"), Limit = 10 });
 ```
 
 - `ChromaSparseVector` holds the indices, in strictly ascending order, and their values, and optionally the tokens. It is a metadata value; it is written as the Python client of Chroma writes it, `{"#type": "sparse_vector", "indices": [...], "values": [...]}`.
@@ -378,19 +378,19 @@ var results = await collectionClient.Search(new ChromaSearch { Rank = ChromaRank
 - **Where the schema works:**
   - Chroma 1.3.0 and later apply it;
   - a single server rejects a sparse vector index;
-  - Chroma 1.0.0 to 1.2.2 and 0.6.3 create the collection without the schema: `CreateCollection` then deletes it and throws a `ChromaException`, and `GetOrCreateCollection` throws and keeps it, since it may have existed before.
+  - Chroma 1.0.0 to 1.2.2 and 0.6.3 create the collection without the schema: `CreateCollectionAsync` then deletes it and throws a `ChromaException`, and `GetOrCreateCollectionAsync` throws and keeps it, since it may have existed before.
   - Chroma 1.3.0 ignores the space in the schema, which 1.3.2 and later apply: the same then, when the collection has another space.
 
 ## Hybrid search with BM25
 
 ```csharp
-var collection = await client.CreateCollection(new ChromaCollectionDefinition("articles")
+var collection = await client.CreateCollectionAsync(new ChromaCollectionDefinition("articles")
 {
 	Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, new ChromaBm25().Reference),
 });
 var collectionClient = client.GetCollectionClient(collection);
-await collectionClient.Add(new ChromaRecords(ids) { Embeddings = embeddings, Documents = documents });
-var results = await collectionClient.Search(new ChromaSearch
+await collectionClient.AddAsync(new ChromaRecords(ids) { Embeddings = embeddings, Documents = documents });
+var results = await collectionClient.SearchAsync(new ChromaSearch
 {
 	Rank = ChromaRank.Rrf([ChromaRank.Knn(queryEmbedding, returnRank: true), ChromaRank.SparseKnn(queryText, "doc_bm25", returnRank: true)]),
 	Limit = 10,
@@ -401,9 +401,9 @@ var results = await collectionClient.Search(new ChromaSearch
 - **What `ChromaBm25` computes:** the BM25 vectors as the Python client of Chroma computes them, `chroma_bm25` with the Snowball English stemmer of snowballstemmer 3.1.1. The same text gives the same indices and values in .NET and in Python, so a collection written by one is searched by the other.
 - **How it was tested:** against the Python client on more than 5,000 texts, with the characters of every Unicode script that Python 3.13 knows, on .NET 8 and on .NET Framework. It follows the Unicode rules of Python from its own tables, not those of the runtime.
 - **What the client computes, as the Python client of Chroma does:**
-  - In `Add`, `Update` and `Upsert`, the vectors of each sparse vector index of the schema with a source key and `chroma_bm25`, from the document or from the text in the metadata key, with the settings of the schema. A record whose metadata already has the key keeps its vector. The records and the metadata you pass do not change.
-  - In `Search`, the vector of the text of `SparseKnn(queryText, key)`, with the function of the index of the key.
-  - The schema comes with the collection, from `CreateCollection` or `GetCollection`. A collection client created from an id alone has none, so a text query throws a `ChromaException`; with another function than `chroma_bm25` too, unless the metadata has the vectors.
+  - In `AddAsync`, `UpdateAsync` and `UpsertAsync`, the vectors of each sparse vector index of the schema with a source key and `chroma_bm25`, from the document or from the text in the metadata key, with the settings of the schema. A record whose metadata already has the key keeps its vector. The records and the metadata you pass do not change.
+  - In `SearchAsync`, the vector of the text of `SparseKnn(queryText, key)`, with the function of the index of the key.
+  - The schema comes with the collection, from `CreateCollectionAsync` or `GetCollectionAsync`. A collection client created from an id alone has none, so a text query throws a `ChromaException`; with another function than `chroma_bm25` too, unless the metadata has the vectors.
 - **By hand:** `new ChromaBm25()` with the same settings, or `Bm25Function` of the index, gives the vectors to put in the metadata or in `SparseKnn`. `Reference` declares the function in the schema.
 - **Records without the terms of the query:** Chroma Cloud ranks them too, among the `limit` of `SparseKnn`, with the score 1, one minus the dot product. With `returnRank` they take the next positions, so in `Rrf` they get points from the sparse part as well.
 - **License:** the license of the stemmer is in [THIRD-PARTY-NOTICES.md](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/THIRD-PARTY-NOTICES.md).
@@ -449,7 +449,7 @@ Each fixture deletes the collections and the databases its requests created, and
 - Namespaces do not change: the code keeps `using ChromaDB.Client;`.
 - Replace the `ChromaDB.Client` package reference with `ChromaDotNet.Client`.
 - `ChromaCollectionQueryEntry.Distance` is a `float?`: it is `null` when the query does not include `ChromaQueryInclude.Distances`.
-- Every async method takes an optional `CancellationToken` as its last parameter. Code compiled against 1.x has to be rebuilt, and a method group like `client.Heartbeat` passed as a `Func<Task>` becomes `() => client.Heartbeat()`.
+- Every async method takes an optional `CancellationToken` as its last parameter. Code compiled against 1.x has to be rebuilt, and a method group like `client.HeartbeatAsync` passed as a `Func<Task>` becomes `() => client.Heartbeat()`.
 
 The [migration guide](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/v2-migration/MIGRATION_GUIDE_V2.md) has the details.
 

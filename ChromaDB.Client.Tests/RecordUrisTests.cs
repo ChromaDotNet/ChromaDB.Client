@@ -14,7 +14,7 @@ public class RecordUrisTests
 	public async Task AddSendsUris()
 	{
 		var handler = new RecordingHandler("true");
-		await Client(handler).Add(new ChromaRecords(["a", "b"]) { Embeddings = [Embedding, Embedding], Uris = ["file://a", null] });
+		await Client(handler).AddAsync(new ChromaRecords(["a", "b"]) { Embeddings = [Embedding, Embedding], Uris = ["file://a", null] });
 		Assert.That(handler.Body.GetProperty("uris").EnumerateArray().Select(x => x.GetString()), Is.EqualTo(new[] { "file://a", null }));
 	}
 
@@ -22,7 +22,7 @@ public class RecordUrisTests
 	public async Task AddWithoutUrisDoesNotSendThem()
 	{
 		var handler = new RecordingHandler("true");
-		await Client(handler).Add(["a"], embeddings: [Embedding]);
+		await Client(handler).AddAsync(["a"], embeddings: [Embedding]);
 		Assert.That(handler.Body.TryGetProperty("uris", out _), Is.False);
 	}
 
@@ -31,9 +31,9 @@ public class RecordUrisTests
 	{
 		var handler = new RecordingHandler("null");
 		var client = Client(handler);
-		await client.Update(new ChromaRecords(["a"]) { Uris = ["file://b"] });
+		await client.UpdateAsync(new ChromaRecords(["a"]) { Uris = ["file://b"] });
 		Assert.That(handler.Body.GetProperty("uris")[0].GetString(), Is.EqualTo("file://b"));
-		await client.Upsert(new ChromaRecords(["a"]) { Embeddings = [Embedding], Uris = ["file://c"] });
+		await client.UpsertAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Uris = ["file://c"] });
 		Assert.That(handler.Body.GetProperty("uris")[0].GetString(), Is.EqualTo("file://c"));
 	}
 
@@ -41,7 +41,7 @@ public class RecordUrisTests
 	public async Task GetIncludesAndReadsUris()
 	{
 		var handler = new RecordingHandler("""{"ids":["a","b"],"uris":["file://a",null]}""");
-		var result = await Client(handler).Get(include: ChromaGetInclude.Uris);
+		var result = await Client(handler).GetAsync(include: ChromaGetInclude.Uris);
 		Assert.That(handler.Body.GetProperty("include").EnumerateArray().Select(x => x.GetString()), Is.EqualTo(new[] { "uris" }));
 		Assert.That(result.Select(x => x.Uri), Is.EqualTo(new[] { "file://a", null }));
 	}
@@ -50,7 +50,7 @@ public class RecordUrisTests
 	public async Task QueryIncludesAndReadsUris()
 	{
 		var handler = new RecordingHandler("""{"ids":[["a"]],"uris":[["file://a"]]}""");
-		var result = await Client(handler).Query(Embedding, include: ChromaQueryInclude.Uris);
+		var result = await Client(handler).QueryAsync(Embedding, include: ChromaQueryInclude.Uris);
 		Assert.That(handler.Body.GetProperty("include").EnumerateArray().Select(x => x.GetString()), Is.EqualTo(new[] { "uris" }));
 		Assert.That(result.Single().Uri, Is.EqualTo("file://a"));
 	}

@@ -19,7 +19,7 @@ public class ApiV2RequestsTests
 	public async Task Healthcheck()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"is_executor_ready":true,"is_log_client_ready":false}"""));
-		var result = await Client(server).Healthcheck();
+		var result = await Client(server).HealthcheckAsync();
 		Assert.That(server.Requests.Single().Line, Is.EqualTo("GET /api/v2/healthcheck"));
 		Assert.That(result.IsExecutorReady, Is.True);
 		Assert.That(result.IsLogClientReady, Is.False);
@@ -29,7 +29,7 @@ public class ApiV2RequestsTests
 	public async Task GetCollectionByCrn()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, $$"""{"id":"{{Id}}","name":"c"}"""));
-		var result = await Client(server).GetCollectionByCrn("tenant:database:c");
+		var result = await Client(server).GetCollectionByCrnAsync("tenant:database:c");
 		Assert.That(Uri.UnescapeDataString(server.Requests.Single().Line), Is.EqualTo("GET /api/v2/collections/tenant:database:c"));
 		Assert.That(result.Id, Is.EqualTo(Id));
 	}
@@ -38,7 +38,7 @@ public class ApiV2RequestsTests
 	public async Task UpdateTenant()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, "{}"));
-		await Client(server).UpdateTenant("t", "resource");
+		await Client(server).UpdateTenantAsync("t", "resource");
 		Assert.That(server.Requests.Single().Line, Is.EqualTo("PATCH /api/v2/tenants/t"));
 		Assert.That(server.Requests.Single().Body.GetProperty("resource_name").GetString(), Is.EqualTo("resource"));
 	}
@@ -47,7 +47,7 @@ public class ApiV2RequestsTests
 	public async Task ResourceNameOfTheTenant()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"name":"t","resource_name":"resource"}"""));
-		Assert.That((await Client(server).GetTenant("t")).ResourceName, Is.EqualTo("resource"));
+		Assert.That((await Client(server).GetTenantAsync("t")).ResourceName, Is.EqualTo("resource"));
 	}
 
 	[Test]
@@ -62,7 +62,7 @@ public class ApiV2RequestsTests
 	public async Task DeleteWithLimitAndFilters()
 	{
 		var server = new FakeServer(r => r.Path == "/openapi.json" ? (HttpStatusCode.OK, OpenApiWithDeleteLimit) : (HttpStatusCode.OK, """{"deleted":2}"""));
-		var deleted = await CollectionClient(server).Delete(new ChromaDelete { WhereDocument = ChromaWhereDocumentOperator.Contains("x"), Limit = 2 });
+		var deleted = await CollectionClient(server).DeleteAsync(new ChromaDelete { WhereDocument = ChromaWhereDocumentOperator.Contains("x"), Limit = 2 });
 		Assert.That(deleted, Is.EqualTo(2));
 		var delete = server.Requests.Single(x => x.Path.EndsWith("/delete"));
 		Assert.That(delete.Line, Is.EqualTo($"POST {CollectionPath}/delete"));
@@ -77,7 +77,7 @@ public class ApiV2RequestsTests
 	public async Task DeleteWithLimitOnAServerThatIgnoresIt(HttpStatusCode status, string description)
 	{
 		var server = new FakeServer(r => r.Path == "/openapi.json" ? (status, description) : (HttpStatusCode.OK, "{}"));
-		await Assert.ThatAsync(() => CollectionClient(server).Delete(new ChromaDelete { Ids = ["a"], WhereDocument = ChromaWhereDocumentOperator.Contains("x"), Limit = 1 }),
+		await Assert.ThatAsync(() => CollectionClient(server).DeleteAsync(new ChromaDelete { Ids = ["a"], WhereDocument = ChromaWhereDocumentOperator.Contains("x"), Limit = 1 }),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains("Chroma 1.5.3"));
 		Assert.That(server.Requests.Any(x => x.Path.EndsWith("/delete")), Is.False);
 	}
@@ -93,7 +93,7 @@ public class ApiV2RequestsTests
 			_ => (HttpStatusCode.OK, $$"""{"deleted":{{Math.Min(r.Body.GetProperty("ids").GetArrayLength(), r.Body.GetProperty("limit").GetInt32())}}}"""),
 		});
 		var client = CollectionClient(server, new ChromaConfigurationOptions("http://localhost:8000").WithBatchSplitting());
-		var deleted = await client.Delete(new ChromaDelete { Ids = ["a", "b", "c", "d", "e"], WhereDocument = ChromaWhereDocumentOperator.Contains("x"), Limit = 3 });
+		var deleted = await client.DeleteAsync(new ChromaDelete { Ids = ["a", "b", "c", "d", "e"], WhereDocument = ChromaWhereDocumentOperator.Contains("x"), Limit = 3 });
 		Assert.That(deleted, Is.EqualTo(3));
 		var limits = server.Requests.Where(x => x.Path.EndsWith("/delete")).Select(x => x.Body.GetProperty("limit").GetInt32());
 		Assert.That(limits, Is.EqualTo(new[] { 3, 1 }));
@@ -106,7 +106,7 @@ public class ApiV2RequestsTests
 	public async Task DeleteWithoutTheCount(string response)
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, response));
-		Assert.That(await CollectionClient(server).Delete(new ChromaDelete { Ids = ["a"] }), Is.Null);
+		Assert.That(await CollectionClient(server).DeleteAsync(new ChromaDelete { Ids = ["a"] }), Is.Null);
 	}
 
 	// What Chroma or its Python client reject: nothing is sent, not even the request for the OpenAPI description.
@@ -116,11 +116,11 @@ public class ApiV2RequestsTests
 		var server = new FakeServer(_ => (HttpStatusCode.OK, OpenApiWithDeleteLimit));
 		var client = CollectionClient(server);
 		var filter = ChromaWhereDocumentOperator.Contains("x");
-		await Assert.ThatAsync(() => client.Delete(new ChromaDelete()), Throws.ArgumentException);
-		await Assert.ThatAsync(() => client.Delete(new ChromaDelete { Ids = [] }), Throws.ArgumentException);
-		await Assert.ThatAsync(() => client.Delete(new ChromaDelete { Ids = [], WhereDocument = filter }), Throws.ArgumentException);
-		await Assert.ThatAsync(() => client.Delete(new ChromaDelete { Ids = ["a"], Limit = 1 }), Throws.ArgumentException);
-		await Assert.ThatAsync(() => client.Delete(new ChromaDelete { WhereDocument = filter, Limit = -1 }), Throws.InstanceOf<ArgumentOutOfRangeException>());
+		await Assert.ThatAsync(() => client.DeleteAsync(new ChromaDelete()), Throws.ArgumentException);
+		await Assert.ThatAsync(() => client.DeleteAsync(new ChromaDelete { Ids = [] }), Throws.ArgumentException);
+		await Assert.ThatAsync(() => client.DeleteAsync(new ChromaDelete { Ids = [], WhereDocument = filter }), Throws.ArgumentException);
+		await Assert.ThatAsync(() => client.DeleteAsync(new ChromaDelete { Ids = ["a"], Limit = 1 }), Throws.ArgumentException);
+		await Assert.ThatAsync(() => client.DeleteAsync(new ChromaDelete { WhereDocument = filter, Limit = -1 }), Throws.InstanceOf<ArgumentOutOfRangeException>());
 		Assert.That(server.Requests, Is.Empty);
 	}
 
@@ -129,7 +129,7 @@ public class ApiV2RequestsTests
 	public async Task DeleteWithLimitZero()
 	{
 		var server = new FakeServer(r => r.Path == "/openapi.json" ? (HttpStatusCode.OK, OpenApiWithDeleteLimit) : (HttpStatusCode.OK, """{"deleted":0}"""));
-		Assert.That(await CollectionClient(server).Delete(new ChromaDelete { WhereDocument = ChromaWhereDocumentOperator.Contains("x"), Limit = 0 }), Is.EqualTo(0));
+		Assert.That(await CollectionClient(server).DeleteAsync(new ChromaDelete { WhereDocument = ChromaWhereDocumentOperator.Contains("x"), Limit = 0 }), Is.EqualTo(0));
 		Assert.That(server.Requests.Single(x => x.Path.EndsWith("/delete")).Body.GetProperty("limit").GetInt32(), Is.EqualTo(0));
 	}
 
@@ -139,7 +139,7 @@ public class ApiV2RequestsTests
 	public async Task CountAtAReadLevel(ChromaReadLevel readLevel, string name)
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, "4"));
-		Assert.That(await CollectionClient(server).Count(readLevel), Is.EqualTo(4));
+		Assert.That(await CollectionClient(server).CountAsync(readLevel), Is.EqualTo(4));
 		Assert.That(server.Requests.Single().Line, Is.EqualTo($"GET {CollectionPath}/count?read_level={name}"));
 	}
 
@@ -152,7 +152,7 @@ public class ApiV2RequestsTests
 		var update = configuration.StartsWith("""{"hnsw":{""")
 			? new ChromaCollectionConfigurationUpdate { Hnsw = new() { EfSearch = 200 } }
 			: new ChromaCollectionConfigurationUpdate { Spann = new() { SearchNprobe = 32 } };
-		await CollectionClient(server, collection: Collection(configuration)).ModifyConfiguration(update);
+		await CollectionClient(server, collection: Collection(configuration)).ModifyConfigurationAsync(update);
 		var request = server.Requests.Single();
 		Assert.That(request.Line, Is.EqualTo($"PUT {CollectionPath}"));
 		Assert.That(request.Body.GetProperty("new_configuration").GetRawText(), Is.EqualTo(expected));
@@ -167,7 +167,7 @@ public class ApiV2RequestsTests
 		var update = hnsw
 			? new ChromaCollectionConfigurationUpdate { Hnsw = new() { EfSearch = 200 } }
 			: new ChromaCollectionConfigurationUpdate { Spann = new() { SearchNprobe = 32 } };
-		await Assert.ThatAsync(() => CollectionClient(server, collection: Collection(configuration)).ModifyConfiguration(update),
+		await Assert.ThatAsync(() => CollectionClient(server, collection: Collection(configuration)).ModifyConfigurationAsync(update),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains(message));
 		Assert.That(server.Requests, Is.Empty);
 	}
@@ -179,7 +179,7 @@ public class ApiV2RequestsTests
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, "{}"));
 		var collection = new ChromaCollection("c") { Id = Id, ConfigurationJson = configuration is null ? JsonDocument.Parse("null").RootElement : JsonDocument.Parse(configuration).RootElement };
-		await Assert.ThatAsync(() => CollectionClient(server, collection: collection).ModifyConfiguration(new() { Hnsw = new() { EfSearch = 200 } }),
+		await Assert.ThatAsync(() => CollectionClient(server, collection: collection).ModifyConfigurationAsync(new() { Hnsw = new() { EfSearch = 200 } }),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains("Chroma 1.0.6"));
 		Assert.That(server.Requests.Any(x => x.Method == "PUT"), Is.False);
 	}
@@ -189,7 +189,7 @@ public class ApiV2RequestsTests
 	public async Task ModifyConfigurationReadsTheCollection()
 	{
 		var server = new FakeServer(r => r.Method == "GET" ? (HttpStatusCode.OK, $$$$"""{"id":"{{{{Id}}}}","name":"c","configuration_json":{"hnsw":{}}}""") : (HttpStatusCode.OK, "{}"));
-		await CollectionClient(server).ModifyConfiguration(new() { Hnsw = new() { EfSearch = 200 } });
+		await CollectionClient(server).ModifyConfigurationAsync(new() { Hnsw = new() { EfSearch = 200 } });
 		Assert.That(server.Requests.Select(x => x.Line), Is.EqualTo(new[] { "GET /api/v2/tenants/default_tenant/databases/default_database/collections/c", $"PUT {CollectionPath}" }));
 	}
 
@@ -197,7 +197,7 @@ public class ApiV2RequestsTests
 	public async Task Fork()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"id":"22222222-2222-3333-4444-555555555555","name":"copy"}"""));
-		var result = await CollectionClient(server).Fork("copy");
+		var result = await CollectionClient(server).ForkAsync("copy");
 		Assert.That(server.Requests.Single().Line, Is.EqualTo($"POST {CollectionPath}/fork"));
 		Assert.That(server.Requests.Single().Body.GetProperty("new_name").GetString(), Is.EqualTo("copy"));
 		Assert.That(result.Name, Is.EqualTo("copy"));
@@ -207,7 +207,7 @@ public class ApiV2RequestsTests
 	public async Task ForkCount()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"count":3}"""));
-		Assert.That(await CollectionClient(server).ForkCount(), Is.EqualTo(3));
+		Assert.That(await CollectionClient(server).ForkCountAsync(), Is.EqualTo(3));
 		Assert.That(server.Requests.Single().Line, Is.EqualTo($"GET {CollectionPath}/fork_count"));
 	}
 
@@ -215,7 +215,7 @@ public class ApiV2RequestsTests
 	public async Task IndexingStatus()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"op_indexing_progress":0.25,"num_unindexed_ops":3,"num_indexed_ops":1,"total_ops":4}"""));
-		var result = await CollectionClient(server).GetIndexingStatus();
+		var result = await CollectionClient(server).GetIndexingStatusAsync();
 		Assert.That(server.Requests.Single().Line, Is.EqualTo($"GET {CollectionPath}/indexing_status"));
 		Assert.That((result.OpIndexingProgress, result.NumUnindexedOps, result.NumIndexedOps, result.TotalOps), Is.EqualTo((0.25f, 3L, 1L, 4L)));
 	}
@@ -224,7 +224,7 @@ public class ApiV2RequestsTests
 	public async Task AttachFunction()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"attached_function":{"id":"33333333-2222-3333-4444-555555555555","name":"stats","function_name":"statistics"},"created":true}"""));
-		var (attached, created) = await CollectionClient(server).AttachFunction(ChromaFunctions.Statistics, "stats", "stats_output", new() { ["k"] = 1 });
+		var (attached, created) = await CollectionClient(server).AttachFunctionAsync(ChromaFunctions.Statistics, "stats", "stats_output", new() { ["k"] = 1 });
 		var request = server.Requests.Single();
 		Assert.That(request.Line, Is.EqualTo($"POST {CollectionPath}/functions/attach"));
 		Assert.That(request.Body.GetRawText(), Is.EqualTo("""{"name":"stats","function_id":"statistics","output_collection":"stats_output","params":{"k":1}}"""));
@@ -236,7 +236,7 @@ public class ApiV2RequestsTests
 	public async Task AttachFunctionCreated(string created, bool expected)
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, $$"""{"attached_function":{"id":"33333333-2222-3333-4444-555555555555","name":"stats","function_name":"statistics"}{{created}}}"""));
-		Assert.That((await CollectionClient(server).AttachFunction(ChromaFunctions.Statistics, "stats", "stats_output")).Created, Is.EqualTo(expected));
+		Assert.That((await CollectionClient(server).AttachFunctionAsync(ChromaFunctions.Statistics, "stats", "stats_output")).Created, Is.EqualTo(expected));
 	}
 
 	[Test]
@@ -246,7 +246,7 @@ public class ApiV2RequestsTests
 			{"attached_function":{"id":"33333333-2222-3333-4444-555555555555","name":"stats","function_name":"statistics","input_collection_id":"{{{Id}}}",
 			"output_collection":"stats_output","output_collection_id":null,"tenant_id":"t","database_id":"d","params":"{\"k\":1}","completion_offset":7,"min_records_for_invocation":100}}
 			"""));
-		var result = await CollectionClient(server).GetAttachedFunction("stats");
+		var result = await CollectionClient(server).GetAttachedFunctionAsync("stats");
 		Assert.That(server.Requests.Single().Line, Is.EqualTo($"GET {CollectionPath}/functions/stats"));
 		Assert.That((result.Name, result.FunctionName, result.InputCollectionId, result.OutputCollection, result.OutputCollectionId), Is.EqualTo(("stats", "statistics", (Guid?)Id, "stats_output", (Guid?)null)));
 		Assert.That((result.Tenant, result.Database, result.Params, result.CompletionOffset, result.MinRecordsForInvocation), Is.EqualTo(("t", "d", """{"k":1}""", (long?)7, (long?)100)));
@@ -256,7 +256,7 @@ public class ApiV2RequestsTests
 	public async Task DetachFunction()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"success":true}"""));
-		Assert.That(await CollectionClient(server).DetachFunction("stats", deleteOutputCollection: true), Is.True);
+		Assert.That(await CollectionClient(server).DetachFunctionAsync("stats", deleteOutputCollection: true), Is.True);
 		Assert.That(server.Requests.Single().Line, Is.EqualTo($"POST {CollectionPath}/attached_functions/stats/detach"));
 		Assert.That(server.Requests.Single().Body.GetProperty("delete_output").GetBoolean(), Is.True);
 	}
@@ -271,9 +271,9 @@ public class ApiV2RequestsTests
 	public async Task TenantAndDatabaseFromIdentity(string identity, string? tenant, string? database)
 	{
 		var server = new FakeServer(r => r.Path.EndsWith("/auth/identity") ? (HttpStatusCode.OK, identity) : (HttpStatusCode.OK, "[]"));
-		var client = await Client(server).WithTenantAndDatabaseFromIdentity();
+		var client = await Client(server).WithTenantAndDatabaseFromIdentityAsync();
 		Assert.That((client.Options.Tenant, client.Options.Database), Is.EqualTo((tenant, database)));
-		await client.ListCollections();
+		await client.ListCollectionsAsync();
 		Assert.That(server.Requests.Last().Line, Is.EqualTo($"GET /api/v2/tenants/{tenant ?? "default_tenant"}/databases/{database ?? "default_database"}/collections"));
 	}
 
@@ -284,7 +284,7 @@ public class ApiV2RequestsTests
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"tenant":"t1","databases":["d1"]}"""));
 		var options = new ChromaConfigurationOptions("http://localhost:8000", defaultTenant: tenant, defaultDatabase: database);
-		await Assert.ThatAsync(() => new ChromaClient(options, new HttpClient(server)).WithTenantAndDatabaseFromIdentity(),
+		await Assert.ThatAsync(() => new ChromaClient(options, new HttpClient(server)).WithTenantAndDatabaseFromIdentityAsync(),
 			Throws.InstanceOf<ChromaException>().With.Message.Contains(message));
 	}
 
@@ -294,7 +294,7 @@ public class ApiV2RequestsTests
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"tenant":"t1","databases":["d1","d2"]}"""));
 		var options = new ChromaConfigurationOptions("http://localhost:8000", defaultDatabase: "d3");
-		var client = await new ChromaClient(options, new HttpClient(server)).WithTenantAndDatabaseFromIdentity();
+		var client = await new ChromaClient(options, new HttpClient(server)).WithTenantAndDatabaseFromIdentityAsync();
 		Assert.That((client.Options.Tenant, client.Options.Database), Is.EqualTo(("t1", "d3")));
 	}
 
@@ -303,7 +303,7 @@ public class ApiV2RequestsTests
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"tenant":"t1","databases":["d1"]}"""));
 		var options = new ChromaConfigurationOptions("http://localhost:8000", defaultTenant: "default_tenant", defaultDatabase: "default_database");
-		var client = await new ChromaClient(options, new HttpClient(server)).WithTenantAndDatabaseFromIdentity();
+		var client = await new ChromaClient(options, new HttpClient(server)).WithTenantAndDatabaseFromIdentityAsync();
 		Assert.That((client.Options.Tenant, client.Options.Database), Is.EqualTo(("t1", "d1")));
 	}
 

@@ -20,7 +20,7 @@ public class CollectionClientTenantTests
 		using var httpClient = new HttpClient(handler);
 		var collection = new ChromaCollection("collection") { Id = Id, Tenant = collectionTenant, Database = collectionDatabase };
 		var options = new ChromaConfigurationOptions("http://localhost:8000/api/v2/", defaultTenant: optionsTenant, defaultDatabase: optionsDatabase);
-		await new ChromaCollectionClient(collection, options, httpClient).Count();
+		await new ChromaCollectionClient(collection, options, httpClient).CountAsync();
 		Assert.That(handler.RequestUri?.AbsolutePath, Is.EqualTo($"/api/v2/tenants/{expectedTenant}/databases/{expectedDatabase}/collections/{Id}/count"));
 	}
 

@@ -16,7 +16,7 @@ public class MissingEndpointTests
 	{
 		using var httpClient = new HttpClient(new FixedResponseHandler(statusCode, body));
 		var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), httpClient);
-		await Assert.ThatAsync(() => client.CreateTenant("t"), Throws.InstanceOf<ChromaException>().With.Message.EqualTo(expected));
+		await Assert.ThatAsync(() => client.CreateTenantAsync("t"), Throws.InstanceOf<ChromaException>().With.Message.EqualTo(expected));
 	}
 
 	sealed class FixedResponseHandler(HttpStatusCode statusCode, string body) : HttpMessageHandler

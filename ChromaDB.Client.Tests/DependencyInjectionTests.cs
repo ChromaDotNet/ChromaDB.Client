@@ -14,7 +14,7 @@ public class DependencyInjectionTests : ChromaTestsBase
 		services.AddChromaClient(_ => BaseConfigurationOptions);
 		using var provider = services.BuildServiceProvider();
 		var client = provider.GetRequiredService<ChromaClient>();
-		var result = await client.Heartbeat();
+		var result = await client.HeartbeatAsync();
 		Assert.That(result.NanosecondHeartbeat, Is.GreaterThan(0));
 	}
 
@@ -27,9 +27,9 @@ public class DependencyInjectionTests : ChromaTestsBase
 		using var provider = services.BuildServiceProvider();
 		Assert.That(provider.GetRequiredKeyedService<ChromaConfigurationOptions>("first"), Is.SameAs(BaseConfigurationOptions));
 		Assert.That(provider.GetRequiredKeyedService<ChromaConfigurationOptions>("second").Uri, Is.EqualTo(new Uri("http://localhost:1/")));
-		var result = await provider.GetRequiredKeyedService<ChromaClient>("first").Heartbeat();
+		var result = await provider.GetRequiredKeyedService<ChromaClient>("first").HeartbeatAsync();
 		Assert.That(result.NanosecondHeartbeat, Is.GreaterThan(0));
-		await Assert.ThatAsync(() => provider.GetRequiredKeyedService<ChromaClient>("second").Heartbeat(), Throws.InstanceOf<ChromaException>());
+		await Assert.ThatAsync(() => provider.GetRequiredKeyedService<ChromaClient>("second").HeartbeatAsync(), Throws.InstanceOf<ChromaException>());
 	}
 
 	// The registrations return the services, so that more registrations follow.
