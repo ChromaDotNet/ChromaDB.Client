@@ -63,6 +63,23 @@ foreach (var item in queryData)
 }
 ```
 
+## Collections and records
+
+```csharp
+var collections = await client.ListCollectionsAsync();
+var page = await client.ListCollectionsAsync(limit: 10, offset: 20);
+var count = await client.CountCollectionsAsync();
+await collectionClient.ModifyAsync(name: "renamed", metadata: new Dictionary<string, object> { ["owner"] = "me" });
+var first = await collectionClient.PeekAsync(5);
+await client.DeleteCollectionAsync("renamed");
+var heartbeat = await client.HeartbeatAsync();
+var checks = await client.GetPreFlightChecksAsync();   // MaxBatchSize, SupportsBase64Encoding
+var identity = await client.GetUserIdentityAsync();    // UserId, Tenant, Databases
+var database = await client.GetDatabaseAsync("my_database");
+```
+
+`ModifyAsync` changes the name or the metadata of a collection, and `PeekAsync` returns its first records.
+
 ## API version
 
 The client uses the v2 API. For the servers that have only the v1 API, like Chroma 0.5.15, choose it once in the options:
@@ -155,6 +172,8 @@ sealed class FakeClient : ChromaClient
 var where = ChromaWhereOperator.Equal("year", 2026) & ChromaWhereOperator.In("lang", "en", "it");
 Console.WriteLine(where); // {"$and":[{"year":{"$eq":2026}},{"lang":{"$in":["en","it"]}}]}
 ```
+
+`ChromaWhereOperator` has `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, `LessThanOrEqual`, `In`, `NotIn`, `Contains` and `NotContains`, combined with `&` and `|`; `ChromaWhereDocumentOperator` has `Contains`, `NotContains`, `Regex` and `NotRegex`.
 
 `In` and `NotIn` without values throw an `ArgumentException`: every tested Chroma rejects `$in` and `$nin` without values.
 
@@ -367,6 +386,8 @@ var many = await collectionClient.SearchAsync([new ChromaSearch { Rank = fused, 
 
 `ChromaSearchGroupBy` keeps, for each value of the metadata keys, the records the aggregate chooses. Several searches go in one request, and their results come in order. `ToString()` of a `ChromaRank` gives its JSON; a text query of `SparseKnn` is in it as the text, where `SearchAsync` sends its sparse vector.
 
+`SearchAsync(search, ChromaReadLevel.IndexOnly)` leaves out the records not indexed yet. `ChromaSearchAggregate.MinK` keeps the records with the lowest values of the keys, the best ranked with `ChromaSearchKeys.Score`, and `MaxK` those with the highest.
+
 ## Sparse vectors and schema
 
 Chroma Cloud keeps sparse vectors, like the BM25 vectors of the documents, in a metadata key with a sparse vector index, which the schema of the collection declares:
@@ -427,7 +448,8 @@ var results = await collectionClient.SearchAsync(new ChromaSearch
   - In `AddAsync`, `UpdateAsync` and `UpsertAsync`, the vectors of each sparse vector index of the schema with a source key and `chroma_bm25`, from the document or from the text in the metadata key, with the settings of the schema. A record whose metadata already has the key keeps its vector. The records and the metadata you pass do not change.
   - In `SearchAsync`, the vector of the text of `SparseKnn(queryText, key)`, with the function of the index of the key.
   - The schema comes with the collection, from `CreateCollectionAsync` or `GetCollectionAsync`. A collection client created from an id alone has none, so a text query throws a `ChromaException`; with another function than `chroma_bm25` too, unless the metadata has the vectors.
-- **By hand:** `new ChromaBm25()` with the same settings, or `Bm25Function` of the index, gives the vectors to put in the metadata or in `SparseKnn`. `Reference` declares the function in the schema.
+- **By hand:** `new ChromaBm25()` with the same settings, or `Bm25Function` of the index, gives the vectors to put in the metadata or in `SparseKnn`: `Embed(text)` gives the vector of a text. `Reference` declares the function in the schema.
+- **Other functions:** `ChromaEmbeddingFunctionReference.Known(name, config)` declares another function known to the clients of Chroma; the client only declares it.
 - **Records without the terms of the query:** Chroma Cloud ranks them too, among the `limit` of `SparseKnn`, with the score 1, one minus the dot product. With `returnRank` they take the next positions, so in `Rrf` they get points from the sparse part as well.
 - **License:** the license of the stemmer is in [THIRD-PARTY-NOTICES.md](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/THIRD-PARTY-NOTICES.md).
 
