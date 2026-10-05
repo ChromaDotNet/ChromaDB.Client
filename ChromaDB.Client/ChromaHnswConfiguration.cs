@@ -52,6 +52,9 @@ public class ChromaHnswConfiguration
 		}
 	}
 
+	// The bounds of a long as doubles: -2^63 is long.MinValue, and long.MaxValue as a double rounds up to 2^63.
+	private const double TwoTo63 = 9223372036854775808.0;
+
 	// The "hnsw:" metadata that Chroma takes only as integers: 0.6.3 and 1.5.9 reject 100.0 for them.
 	internal static readonly string[] IntegerMetadataKeys = ["hnsw:M", "hnsw:construction_ef", "hnsw:search_ef", "hnsw:num_threads", "hnsw:batch_size", "hnsw:sync_threshold"];
 
@@ -60,9 +63,9 @@ public class ChromaHnswConfiguration
 	internal static object IntegerMetadata(string key, object value, string paramName)
 		=> value switch
 		{
-			double d when Math.Floor(d) == d && Math.Abs(d) < 9e18 => (long)d,
-			float f when Math.Floor(f) == f && Math.Abs(f) < 9e18 => (long)f,
-			decimal m when decimal.Truncate(m) == m && Math.Abs(m) < 9e18m => (long)m,
+			double d when Math.Floor(d) == d && d >= -TwoTo63 && d < TwoTo63 => (long)d,
+			float f when Math.Floor(f) == f && f >= -TwoTo63 && f < TwoTo63 => (long)f,
+			decimal m when decimal.Truncate(m) == m && m >= long.MinValue && m <= long.MaxValue => (long)m,
 			System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Number } element when element.TryGetInt64(out var integer) => integer,
 			double or float or decimal or System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Number }
 				=> throw new ArgumentException($"Chroma takes {key} only as an integer, not {value}.", paramName),

@@ -56,6 +56,30 @@ public class CollectionSettingsTests
 			"""));
 	}
 
+	// A whole number in the range of a long goes as that long, as the long itself would, and one beyond it throws.
+	[Test]
+	public async Task IntegerSettingsUpToTheBoundsOfALong()
+	{
+		foreach (var (value, sent) in new (object, string)[]
+		{
+			(9000000000000000000m, "9000000000000000000"),
+			((decimal)long.MaxValue, "9223372036854775807"),
+			((decimal)long.MinValue, "-9223372036854775808"),
+			(-9223372036854775808.0, "-9223372036854775808"),
+			(9223372036854774784.0, "9223372036854774784"),
+		})
+		{
+			var server = Server();
+			await Client(server).CreateCollectionAsync(new ChromaCollectionDefinition("c") { Metadata = new Dictionary<string, object> { ["hnsw:sync_threshold"] = value } });
+			Assert.That(Create(server).GetProperty("metadata").GetProperty("hnsw:sync_threshold").GetRawText(), Is.EqualTo(sent), $"{value}");
+		}
+		foreach (var value in new object[] { (decimal)long.MaxValue + 1, 9223372036854775808.0, 9223372036854775808f })
+		{
+			Assert.That(() => Client(Server()).CreateCollectionAsync(new ChromaCollectionDefinition("c") { Metadata = new Dictionary<string, object> { ["hnsw:sync_threshold"] = value } }),
+				Throws.ArgumentException.With.Message.Contains("only as an integer"), $"{value}");
+		}
+	}
+
 	[Test]
 	public void SettingsThatChromaTakesOnlyAsIntegers()
 	{
