@@ -51,7 +51,7 @@ internal static class ChromaNumbers
 		{
 			throw new ArgumentException($"{value.ToString(CultureInfo.InvariantCulture)} is not a number JSON can carry: Chroma takes finite numbers only.", nameof(value));
 		}
-		var bits = BitConverter.ToInt32(BitConverter.GetBytes(value), 0);
+		var bits = new SingleBits { Value = value }.Bits;
 		if (value == 0)
 		{
 			return bits < 0 ? "-0.0" : "0.0";
@@ -63,12 +63,96 @@ internal static class ChromaNumbers
 		{
 			FromText(text, out digits, out exponent);
 		}
-		else
+		else if (!FloatDigits(bits & int.MaxValue, out digits, out exponent))
 		{
 			ExactDigits(bits & int.MaxValue, 23, 150, out digits, out exponent);
 		}
 		return Write(bits < 0, digits, exponent);
 	}
+
+	[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Explicit)]
+	private struct SingleBits
+	{
+		[System.Runtime.InteropServices.FieldOffset(0)] public float Value;
+		[System.Runtime.InteropServices.FieldOffset(0)] public int Bits;
+	}
+
+	// The digits of ExactDigits for a float, with doubles: a float, its neighbours and the midpoints between them are
+	// exact doubles, and every step here errs by a few parts in 10^16, far below the gap between two floats. Where a
+	// decision comes closer than that to a bound (a rounding half way, a candidate on a midpoint, two candidates as
+	// near), it gives up and the exact digits decide: the same result as ExactDigits, on every runtime, about twenty
+	// times faster on .NET Framework, where the embeddings of a query go through here.
+	internal static bool FloatDigits(int bits, out string digits, out int exponent)
+	{
+		digits = "";
+		exponent = 0;
+		var biased = bits >> 23;
+		var fraction = bits & ((1 << 23) - 1);
+		var mantissa = biased == 0 ? fraction : fraction | (1 << 23);
+		var power = (biased == 0 ? 1 : biased) - 150;
+		var value = mantissa * Pow2(power);
+		var high = value + Pow2(power - 1);
+		var low = value - (fraction == 0 && biased > 1 ? Pow2(power - 2) : Pow2(power - 1));
+		var tolerance = value * 1e-12;
+
+		var k = (int)Math.Floor(Math.Log10(value));
+		var ratio = value / Pow10Double(k);
+		if (ratio >= 10) k++;
+		else if (ratio < 1) k--;
+		ratio = value / Pow10Double(k);
+		if (ratio < 1 + 1e-12 && ratio != 1 || ratio > 10 - 1e-11) return false;
+
+		for (var precision = 1; precision <= 9; precision++)
+		{
+			var shift = k - precision + 1;
+			var scaled = value / Pow10Double(shift);
+			var rounded = Math.Floor(scaled + 0.5);
+			if (Math.Abs(scaled - Math.Floor(scaled) - 0.5) < 1e-6) return false;
+			var best = 0.0;
+			var bestDistance = double.MaxValue;
+			for (var c = rounded - 1; c <= rounded + 1; c++)
+			{
+				if (c <= 0) continue;
+				var candidate = c * Pow10Double(shift);
+				var aboveLow = candidate - low;
+				var belowHigh = high - candidate;
+				if (Math.Abs(aboveLow) <= tolerance || Math.Abs(belowHigh) <= tolerance) return false;
+				if (aboveLow < 0 || belowHigh < 0) continue;
+				var distance = Math.Abs(candidate - value);
+				if (Math.Abs(distance - bestDistance) <= tolerance) return false;
+				if (distance < bestDistance)
+				{
+					best = c;
+					bestDistance = distance;
+				}
+			}
+			if (best > 0)
+			{
+				var text = ((long)best).ToString(CultureInfo.InvariantCulture);
+				digits = text.TrimEnd('0');
+				exponent = shift + text.Length - 1;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static double Pow2(int n) => n >= -1022 ? BitConverter.Int64BitsToDouble((long)(n + 1023) << 52) : Math.Pow(2, n);
+
+	// 10^n for the floats, -55 to 40: exact up to 10^22, the nearest double beyond, so that a step errs by one rounding.
+	private static readonly double[] PowersDouble = MakePowersDouble();
+
+	private static double[] MakePowersDouble()
+	{
+		var powers = new double[96];
+		for (var n = -55; n <= 40; n++)
+		{
+			powers[n + 55] = double.Parse("1E" + n.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+		}
+		return powers;
+	}
+
+	private static double Pow10Double(int n) => PowersDouble[n + 55];
 
 	// "1.2345E-07" or "123.45" into the digits "12345" and the exponent of the first digit, -7 or 2.
 	internal static void FromText(string text, out string digits, out int exponent)

@@ -94,6 +94,27 @@ public class NumbersTests
 		}
 	}
 
+	// The digits of a float with doubles, the path of .NET Framework, are the exact ones whenever they decide: floats
+	// across the whole range, the subnormals and the powers of two.
+	[Test]
+	public void FloatDigitsAreTheExactOnes()
+	{
+		var random = new Random(20261005);
+		var decided = 0;
+		var bits = Enumerable.Range(1, 5000)
+			.Concat(Enumerable.Range(0, 254).Select(e => (e + 1) << 23))
+			.Concat(Enumerable.Range(0, 200000).Select(_ => random.Next(1, 0x7F800000)))
+			.Concat([0x7F7FFFFF, 0x00800000, 0x007FFFFF]);
+		foreach (var b in bits)
+		{
+			if (!ChromaNumbers.FloatDigits(b, out var digits, out var exponent)) continue;
+			decided++;
+			ChromaNumbers.ExactDigits(b, 23, 150, out var exactDigits, out var exactExponent);
+			Assert.That((digits, exponent), Is.EqualTo((exactDigits, exactExponent)), b.ToString("X8", CultureInfo.InvariantCulture));
+		}
+		Assert.That(decided, Is.GreaterThan(190000));
+	}
+
 	[TestCase(double.NaN)]
 	[TestCase(double.PositiveInfinity)]
 	[TestCase(double.NegativeInfinity)]
