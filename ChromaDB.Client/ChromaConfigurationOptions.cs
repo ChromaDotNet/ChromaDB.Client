@@ -88,6 +88,51 @@ public class ChromaConfigurationOptions
 		: this(ClientConstants.DefaultUri)
 	{ }
 
+	/// <summary>
+	/// Options from a connection string, as an application keeps it in its settings:
+	/// <c>Endpoint=https://api.trychroma.com;Token=...;Tenant=...;Database=...</c>. <c>Endpoint</c> is the URI of the server, and a
+	/// connection string that is just an http or https URI is the endpoint alone. <c>Token</c> goes in the <c>X-Chroma-Token</c>
+	/// header, as Chroma Cloud takes its API keys; <c>Tenant</c> and <c>Database</c> are the ones of the requests. The keys are
+	/// case-insensitive, a value with <c>;</c> goes in quotes, and an empty value is no value. Another key, or no endpoint, throws an
+	/// <c>ArgumentException</c>.
+	/// </summary>
+	public static ChromaConfigurationOptions FromConnectionString(string connectionString)
+	{
+		if (Uri.TryCreate(connectionString, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")
+		{
+			return new ChromaConfigurationOptions(uri);
+		}
+		var builder = new System.Data.Common.DbConnectionStringBuilder { ConnectionString = connectionString };
+		string? endpoint = null, token = null, tenant = null, database = null;
+		foreach (string key in builder.Keys)
+		{
+			var value = builder[key]?.ToString() is { Length: > 0 } text ? text : null;
+			switch (key.ToLowerInvariant())
+			{
+				case "endpoint":
+					endpoint = value;
+					break;
+				case "token":
+					token = value;
+					break;
+				case "tenant":
+					tenant = value;
+					break;
+				case "database":
+					database = value;
+					break;
+				default:
+					throw new ArgumentException($"The connection string has the key \"{key}\": it takes Endpoint, Token, Tenant and Database.", nameof(connectionString));
+			}
+		}
+		if (endpoint is null || !Uri.TryCreate(endpoint, UriKind.Absolute, out var endpointUri))
+		{
+			throw new ArgumentException("The connection string needs Endpoint, the URI of the server.", nameof(connectionString));
+		}
+		var options = new ChromaConfigurationOptions(endpointUri, tenant, database);
+		return token is null ? options : options.WithChromaToken(token);
+	}
+
 	private ChromaConfigurationOptions(ChromaConfigurationOptions options)
 		: this(options.Uri, options.Tenant, options.Database, options.ChromaToken)
 	{

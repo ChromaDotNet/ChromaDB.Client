@@ -189,6 +189,28 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		Assert.That(found.Single().Id, Is.EqualTo("a"));
 	}
 
+	// The options of Chroma Cloud from a connection string, as the settings of an application keep them.
+	[Test]
+	public async Task ConnectionStringOfChromaCloud()
+	{
+		Assume.That(ChromaCloud, Is.True, "A connection string with a token, a tenant and a database is for Chroma Cloud.");
+		var options = ChromaConfigurationOptions.FromConnectionString(
+			$"Endpoint={BaseConfigurationOptions.Uri};Token={BaseConfigurationOptions.ChromaToken};Tenant={BaseConfigurationOptions.Tenant};Database={BaseConfigurationOptions.Database}");
+		using var client = new ChromaClient(options);
+		var name = $"collection{Random.Shared.Next()}";
+		// Its own HttpClient, which the fixture does not see: the collection is deleted here.
+		var collection = await client.CreateCollectionAsync(name);
+		try
+		{
+			Assert.That((collection.Tenant, collection.Database), Is.EqualTo((BaseConfigurationOptions.Tenant, BaseConfigurationOptions.Database)));
+			Assert.That(await client.CollectionExistsAsync(name), Is.True);
+		}
+		finally
+		{
+			await client.DeleteCollectionAsync(name);
+		}
+	}
+
 	// Hybrid search on Chroma Cloud: the client computes the BM25 vectors of the documents and of the text queries from the schema,
 	// searched alone and fused with the dense vectors.
 	[Test]

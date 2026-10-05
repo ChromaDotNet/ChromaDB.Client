@@ -153,3 +153,4 @@ ChromaDB.Client.Models.ChromaUserIdentity.Databases.get -> System.Collections.Ge
 const ChromaDB.Client.ChromaTelemetry.ActivitySourceName = "ChromaDB.Client" -> string!
 const ChromaDB.Client.ChromaTelemetry.MeterName = "ChromaDB.Client" -> string!
 override ChromaDB.Client.Models.ChromaCollectionSchema.ToString() -> string!
+static ChromaDB.Client.ChromaConfigurationOptions.FromConnectionString(string! connectionString) -> ChromaDB.Client.ChromaConfigurationOptions!

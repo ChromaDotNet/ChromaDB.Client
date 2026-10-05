@@ -274,6 +274,14 @@ var options = new ChromaConfigurationOptions(uri: "https://api.trychroma.com").W
 var client = await new ChromaClient(options, httpClient).WithTenantAndDatabaseFromIdentityAsync();
 ```
 
+From a connection string, as the settings of an application keep it:
+
+```csharp
+var options = ChromaConfigurationOptions.FromConnectionString("Endpoint=https://api.trychroma.com;Token=ck-...;Tenant=...;Database=...");
+```
+
+`Endpoint` is the URI of the server, and a connection string that is just a URI is the endpoint alone. `Token` goes in the `X-Chroma-Token` header; `Tenant` and `Database` are the ones of the requests.
+
 `WithTenantAndDatabaseFromIdentityAsync` takes the tenant and the database from the credentials, as the `CloudClient` of the Python client of Chroma does: an API key for one database gives both, an API key for a whole tenant gives only the tenant, so the database goes in the options. A tenant or a database set in the options, other than the default ones, must match the one the key gives, when it gives one. A single Chroma server always answers with `default_tenant` and `default_database`.
 
 These operations exist on Chroma Cloud only; a single Chroma server answers them with an error.
