@@ -118,7 +118,7 @@ Console.WriteLine(inferred.Options.MetadataValues); // Inferred
 
 ## Errors
 
-A failed request throws a `ChromaException`. Its `StatusCode` is the status code of the answer of the server, or null when there was no answer, like on a timeout. Its `ErrorType` is the kind of error the server names: `NotFoundError` or `InvalidArgumentError` from Chroma 1.x, `InvalidCollection` from Chroma 0.5 and 0.6, `ValueError` from the v1 API of Chroma 0.4, null when it names none.
+A failed request throws a `ChromaException`: an error answer of the server, a network error, an answer that is not the expected JSON, or a timeout, with the original exception as `InnerException`. Other exceptions, like an assembly that does not load or a disposed `HttpClient`, go as they are. Its `StatusCode` is the status code of the answer of the server, or null when there was no answer, like on a timeout. Its `ErrorType` is the kind of error the server names: `NotFoundError` or `InvalidArgumentError` from Chroma 1.x, `InvalidCollection` from Chroma 0.5 and 0.6, `ValueError` from the v1 API of Chroma 0.4, null when it names none.
 
 ```csharp
 if (!await client.CollectionExistsAsync("my_collection"))

@@ -131,7 +131,7 @@ internal static partial class HttpClientHelpers
 				_ => throw await HandleErrorStatusCode(httpRequestMessage, httpResponseMessage),
 			};
 		}
-		catch (Exception ex) when (ex is not ChromaException && !(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
+		catch (Exception ex) when (IsRequestFailure(ex, cancellationToken))
 		{
 			throw new ChromaException(ex.Message, ex);
 		}
@@ -149,11 +149,18 @@ internal static partial class HttpClientHelpers
 					throw await HandleErrorStatusCode(httpRequestMessage, httpResponseMessage);
 			};
 		}
-		catch (Exception ex) when (ex is not ChromaException && !(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
+		catch (Exception ex) when (IsRequestFailure(ex, cancellationToken))
 		{
 			throw new ChromaException(ex.Message, ex);
 		}
 	}
+
+	// What went wrong with the request itself: the network, an answer that is not the expected JSON, or a timeout, which is a
+	// cancellation the caller did not ask for. Any other exception, like an assembly that does not load or a disposed HttpClient,
+	// is not about Chroma and goes as it is.
+	private static bool IsRequestFailure(Exception exception, CancellationToken cancellationToken)
+		=> exception is HttpRequestException or JsonException or IOException and not (FileLoadException or FileNotFoundException)
+			|| exception is OperationCanceledException && !cancellationToken.IsCancellationRequested;
 
 	private static async Task<ChromaException> HandleErrorStatusCode(HttpRequestMessage httpRequestMessage, HttpResponseMessage httpResponseMessage)
 	{

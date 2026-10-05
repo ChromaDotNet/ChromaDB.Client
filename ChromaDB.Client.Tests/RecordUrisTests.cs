@@ -65,9 +65,14 @@ public class RecordUrisTests
 	{
 		public JsonElement Body { get; private set; }
 
+		// pre-flight-checks, which batch splitting asks before the writes, has no body.
 		protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
 		{
-			Body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken)).RootElement.Clone();
+			if (request.Content is null)
+			{
+				return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{"max_batch_size":1000}""") };
+			}
+			Body = JsonDocument.Parse(await request.Content.ReadAsStringAsync(cancellationToken)).RootElement.Clone();
 			return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(response) };
 		}
 	}

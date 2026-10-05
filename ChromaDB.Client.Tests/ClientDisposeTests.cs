@@ -4,7 +4,7 @@ using NUnit.Framework;
 namespace ChromaDB.Client.Tests;
 
 // Dispose closes the HttpClient the client created, and only that one. The requests have a cancelled token, so that none reaches the
-// network: a disposed HttpClient throws ObjectDisposedException, which the client wraps, before it looks at the token.
+// network: a disposed HttpClient throws ObjectDisposedException, which is not about Chroma and is not wrapped, before it looks at the token.
 [TestFixture]
 public class ClientDisposeTests
 {
@@ -20,8 +20,8 @@ public class ClientDisposeTests
 		await Assert.ThatAsync(() => client.HeartbeatAsync(cancelled.Token), Throws.InstanceOf<OperationCanceledException>());
 
 		client.Dispose();
-		await Assert.ThatAsync(() => client.HeartbeatAsync(cancelled.Token), Throws.InstanceOf<ChromaException>().With.InnerException.InstanceOf<ObjectDisposedException>());
-		await Assert.ThatAsync(() => collectionClient.CountAsync(cancelled.Token), Throws.InstanceOf<ChromaException>().With.InnerException.InstanceOf<ObjectDisposedException>());
+		await Assert.ThatAsync(() => client.HeartbeatAsync(cancelled.Token), Throws.InstanceOf<ObjectDisposedException>());
+		await Assert.ThatAsync(() => collectionClient.CountAsync(cancelled.Token), Throws.InstanceOf<ObjectDisposedException>());
 	}
 
 	[Test]
