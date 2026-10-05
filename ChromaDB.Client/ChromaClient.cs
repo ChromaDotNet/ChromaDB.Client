@@ -138,8 +138,8 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// The collections in the tenant and database of the options, or in the ones it is given.
 	/// </summary>
-	public Task<List<ChromaCollection>> ListCollections(string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
-		=> DatabaseOperation("list_collections", null, tenant, database, async () =>
+	public Task<IReadOnlyList<ChromaCollection>> ListCollections(string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+		=> DatabaseOperation<IReadOnlyList<ChromaCollection>>("list_collections", null, tenant, database, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
 			database = database is not null and not [] ? database : _currentDatabase.Name;
@@ -152,8 +152,8 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// One page of the collections, in the order of the server.
 	/// </summary>
-	public Task<List<ChromaCollection>> ListCollections(int limit, int offset = 0, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
-		=> DatabaseOperation("list_collections", null, tenant, database, async () =>
+	public Task<IReadOnlyList<ChromaCollection>> ListCollections(int limit, int offset = 0, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+		=> DatabaseOperation<IReadOnlyList<ChromaCollection>>("list_collections", null, tenant, database, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
 			database = database is not null and not [] ? database : _currentDatabase.Name;
@@ -520,8 +520,8 @@ public class ChromaClient : IDisposable
 	/// The databases in the tenant of the options, or in the one it is given. It needs the v2 API of Chroma 0.6.3 or later:
 	/// the older servers answer <c>405 Method Not Allowed</c>.
 	/// </summary>
-	public Task<List<ChromaDatabase>> ListDatabases(string? tenant = null, CancellationToken cancellationToken = default)
-		=> TenantOperation("list_databases", tenant, async () =>
+	public Task<IReadOnlyList<ChromaDatabase>> ListDatabases(string? tenant = null, CancellationToken cancellationToken = default)
+		=> TenantOperation<IReadOnlyList<ChromaDatabase>>("list_databases", tenant, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
 			var requestParams = new RequestQueryParams()
@@ -532,8 +532,8 @@ public class ChromaClient : IDisposable
 	/// <summary>
 	/// One page of the databases, in the order of the server.
 	/// </summary>
-	public Task<List<ChromaDatabase>> ListDatabases(int limit, int offset = 0, string? tenant = null, CancellationToken cancellationToken = default)
-		=> TenantOperation("list_databases", tenant, async () =>
+	public Task<IReadOnlyList<ChromaDatabase>> ListDatabases(int limit, int offset = 0, string? tenant = null, CancellationToken cancellationToken = default)
+		=> TenantOperation<IReadOnlyList<ChromaDatabase>>("list_databases", tenant, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
 			var requestParams = new RequestQueryParams()

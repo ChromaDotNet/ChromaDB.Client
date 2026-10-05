@@ -5,7 +5,7 @@ namespace ChromaDB.Client.Models.Requests;
 internal class CollectionQueryRequest
 {
 	[JsonPropertyName("query_embeddings")]
-	public required List<ReadOnlyMemory<float>> QueryEmbeddings { get; init; }
+	public required IReadOnlyList<ReadOnlyMemory<float>> QueryEmbeddings { get; init; }
 
 	[JsonPropertyName("n_results")]
 	public int NResults { get; init; } = 10;
@@ -21,5 +21,5 @@ internal class CollectionQueryRequest
 
 	[JsonPropertyName("ids")]
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-	public List<string>? Ids { get; init; }
+	public IReadOnlyList<string>? Ids { get; init; }
 }

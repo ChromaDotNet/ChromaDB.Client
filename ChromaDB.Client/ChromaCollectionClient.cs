@@ -74,8 +74,8 @@ public class ChromaCollectionClient
 	/// records than the batch size are read in pages, ids beyond it in batches: Chroma Cloud answers at most 300 records, without
 	/// an error.
 	/// </summary>
-	public Task<List<ChromaCollectionEntry>> Get(List<string>? ids = null, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, int? limit = null, int? offset = null, ChromaGetInclude? include = null, CancellationToken cancellationToken = default)
-		=> Operation("get", async () =>
+	public Task<IReadOnlyList<ChromaCollectionEntry>> Get(IReadOnlyList<string>? ids = null, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, int? limit = null, int? offset = null, ChromaGetInclude? include = null, CancellationToken cancellationToken = default)
+		=> Operation<IReadOnlyList<ChromaCollectionEntry>>("get", async () =>
 		{
 			// With batch splitting, on by default, more records than the batch size come in pages: Chroma Cloud answers at most 300 records, without
 			// an error. The ids go in batches, each read whole, and the limit and the offset apply to all of them together; without ids
@@ -90,7 +90,7 @@ public class ChromaCollectionClient
 			{
 				for (var i = 0; i < ids.Count; i += size)
 				{
-					entries.AddRange(await GetPage(ids.GetRange(i, Math.Min(size, ids.Count - i)), where, whereDocument, null, null, include, cancellationToken));
+					entries.AddRange(await GetPage(ids.Skip(i).Take(size).ToList(), where, whereDocument, null, null, include, cancellationToken));
 				}
 				return entries.Skip(offset ?? 0).Take(limit ?? int.MaxValue).ToList();
 			}
@@ -109,7 +109,7 @@ public class ChromaCollectionClient
 			return entries;
 		});
 
-	private async Task<List<ChromaCollectionEntry>> GetPage(List<string>? ids, ChromaWhereOperator? where, ChromaWhereDocumentOperator? whereDocument, int? limit, int? offset, ChromaGetInclude? include, CancellationToken cancellationToken)
+	private async Task<List<ChromaCollectionEntry>> GetPage(IReadOnlyList<string>? ids, ChromaWhereOperator? where, ChromaWhereDocumentOperator? whereDocument, int? limit, int? offset, ChromaGetInclude? include, CancellationToken cancellationToken)
 	{
 		var requestParams = new RequestQueryParams()
 			.Insert("{tenant}", _tenant)
@@ -132,22 +132,22 @@ public class ChromaCollectionClient
 	/// Searches the <c>nResults</c> records nearest to the query embedding. Without <c>include</c>, the metadatas, the
 	/// documents and the distances are included.
 	/// </summary>
-	public async Task<List<ChromaCollectionQueryEntry>> Query(ReadOnlyMemory<float> queryEmbeddings, int nResults = 10, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, ChromaQueryInclude? include = null, CancellationToken cancellationToken = default)
+	public async Task<IReadOnlyList<ChromaCollectionQueryEntry>> Query(ReadOnlyMemory<float> queryEmbeddings, int nResults = 10, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, ChromaQueryInclude? include = null, CancellationToken cancellationToken = default)
 		=> (await Query([queryEmbeddings], nResults: nResults, where: where, whereDocument: whereDocument, include: include, cancellationToken: cancellationToken)).FirstOrDefault() ?? [];
 
 	/// <summary>
 	/// Searches the <c>nResults</c> records nearest to each query embedding, and returns one list of results per
 	/// embedding. Without <c>include</c>, the metadatas, the documents and the distances are included.
 	/// </summary>
-	public Task<List<List<ChromaCollectionQueryEntry>>> Query(List<ReadOnlyMemory<float>> queryEmbeddings, int nResults = 10, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, ChromaQueryInclude? include = null, CancellationToken cancellationToken = default)
+	public Task<IReadOnlyList<IReadOnlyList<ChromaCollectionQueryEntry>>> Query(IReadOnlyList<ReadOnlyMemory<float>> queryEmbeddings, int nResults = 10, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, ChromaQueryInclude? include = null, CancellationToken cancellationToken = default)
 		=> Query(new ChromaQuery(queryEmbeddings) { NResults = nResults, Where = where, WhereDocument = whereDocument, Include = include }, cancellationToken);
 
 	/// <summary>
 	/// Runs the query and returns one list of results per query embedding. When the query has ids and the server
 	/// searches outside them, as Chroma 0.x does, it throws a <c>ChromaException</c> instead of returning the results.
 	/// </summary>
-	public Task<List<List<ChromaCollectionQueryEntry>>> Query(ChromaQuery query, CancellationToken cancellationToken = default)
-		=> Operation("query", async () =>
+	public Task<IReadOnlyList<IReadOnlyList<ChromaCollectionQueryEntry>>> Query(ChromaQuery query, CancellationToken cancellationToken = default)
+		=> Operation<IReadOnlyList<IReadOnlyList<ChromaCollectionQueryEntry>>>("query", async () =>
 		{
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -181,7 +181,7 @@ public class ChromaCollectionClient
 	/// Adds the records with the ids, embeddings, metadatas and documents. Since Chroma 1.0.16 the server requires the
 	/// embeddings: the client does not compute them.
 	/// </summary>
-	public Task Add(List<string> ids, List<ReadOnlyMemory<float>>? embeddings = null, List<Dictionary<string, object>>? metadatas = null, List<string>? documents = null, CancellationToken cancellationToken = default)
+	public Task Add(IReadOnlyList<string> ids, IReadOnlyList<ReadOnlyMemory<float>>? embeddings = null, IReadOnlyList<Dictionary<string, object>>? metadatas = null, IReadOnlyList<string>? documents = null, CancellationToken cancellationToken = default)
 		=> Add(new ChromaRecords(ids) { Embeddings = embeddings, Metadatas = metadatas, Documents = documents }, cancellationToken);
 
 	/// <summary>
@@ -216,7 +216,7 @@ public class ChromaCollectionClient
 	/// <summary>
 	/// Updates the embeddings, metadatas and documents of the records with the ids.
 	/// </summary>
-	public Task Update(List<string> ids, List<ReadOnlyMemory<float>>? embeddings = null, List<Dictionary<string, object>>? metadatas = null, List<string>? documents = null, CancellationToken cancellationToken = default)
+	public Task Update(IReadOnlyList<string> ids, IReadOnlyList<ReadOnlyMemory<float>>? embeddings = null, IReadOnlyList<Dictionary<string, object>>? metadatas = null, IReadOnlyList<string>? documents = null, CancellationToken cancellationToken = default)
 		=> Update(new ChromaRecords(ids) { Embeddings = embeddings, Metadatas = metadatas, Documents = documents }, cancellationToken);
 
 	/// <summary>
@@ -252,7 +252,7 @@ public class ChromaCollectionClient
 	/// Adds the records with the ids, or updates the ones that already exist. Since Chroma 1.0.16 the server requires
 	/// the embeddings: the client does not compute them.
 	/// </summary>
-	public Task Upsert(List<string> ids, List<ReadOnlyMemory<float>>? embeddings = null, List<Dictionary<string, object>>? metadatas = null, List<string>? documents = null, CancellationToken cancellationToken = default)
+	public Task Upsert(IReadOnlyList<string> ids, IReadOnlyList<ReadOnlyMemory<float>>? embeddings = null, IReadOnlyList<Dictionary<string, object>>? metadatas = null, IReadOnlyList<string>? documents = null, CancellationToken cancellationToken = default)
 		=> Upsert(new ChromaRecords(ids) { Embeddings = embeddings, Metadatas = metadatas, Documents = documents }, cancellationToken);
 
 	/// <summary>
@@ -424,7 +424,7 @@ public class ChromaCollectionClient
 	/// Deletes the records with the ids, sending the filters with them when given; by default, unless
 	/// <c>WithBatchSplitting(false)</c>, the ids go in batches of the <c>max_batch_size</c> of the server.
 	/// </summary>
-	public Task Delete(List<string> ids, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, CancellationToken cancellationToken = default)
+	public Task Delete(IReadOnlyList<string> ids, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, CancellationToken cancellationToken = default)
 		=> Operation("delete", async () =>
 		{
 			var requestParams = new RequestQueryParams()
@@ -478,7 +478,7 @@ public class ChromaCollectionClient
 			int? deleted = null;
 			var remaining = delete.Limit;
 			var sent = false;
-			async Task Send(List<string>? ids)
+			async Task Send(IReadOnlyList<string>? ids)
 			{
 				// The limit is used up: the next batches would delete nothing. The first request goes anyway, also with a limit of 0.
 				if (sent && remaining is <= 0)
@@ -544,7 +544,7 @@ public class ChromaCollectionClient
 	/// <summary>
 	/// Runs one search with the Search API of Chroma, which only Chroma Cloud serves: a single server answers <c>501</c>.
 	/// </summary>
-	public async Task<List<ChromaSearchEntry>> Search(ChromaSearch search, ChromaReadLevel? readLevel = null, CancellationToken cancellationToken = default)
+	public async Task<IReadOnlyList<ChromaSearchEntry>> Search(ChromaSearch search, ChromaReadLevel? readLevel = null, CancellationToken cancellationToken = default)
 		=> (await Search([search], readLevel, cancellationToken)).Single();
 
 	/// <summary>
@@ -552,8 +552,8 @@ public class ChromaCollectionClient
 	/// <c>501</c>. The results come in the order of the searches. With <c>ChromaReadLevel.IndexOnly</c> the records not indexed yet are
 	/// left out.
 	/// </summary>
-	public Task<List<List<ChromaSearchEntry>>> Search(List<ChromaSearch> searches, ChromaReadLevel? readLevel = null, CancellationToken cancellationToken = default)
-		=> Operation("search", async () =>
+	public Task<IReadOnlyList<IReadOnlyList<ChromaSearchEntry>>> Search(IReadOnlyList<ChromaSearch> searches, ChromaReadLevel? readLevel = null, CancellationToken cancellationToken = default)
+		=> Operation<IReadOnlyList<IReadOnlyList<ChromaSearchEntry>>>("search", async () =>
 		{
 			if (searches is not { Count: > 0 })
 			{
@@ -736,8 +736,8 @@ public class ChromaCollectionClient
 	/// <summary>
 	/// Gets up to <c>limit</c> records of the collection, with a get that sets only the limit.
 	/// </summary>
-	public Task<List<ChromaCollectionEntry>> Peek(int limit = 10, CancellationToken cancellationToken = default)
-		=> Operation("peek", async () =>
+	public Task<IReadOnlyList<ChromaCollectionEntry>> Peek(int limit = 10, CancellationToken cancellationToken = default)
+		=> Operation<IReadOnlyList<ChromaCollectionEntry>>("peek", async () =>
 		{
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)

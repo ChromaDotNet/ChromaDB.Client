@@ -23,5 +23,5 @@ public class ChromaUserIdentity
 	/// The databases of the user.
 	/// </summary>
 	[JsonPropertyName("databases")]
-	public List<string>? Databases { get; init; }
+	public IReadOnlyList<string>? Databases { get; init; }
 }

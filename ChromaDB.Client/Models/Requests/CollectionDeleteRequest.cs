@@ -7,7 +7,7 @@ internal class CollectionDeleteRequest
 	// Null to delete by the filters only.
 	[JsonPropertyName("ids")]
 	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-	public List<string>? Ids { get; init; }
+	public IReadOnlyList<string>? Ids { get; init; }
 
 	[JsonPropertyName("where")]
 	public Dictionary<string, object>? Where { get; init; }

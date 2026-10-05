@@ -5,7 +5,7 @@ namespace ChromaDB.Client.Models.Requests;
 internal class CollectionGetRequest
 {
 	[JsonPropertyName("ids")]
-	public List<string>? Ids { get; init; }
+	public IReadOnlyList<string>? Ids { get; init; }
 
 	[JsonPropertyName("where")]
 	public Dictionary<string, object>? Where { get; init; }

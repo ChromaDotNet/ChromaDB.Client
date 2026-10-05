@@ -20,7 +20,7 @@ public class ChromaSearch
 	/// <summary>
 	/// Only the records with these ids, sent as <c>$in</c> on the <c>#id</c> key; not empty.
 	/// </summary>
-	public List<string>? Ids { get; init; }
+	public IReadOnlyList<string>? Ids { get; init; }
 
 	/// <summary>
 	/// How the records are ranked: the lowest score first.
@@ -41,7 +41,7 @@ public class ChromaSearch
 	/// The fields to return besides the id: the keys of <c>ChromaSearchKeys</c>, like <c>ChromaSearchKeys.Document</c> and
 	/// <c>ChromaSearchKeys.Score</c>, and metadata fields by name. When null or empty, only the ids.
 	/// </summary>
-	public List<string>? Select { get; init; }
+	public IReadOnlyList<string>? Select { get; init; }
 
 	/// <summary>
 	/// Groups the results by metadata keys and keeps some records in each group.

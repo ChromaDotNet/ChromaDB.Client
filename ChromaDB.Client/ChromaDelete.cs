@@ -9,7 +9,7 @@ public class ChromaDelete
 	/// <summary>
 	/// The ids of the records to delete. Null to delete by the filters only; not empty.
 	/// </summary>
-	public List<string>? Ids { get; init; }
+	public IReadOnlyList<string>? Ids { get; init; }
 	/// <summary>
 	/// The filter on the metadata.
 	/// </summary>

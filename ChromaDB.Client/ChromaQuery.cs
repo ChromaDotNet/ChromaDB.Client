@@ -8,7 +8,7 @@ public class ChromaQuery
 	/// <summary>
 	/// The embeddings to search for; the results come in one list per embedding.
 	/// </summary>
-	public List<ReadOnlyMemory<float>> QueryEmbeddings { get; }
+	public IReadOnlyList<ReadOnlyMemory<float>> QueryEmbeddings { get; }
 	/// <summary>
 	/// How many results to return for each query embedding, 10 by default.
 	/// </summary>
@@ -29,12 +29,12 @@ public class ChromaQuery
 	/// Searches only the records with these ids. Chroma 0.x ignores them: then <c>Query</c> throws a
 	/// <c>ChromaException</c>.
 	/// </summary>
-	public List<string>? Ids { get; init; }
+	public IReadOnlyList<string>? Ids { get; init; }
 
 	/// <summary>
 	/// Creates a query for the embeddings.
 	/// </summary>
-	public ChromaQuery(List<ReadOnlyMemory<float>> queryEmbeddings)
+	public ChromaQuery(IReadOnlyList<ReadOnlyMemory<float>> queryEmbeddings)
 	{
 		QueryEmbeddings = queryEmbeddings;
 	}

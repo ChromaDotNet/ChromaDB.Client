@@ -7,9 +7,9 @@ namespace ChromaDB.Client.Common;
 // The embeddings of an add, update or upsert: lists of numbers, or, where the server declares it, base64 strings of
 // their float32 values in little-endian order, about half the size. Queries always send numbers.
 [JsonConverter(typeof(ChromaEmbeddingsConverter))]
-internal sealed class ChromaEmbeddings(List<ReadOnlyMemory<float>> items, bool base64)
+internal sealed class ChromaEmbeddings(IReadOnlyList<ReadOnlyMemory<float>> items, bool base64)
 {
-	public List<ReadOnlyMemory<float>> Items { get; } = items;
+	public IReadOnlyList<ReadOnlyMemory<float>> Items { get; } = items;
 	public bool Base64 { get; } = base64;
 }
 

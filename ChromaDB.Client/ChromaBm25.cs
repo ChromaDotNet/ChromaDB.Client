@@ -188,6 +188,6 @@ public sealed class ChromaBm25
 	/// <summary>
 	/// The sparse vectors of the texts, in order.
 	/// </summary>
-	public List<ChromaSparseVector> Embed(IEnumerable<string> texts)
+	public IReadOnlyList<ChromaSparseVector> Embed(IEnumerable<string> texts)
 		=> texts.Select(Embed).ToList();
 }

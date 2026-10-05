@@ -107,7 +107,7 @@ public abstract class ChromaTestsBase
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
 		foreach (var place in _created.Collections.GroupBy(x => x.Value, x => x.Key))
 		{
-			List<ChromaCollection> collections;
+			IReadOnlyList<ChromaCollection> collections;
 			try
 			{
 				collections = await client.ListCollections(place.Key.Tenant, place.Key.Database);
