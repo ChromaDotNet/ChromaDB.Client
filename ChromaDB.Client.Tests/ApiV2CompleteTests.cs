@@ -174,8 +174,11 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		{
 			await Assert.ThatAsync(() => client.CreateCollectionAsync(definition), Throws.InstanceOf<ChromaException>());
 			Assert.That(await client.CollectionExistsAsync(name), Is.False);
-			var plain = client.GetCollectionClient(await client.CreateCollectionAsync($"collection{Random.Shared.Next()}"));
-			await Assert.ThatAsync(() => plain.AddAsync(records), Throws.InstanceOf<ChromaException>());
+			if (!RejectedSparseVectorsBreakTheServer)
+			{
+				var plain = client.GetCollectionClient(await client.CreateCollectionAsync($"collection{Random.Shared.Next()}"));
+				await Assert.ThatAsync(() => plain.AddAsync(records), Throws.InstanceOf<ChromaException>());
+			}
 			return;
 		}
 		var collection = await client.CreateCollectionAsync(definition);
