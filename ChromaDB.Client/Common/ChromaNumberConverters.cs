@@ -33,3 +33,38 @@ internal sealed class ChromaDecimalConverter : JsonConverter<decimal>
 		writer.WriteRawValue(text.IndexOf('.') < 0 ? text + ".0" : text, skipInputValidation: true);
 	}
 }
+
+// A ulong above long.MaxValue: Chroma stores integers as 64-bit signed numbers, and would store it as a float.
+internal sealed class ChromaUInt64Converter : JsonConverter<ulong>
+{
+	public override ulong Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetUInt64();
+
+	public override void Write(Utf8JsonWriter writer, ulong value, JsonSerializerOptions options)
+	{
+		if (value > long.MaxValue)
+		{
+			throw new ArgumentOutOfRangeException(nameof(value), value, "Chroma stores integers as 64-bit signed numbers: a ulong above long.MaxValue would become a float.");
+		}
+		writer.WriteNumberValue(value);
+	}
+}
+
+// The strings of the requests, values and keys of metadata, without a lone surrogate (ChromaRequestChecks).
+internal sealed class ChromaStringConverter : JsonConverter<string>
+{
+	public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetString();
+
+	public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options)
+	{
+		ChromaRequestChecks.NoLoneSurrogates(value, "A text of the request");
+		writer.WriteStringValue(value);
+	}
+
+	public override string ReadAsPropertyName(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetString()!;
+
+	public override void WriteAsPropertyName(Utf8JsonWriter writer, string value, JsonSerializerOptions options)
+	{
+		ChromaRequestChecks.NoLoneSurrogates(value, "A key of the request");
+		writer.WritePropertyName(value);
+	}
+}

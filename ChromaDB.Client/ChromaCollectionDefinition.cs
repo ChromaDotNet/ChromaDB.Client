@@ -44,6 +44,7 @@ public class ChromaCollectionDefinition
 
 	internal IReadOnlyDictionary<string, object>? ToRequestMetadata()
 	{
+		Common.ChromaRequestChecks.NoLists(Metadata, nameof(Metadata));
 		if (Configuration?.Space is not { } space || Schema is not null)
 		{
 			return Metadata;

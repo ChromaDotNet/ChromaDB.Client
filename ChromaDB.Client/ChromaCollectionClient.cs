@@ -471,7 +471,8 @@ public class ChromaCollectionClient
 	// Sparse vectors too: Chroma 0.6.3 accepts them and stores the metadata as null.
 	private async Task CheckListsInMetadata(ChromaRecords records, CancellationToken cancellationToken)
 	{
-		if (records.Metadatas?.Any(metadata => metadata?.Values.Any(IsList) == true) == true
+		ChromaRequestChecks.NoEmptyLists(records.Metadatas, nameof(records));
+		if (records.Metadatas?.Any(metadata => metadata?.Values.Any(ChromaRequestChecks.IsList) == true) == true
 			&& await _httpClient.IsChroma0(cancellationToken))
 		{
 			throw new ChromaException("Chroma 0.x drops the lists in metadata without an error: they need Chroma 1.5.0 or later.");
@@ -487,11 +488,6 @@ public class ChromaCollectionClient
 	private static bool IsSparseVector(object? value)
 		=> value is ChromaSparseVector
 			|| value is System.Text.Json.JsonElement element && ChromaSparseVectorConverter.IsTagged(element);
-
-	// A JsonElement array is what the client returns for a list read with ChromaMetadataValues.Inferred.
-	private static bool IsList(object? value)
-		=> value is System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Array }
-			or System.Collections.IEnumerable and not string and not System.Collections.IDictionary;
 
 	/// <summary>
 	/// Deletes the records with the ids, sending the filters with them when given; by default, unless
@@ -880,6 +876,7 @@ public class ChromaCollectionClient
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
+			ChromaRequestChecks.NoLists(metadata, nameof(metadata));
 			var request = new CollectionModifyRequest()
 			{
 				Name = name,

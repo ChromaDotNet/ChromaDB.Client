@@ -17,12 +17,15 @@ internal static partial class HttpClientHelpers
 		ReferenceHandler = ReferenceHandler.IgnoreCycles,
 		ReadCommentHandling = JsonCommentHandling.Skip,
 		TypeInfoResolver = ChromaJsonResolver.Instance,
-		// The doubles, floats and decimals of metadata, filters, ranks and queries, the same text on every build.
+		// The doubles, floats and decimals of metadata, filters, ranks and queries, the same text on every build; and
+		// what Chroma would store changed: ulongs above long.MaxValue, texts with a lone surrogate.
 		Converters =
 		{
 			new ChromaDoubleConverter(),
 			new ChromaFloatConverter(),
 			new ChromaDecimalConverter(),
+			new ChromaUInt64Converter(),
+			new ChromaStringConverter(),
 		},
 	};
 
@@ -284,6 +287,7 @@ internal static partial class HttpClientHelpers
 			{
 				throw new ArgumentException($"\"{value}\" cannot be the {key.Trim('{', '}')} of a request: the path of the URL drops it.");
 			}
+			ChromaRequestChecks.NoLoneSurrogates(value, $"The {key.Trim('{', '}')} of the request");
 			var urlEncodedQueryParam = Uri.EscapeDataString(value);
 			formattedEndpoint = formattedEndpoint.Replace(key, urlEncodedQueryParam);
 		}
