@@ -37,6 +37,9 @@ public class MetadataTests : ChromaTestsBase
 		Assert.That(metadata["m"], Is.InstanceOf<double>().And.EqualTo(4.0));
 		var found = await client.GetAsync(where: ChromaWhereOperator.In("d", 2.0, 2.25), include: ChromaGetInclude.None);
 		Assert.That(found.Select(e => e.Id), Is.EquivalentTo(new[] { "a", "b" }));
+		// Stored as an int, 2 would not be under 2.2 for Chroma.
+		found = await client.GetAsync(where: ChromaWhereOperator.LessThan("d", 2.2), include: ChromaGetInclude.None);
+		Assert.That(found.Select(e => e.Id), Is.EqualTo(new[] { "a" }));
 	}
 
 	[Test]
@@ -85,6 +88,10 @@ public class MetadataTests : ChromaTestsBase
 		Assert.That(metadata["ints"], Is.EqualTo(new List<object> { 1L, 2L }));
 		Assert.That(metadata["floats"], Is.EqualTo(new List<object> { 1.5, 2.25 }));
 		Assert.That(metadata["bools"], Is.EqualTo(new List<object> { true, false }));
+		// A whole double goes as 1.0: Chroma finds 1 only in a list of ints, and 1.0 only in a list of doubles.
+		await client.AddAsync(new ChromaRecords(["b"]) { Embeddings = [Embedding2], Metadatas = [new Dictionary<string, object> { ["floats"] = new List<double> { 1.0, 2.5 } }] });
+		var found = await client.GetAsync(where: ChromaWhereOperator.Contains("floats", 1.0), include: ChromaGetInclude.None);
+		Assert.That(found.Select(e => e.Id), Is.EqualTo(new[] { "b" }));
 	}
 
 	[Test]
