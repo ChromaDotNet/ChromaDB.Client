@@ -22,4 +22,20 @@ public class BatchSplittingTests : ChromaTestsBase
 		await collectionClient.Delete(ids);
 		Assert.That(await collectionClient.Count(), Is.EqualTo(0));
 	}
+
+	// Get in pages of the batch size: all the records, a limit and an offset across pages, and ids beyond the batch size.
+	[Test]
+	public async Task GetBeyondTheBatchSize()
+	{
+		var client = new ChromaClient(BaseConfigurationOptions.WithBatchSplitting(3), HttpClient);
+		var collectionClient = client.GetCollectionClient(await client.CreateCollection($"collection{Random.Shared.Next()}"));
+		var ids = Enumerable.Range(0, 7).Select(i => $"r{i}").ToList();
+		await collectionClient.Add(new ChromaRecords(ids) { Embeddings = Enumerable.Repeat(new ReadOnlyMemory<float>([0.5f, 0.5f]), 7).ToList() });
+
+		var all = await collectionClient.Get();
+		Assert.That(all.Select(x => x.Id), Is.EquivalentTo(ids));
+		var page = await collectionClient.Get(limit: 5, offset: 1);
+		Assert.That(page.Select(x => x.Id), Is.EqualTo(all.Skip(1).Take(5).Select(x => x.Id)));
+		Assert.That((await collectionClient.Get(ids)).Select(x => x.Id), Is.EquivalentTo(ids));
+	}
 }

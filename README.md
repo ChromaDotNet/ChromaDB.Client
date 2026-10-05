@@ -152,7 +152,9 @@ var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithB
 
 With `WithBatchSplitting`, `Add`, `Update`, `Upsert` and `Delete` send their records in batches of the `max_batch_size` of the server, one request after the other; the client asks `pre-flight-checks` once. If a batch fails, the earlier ones stay written. Without it, as by default, the records go in one request: up to Chroma 1.0.13 a request beyond the limit fails, later versions accept it. Chroma 0.4.10 has no `pre-flight-checks`, so its records always go in one request.
 
-`WithBatchSplitting(maxBatchSize)` uses the smaller of that limit and the one of the server, or that limit alone where the server declares none. Chroma Cloud declares 1000, but takes 300 records per write unless the quota is raised:
+`Get` reads more records than the batch size in pages: pages of the batch size from the offset, until the limit or the last record, and ids beyond the batch size in batches, with the limit and the offset applied to all of them together. The pages are separate requests: records written in between can be read twice or missed.
+
+`WithBatchSplitting(maxBatchSize)` uses the smaller of that limit and the one of the server, or that limit alone where the server declares none. Chroma Cloud declares 1000, but takes 300 records per write and answers at most 300 records per read, without an error, unless the quota is raised:
 
 ```csharp
 var options = new ChromaConfigurationOptions(uri: "https://api.trychroma.com").WithChromaToken(apiKey)

@@ -70,27 +70,62 @@ public class ChromaCollectionClient
 
 	/// <summary>
 	/// Gets the records selected by the ids and the filters, a page at a time with <c>limit</c> and <c>offset</c>.
-	/// Without <c>include</c>, the metadatas and the documents are included.
+	/// Without <c>include</c>, the metadatas and the documents are included. With <c>WithBatchSplitting</c>, more records than
+	/// the batch size are read in pages, ids beyond it in batches: Chroma Cloud answers at most 300 records, without an error.
 	/// </summary>
 	public Task<List<ChromaCollectionEntry>> Get(List<string>? ids = null, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, int? limit = null, int? offset = null, ChromaGetInclude? include = null, CancellationToken cancellationToken = default)
 		=> Operation("get", async () =>
 		{
-			var requestParams = new RequestQueryParams()
-				.Insert("{tenant}", _tenant)
-				.Insert("{database}", _database)
-				.Insert("{collection_id}", _collection.Id);
-			var request = new CollectionGetRequest()
+			// With WithBatchSplitting, more records than the batch size come in pages: Chroma Cloud answers at most 300 records, without
+			// an error. The ids go in batches, each read whole, and the limit and the offset apply to all of them together; without ids
+			// beyond the batch size, pages of the batch size follow the offset until the limit or a page that is not full.
+			if (!_httpClient.BatchSplitting || await BatchSize(cancellationToken) is not { } size
+				|| ids is { } few && few.Count <= size || ids is null && limit <= size)
 			{
-				Ids = ids,
-				Where = where?.ToWhere(),
-				WhereDocument = whereDocument?.ToWhereDocument(),
-				Limit = limit,
-				Offset = offset,
-				Include = (include ?? ChromaGetInclude.Metadatas | ChromaGetInclude.Documents).ToInclude(),
-			};
-			var response = await _httpClient.Post<CollectionGetRequest, CollectionEntriesGetResponse>(_httpClient.Routes.Collection + "/get", request, requestParams, cancellationToken);
-			return response.Map() ?? [];
+				return await GetPage(ids, where, whereDocument, limit, offset, include, cancellationToken);
+			}
+			var entries = new List<ChromaCollectionEntry>();
+			if (ids is not null)
+			{
+				for (var i = 0; i < ids.Count; i += size)
+				{
+					entries.AddRange(await GetPage(ids.GetRange(i, Math.Min(size, ids.Count - i)), where, whereDocument, null, null, include, cancellationToken));
+				}
+				return entries.Skip(offset ?? 0).Take(limit ?? int.MaxValue).ToList();
+			}
+			var start = offset ?? 0;
+			while (limit is null || entries.Count < limit)
+			{
+				var take = limit is { } total ? Math.Min(size, total - entries.Count) : size;
+				var page = await GetPage(null, where, whereDocument, take, start, include, cancellationToken);
+				entries.AddRange(page);
+				if (page.Count < take)
+				{
+					break;
+				}
+				start += take;
+			}
+			return entries;
 		});
+
+	private async Task<List<ChromaCollectionEntry>> GetPage(List<string>? ids, ChromaWhereOperator? where, ChromaWhereDocumentOperator? whereDocument, int? limit, int? offset, ChromaGetInclude? include, CancellationToken cancellationToken)
+	{
+		var requestParams = new RequestQueryParams()
+			.Insert("{tenant}", _tenant)
+			.Insert("{database}", _database)
+			.Insert("{collection_id}", _collection.Id);
+		var request = new CollectionGetRequest()
+		{
+			Ids = ids,
+			Where = where?.ToWhere(),
+			WhereDocument = whereDocument?.ToWhereDocument(),
+			Limit = limit,
+			Offset = offset,
+			Include = (include ?? ChromaGetInclude.Metadatas | ChromaGetInclude.Documents).ToInclude(),
+		};
+		var response = await _httpClient.Post<CollectionGetRequest, CollectionEntriesGetResponse>(_httpClient.Routes.Collection + "/get", request, requestParams, cancellationToken);
+		return response.Map() ?? [];
+	}
 
 	/// <summary>
 	/// Searches the <c>nResults</c> records nearest to the query embedding. Without <c>include</c>, the metadatas, the
