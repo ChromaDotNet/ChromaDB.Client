@@ -109,39 +109,41 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>The records.</returns>
 	public virtual Task<IReadOnlyList<ChromaCollectionEntry>> GetAsync(IReadOnlyList<string>? ids = null, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, int? limit = null, int? offset = null, ChromaGetInclude? include = null, CancellationToken cancellationToken = default)
-		=> Operation<IReadOnlyList<ChromaCollectionEntry>>("get", async () =>
+		=> Operation<IReadOnlyList<ChromaCollectionEntry>>("get", async () => await GetEntries(ids, where, whereDocument, limit, offset, include, cancellationToken));
+
+	private async Task<List<ChromaCollectionEntry>> GetEntries(IReadOnlyList<string>? ids, ChromaWhereOperator? where, ChromaWhereDocumentOperator? whereDocument, int? limit, int? offset, ChromaGetInclude? include, CancellationToken cancellationToken)
+	{
+		// With batch splitting, on by default, more records than the batch size come in pages: Chroma Cloud answers at most 300 records, without
+		// an error. The ids go in batches, each read whole, and the limit and the offset apply to all of them together; without ids
+		// beyond the batch size, pages of the batch size follow the offset until the limit or a page that is not full.
+		if (!_httpClient.BatchSplitting || await BatchSize(cancellationToken) is not { } size
+			|| ids is { } few && few.Count <= size || ids is null && limit <= size)
 		{
-			// With batch splitting, on by default, more records than the batch size come in pages: Chroma Cloud answers at most 300 records, without
-			// an error. The ids go in batches, each read whole, and the limit and the offset apply to all of them together; without ids
-			// beyond the batch size, pages of the batch size follow the offset until the limit or a page that is not full.
-			if (!_httpClient.BatchSplitting || await BatchSize(cancellationToken) is not { } size
-				|| ids is { } few && few.Count <= size || ids is null && limit <= size)
+			return await GetPage(ids, where, whereDocument, limit, offset, include, cancellationToken);
+		}
+		var entries = new List<ChromaCollectionEntry>();
+		if (ids is not null)
+		{
+			for (var i = 0; i < ids.Count; i += size)
 			{
-				return await GetPage(ids, where, whereDocument, limit, offset, include, cancellationToken);
+				entries.AddRange(await GetPage(ids.Skip(i).Take(size).ToList(), where, whereDocument, null, null, include, cancellationToken));
 			}
-			var entries = new List<ChromaCollectionEntry>();
-			if (ids is not null)
+			return entries.Skip(offset ?? 0).Take(limit ?? int.MaxValue).ToList();
+		}
+		var start = offset ?? 0;
+		while (limit is null || entries.Count < limit)
+		{
+			var take = limit is { } total ? Math.Min(size, total - entries.Count) : size;
+			var page = await GetPage(null, where, whereDocument, take, start, include, cancellationToken);
+			entries.AddRange(page);
+			if (page.Count < take)
 			{
-				for (var i = 0; i < ids.Count; i += size)
-				{
-					entries.AddRange(await GetPage(ids.Skip(i).Take(size).ToList(), where, whereDocument, null, null, include, cancellationToken));
-				}
-				return entries.Skip(offset ?? 0).Take(limit ?? int.MaxValue).ToList();
+				break;
 			}
-			var start = offset ?? 0;
-			while (limit is null || entries.Count < limit)
-			{
-				var take = limit is { } total ? Math.Min(size, total - entries.Count) : size;
-				var page = await GetPage(null, where, whereDocument, take, start, include, cancellationToken);
-				entries.AddRange(page);
-				if (page.Count < take)
-				{
-					break;
-				}
-				start += take;
-			}
-			return entries;
-		});
+			start += take;
+		}
+		return entries;
+	}
 
 	private async Task<List<ChromaCollectionEntry>> GetPage(IReadOnlyList<string>? ids, ChromaWhereOperator? where, ChromaWhereDocumentOperator? whereDocument, int? limit, int? offset, ChromaGetInclude? include, CancellationToken cancellationToken)
 	{
@@ -194,8 +196,10 @@ public class ChromaCollectionClient
 		=> QueryAsync(new ChromaQuery(queryEmbeddings) { NResults = nResults, Where = where, WhereDocument = whereDocument, Include = include, Ids = ids }, cancellationToken);
 
 	/// <summary>
-	/// Runs the query and returns one list of results per query embedding. When the query has ids and the server
-	/// searches outside them, as Chroma 0.x does, it throws a <c>ChromaException</c> instead of returning the results.
+	/// Runs the query and returns one list of results per query embedding. The ids of the query without a record are left
+	/// out, as Chroma Cloud does: Chroma 1.x fails on them, so the query goes again with the ids that have one. When the query
+	/// has ids and the server searches outside them, as Chroma 0.x does, it throws a <c>ChromaException</c> instead of
+	/// returning the results.
 	/// </summary>
 	/// <param name="query">The query: embeddings, number of results, filters, what to include and ids.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
@@ -207,16 +211,36 @@ public class ChromaCollectionClient
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
-			var request = new CollectionQueryRequest()
+			Task<CollectionEntriesQueryResponse> Send(IReadOnlyList<string>? ids)
+				=> _httpClient.Post<CollectionQueryRequest, CollectionEntriesQueryResponse>(_httpClient.Routes.Collection + "/query", new CollectionQueryRequest()
+				{
+					QueryEmbeddings = query.QueryEmbeddings,
+					NResults = query.NResults,
+					Where = query.Where?.ToRequestWhere(),
+					WhereDocument = query.WhereDocument?.ToRequestWhereDocument(),
+					Include = (query.Include ?? ChromaQueryInclude.Metadatas | ChromaQueryInclude.Documents | ChromaQueryInclude.Distances).ToInclude(),
+					Ids = ids,
+				}, requestParams, cancellationToken);
+			CollectionEntriesQueryResponse response;
+			try
 			{
-				QueryEmbeddings = query.QueryEmbeddings,
-				NResults = query.NResults,
-				Where = query.Where?.ToRequestWhere(),
-				WhereDocument = query.WhereDocument?.ToRequestWhereDocument(),
-				Include = (query.Include ?? ChromaQueryInclude.Metadatas | ChromaQueryInclude.Documents | ChromaQueryInclude.Distances).ToInclude(),
-				Ids = query.Ids,
-			};
-			var response = await _httpClient.Post<CollectionQueryRequest, CollectionEntriesQueryResponse>(_httpClient.Routes.Collection + "/query", request, requestParams, cancellationToken);
+				response = await Send(query.Ids);
+			}
+			catch (ChromaException ex) when (query.Ids is { Count: > 0 } && ex.ErrorType == "InternalError")
+			{
+				// Chroma 1.x without filters answers 500 "Error finding id" when an id has no record, where Chroma Cloud leaves the id
+				// out: the query goes again with the ids that have a record, and without any it has no results.
+				var found = new HashSet<string>((await GetEntries(query.Ids, null, null, null, null, ChromaGetInclude.None, cancellationToken)).Select(entry => entry.Id));
+				if (query.Ids.All(found.Contains))
+				{
+					throw;
+				}
+				if (found.Count == 0)
+				{
+					return query.QueryEmbeddings.Select(_ => (IReadOnlyList<ChromaCollectionQueryEntry>)[]).ToList();
+				}
+				response = await Send(query.Ids.Where(found.Contains).ToList());
+			}
 			var result = response.Map() ?? [];
 			// Chroma 0.x ignores the ids and searches all the records: a result outside the ids shows it. When all the results
 			// are among the ids, they are also the nearest among them, so the answer is right on those servers too.
