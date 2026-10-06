@@ -24,3 +24,17 @@ Include the version of the package, the version of Chroma or Chroma Cloud, and t
 - Only the CI publishes the packages, from the version tags of this repository, with [NuGet trusted publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing): no NuGet API key is kept by a person or in the repository.
 - The organization requires two-factor authentication.
 - The workflows pin their actions to commit hashes. Dependabot and CodeQL check the dependencies and the code.
+
+## Verifying a package
+
+Each GitHub release has the packages published on nuget.org and their Sigstore signatures (`.sigstore.json`), made by the release workflow of this repository:
+
+```
+cosign verify-blob ChromaDotNet.Client.2.10.0.nupkg --bundle ChromaDotNet.Client.2.10.0.nupkg.sigstore.json --certificate-identity-regexp '^https://github.com/ChromaDotNet/ChromaDB.Client/\.github/workflows/release-assets\.yml@' --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+The packages built by the CI from a version tag also have a build provenance attestation:
+
+```
+gh attestation verify ChromaDotNet.Client.2.10.0.nupkg --repo ChromaDotNet/ChromaDB.Client
+```
