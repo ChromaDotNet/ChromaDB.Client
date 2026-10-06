@@ -29,7 +29,7 @@
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<NoWarn>$(NoWarn);RS0026;RS0027</NoWarn>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
-		<PackageReleaseNotes>2.9.1: The db.client.operation.duration histogram has the bucket boundaries of the OpenTelemetry semantic conventions, 0.001 to 10 s, which OpenTelemetry 1.10 and later apply. The net8.0 build takes System.Diagnostics.DiagnosticSource 9.0.20; with the netstandard2.0 build the application adds a view. A chain of filters with the same operator goes as one list, so 32 filters and more no longer throw. Long lists are split, so a single Chroma server neither rejects them nor crashes. AddAsync throws an ArgumentException for a null metadata value, which deletes the key in UpdateAsync and UpsertAsync. docs/COMPATIBILITY.md lists the known defects of the Chroma servers. All the releases: $(PackageProjectUrl)/releases. Tested versions: $(PackageProjectUrl)/blob/main/docs/COMPATIBILITY.md. Migration from 1.x: $(PackageProjectUrl)#migrating-from-chromadbclient-1x</PackageReleaseNotes>
+		<PackageReleaseNotes>2.9.2: A float that Chroma cannot write, which Chroma 1.x sends as null, reads as NaN, and a number beyond the range of a float as an infinity: an embedding beyond that range in a cosine collection, or the distance to it, no longer costs the whole answer. All the releases: $(PackageProjectUrl)/releases. Tested versions: $(PackageProjectUrl)/blob/main/docs/COMPATIBILITY.md. Migration from 1.x: $(PackageProjectUrl)#migrating-from-chromadbclient-1x</PackageReleaseNotes>
 	</PropertyGroup>
 	<ItemGroup>
 		<!-- The public API, checked at build: PublicAPI.Shipped.txt is the API of the last release, PublicAPI.Unshipped.txt what was
