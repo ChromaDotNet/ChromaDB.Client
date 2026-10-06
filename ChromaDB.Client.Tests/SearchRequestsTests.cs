@@ -151,8 +151,12 @@ public class SearchRequestsTests
 	public async Task ScoresOfHybridRrf()
 	{
 		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"ids":[["a"],["b"]],"scores":[[-0.032],[0.5]],"select":[["#score"],["#score"]]}"""));
+		// The BM25 index of the schema computes the vector of the text.
+		var schema = JsonDocument.Parse("""{"keys":{"doc_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"source_key":"#document","bm25":true,"embedding_function":{"type":"known","name":"chroma_bm25","config":{}}}}}}}}""").RootElement.Clone();
+		var client = new ChromaCollectionClient(new ChromaCollection("c") { Id = Guid.Parse("11111111-2222-3333-4444-555555555555"), SchemaJson = schema },
+			new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(server));
 		var hybrid = new ChromaSearch { Rank = ChromaRank.HybridRrf(new([1f, 0f]), "apples", "doc_bm25", limit: 4), Select = [ChromaSearchKeys.Score] };
-		var results = await Client(server).SearchAsync([hybrid, new ChromaSearch { Rank = ChromaRank.Knn(new([1f, 0f])), Select = [ChromaSearchKeys.Score] }]);
+		var results = await client.SearchAsync([hybrid, new ChromaSearch { Rank = ChromaRank.Knn(new([1f, 0f])), Select = [ChromaSearchKeys.Score] }]);
 		Assert.That((results[0][0].Score, results[1][0].Score), Is.EqualTo(((float?)0.032f, (float?)0.5f)));
 	}
 

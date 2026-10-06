@@ -18,10 +18,20 @@ public class WhereSplitServerTests : ChromaTestsBase
 		var collection = await Init();
 		var where = ChromaWhereOperator.In(ChromaSearchKeys.Id, "a", "b", "c") & Pool & ChromaWhereOperator.Equal("k", 1);
 		Assert.That((await collection.GetAsync(where: where, include: ChromaGetInclude.None)).Select(x => x.Id), Is.EqualTo(new[] { "a" }));
-		var query = await collection.QueryAsync(new ChromaQuery([Embedding1]) { NResults = 3, Where = ChromaWhereOperator.Not(ChromaWhereOperator.Document(ChromaWhereDocumentOperator.Contains("spa"))), Include = ChromaQueryInclude.Distances });
-		Assert.That(query[0].Select(x => x.Id), Is.EquivalentTo(new[] { "b", "c" }));
+		var query = await collection.QueryAsync(new ChromaQuery([Embedding1]) { NResults = 1, Where = Pool & ChromaWhereOperator.Equal("k", 2), Include = ChromaQueryInclude.Distances });
+		Assert.That(query[0].Select(x => x.Id), Is.EqualTo(new[] { "c" }));
 		await collection.DeleteAsync(["a", "b", "c"], ChromaWhereOperator.Equal(ChromaSearchKeys.Id, "c"));
 		Assert.That((await collection.GetAsync(include: ChromaGetInclude.None)).Select(x => x.Id), Is.EquivalentTo(new[] { "a", "b" }));
+	}
+
+	// The negation of a condition on the documents goes as $not_contains in where_document.
+	[Test]
+	public async Task NotOnTheDocuments()
+	{
+		Assume.That(CountCollectionsAndNotContainsSupported, Is.True, "Chroma 0.4.15 has no count_collections, no $not_contains filter and no tenant and database in the collections.");
+		var collection = await Init();
+		var query = await collection.QueryAsync(new ChromaQuery([Embedding1]) { NResults = 3, Where = ChromaWhereOperator.Not(ChromaWhereOperator.Document(ChromaWhereDocumentOperator.Contains("spa"))), Include = ChromaQueryInclude.Distances });
+		Assert.That(query[0].Select(x => x.Id), Is.EquivalentTo(new[] { "b", "c" }));
 	}
 
 	[Test]
