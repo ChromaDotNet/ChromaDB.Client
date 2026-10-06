@@ -112,7 +112,9 @@ public class ApiVersionTests
 			Method = request.Method.Method;
 			PathAndQuery = request.RequestUri?.PathAndQuery;
 			Uri = request.RequestUri?.AbsoluteUri;
-			return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") });
+			// A 0.x version: the deletes go without deleting the records first, so the request is the delete.
+			var body = request.RequestUri?.AbsolutePath.EndsWith("/version") == true ? "\"0.6.3\"" : "{}";
+			return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) });
 		}
 	}
 }

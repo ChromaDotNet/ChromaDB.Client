@@ -150,6 +150,55 @@ public class MetadataTests : ChromaTestsBase
 		Assert.That(ex!.Message, Does.Contain("$contains"));
 	}
 
+	// Chroma 1.5 keeps the lists of the records of a deleted collection or database, and gives them to the next records it stores, in
+	// any collection: the client deletes the records first.
+	[Test]
+	public async Task DeletedCollectionLeavesNoLists()
+	{
+		Assume.That(MetadataListsSupported, Is.True, "Chroma 1.4.1 and earlier do not store lists in metadata.");
+		var deleted = await AddRecordsWithLists(BaseConfigurationOptions);
+		await new ChromaClient(BaseConfigurationOptions, HttpClient).DeleteCollectionAsync(deleted.Collection.Name);
+		await AssertNoListsInNewRecords();
+	}
+
+	[Test]
+	public async Task DeletedDatabaseLeavesNoLists()
+	{
+		Assume.That(MetadataListsSupported, Is.True, "Chroma 1.4.1 and earlier do not store lists in metadata.");
+		Assume.That(OtherTenantsAndDatabasesTested, Is.True, "A server already running may not let the tests create or look up other tenants and databases.");
+		var chroma = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var database = $"database{Random.Shared.Next()}";
+		await chroma.CreateDatabaseAsync(database);
+		await AddRecordsWithLists(BaseConfigurationOptions.WithDatabase(database));
+		await AddRecordsWithLists(BaseConfigurationOptions.WithDatabase(database));
+		await chroma.DeleteDatabaseAsync(database);
+		await AssertNoListsInNewRecords();
+	}
+
+	async Task<ChromaCollectionClient> AddRecordsWithLists(ChromaConfigurationOptions options)
+	{
+		var client = await Init(options);
+		await client.AddAsync(new ChromaRecords(["a", "b"])
+		{
+			Embeddings = [Embedding1, Embedding2],
+			Metadatas = [new Dictionary<string, object> { ["texts"] = new[] { "x", "y" } }, new Dictionary<string, object> { ["ints"] = new[] { 1, 2 } }],
+		});
+		return client;
+	}
+
+	async Task AssertNoListsInNewRecords()
+	{
+		var client = await Init(BaseConfigurationOptions);
+		var ids = Enumerable.Range(0, 4).Select(i => $"new{i}").ToList();
+		await client.AddAsync(new ChromaRecords(ids)
+		{
+			Embeddings = ids.Select(_ => Embedding1).ToList(),
+			Metadatas = ids.Select(_ => (IReadOnlyDictionary<string, object>)new Dictionary<string, object> { ["k"] = 1 }).ToList(),
+		});
+		Assert.That((await client.GetAsync(include: ChromaGetInclude.Metadatas)).Select(x => string.Join(",", x.Metadata!.Keys)), Has.All.EqualTo("k"));
+		Assert.That(await client.GetAsync(where: ChromaWhereOperator.Contains("texts", "x"), include: ChromaGetInclude.None), Is.Empty);
+	}
+
 	async Task<ChromaCollectionClient> Init(ChromaConfigurationOptions options)
 	{
 		var collection = await new ChromaClient(options, HttpClient).CreateCollectionAsync($"collection{Random.Shared.Next()}");

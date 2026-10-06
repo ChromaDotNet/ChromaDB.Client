@@ -145,6 +145,28 @@ public class ChromaCollectionClient
 		return entries;
 	}
 
+	// Deletes the records a page of ids at a time, a batch each, until none is left: ChromaClient does it before it deletes the
+	// collection. A page that comes back the same was not deleted, and stops it: what is left goes with the collection.
+	internal async Task DeleteAllRecords(CancellationToken cancellationToken)
+	{
+		var requestParams = new RequestQueryParams()
+			.Insert("{tenant}", _tenant)
+			.Insert("{database}", _database)
+			.Insert("{collection_id}", _collection.Id);
+		var size = await BatchSize(cancellationToken);
+		List<string> deleted = [];
+		while (true)
+		{
+			var ids = (await GetPage(null, null, null, size, null, ChromaGetInclude.None, cancellationToken)).Select(entry => entry.Id).ToList();
+			if (ids.Count == 0 || ids.SequenceEqual(deleted))
+			{
+				return;
+			}
+			await _httpClient.Post(_httpClient.Routes.Collection + "/delete", new CollectionDeleteRequest() { Ids = ids }, requestParams, cancellationToken);
+			deleted = ids;
+		}
+	}
+
 	private async Task<List<ChromaCollectionEntry>> GetPage(IReadOnlyList<string>? ids, ChromaWhereOperator? where, ChromaWhereDocumentOperator? whereDocument, int? limit, int? offset, ChromaGetInclude? include, CancellationToken cancellationToken)
 	{
 		var requestParams = new RequestQueryParams()

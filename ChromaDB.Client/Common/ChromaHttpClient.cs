@@ -23,6 +23,7 @@ internal sealed class ChromaHttpClient
 	public JsonSerializerOptions DeserializerOptions { get; }
 	public bool BatchSplitting { get; }
 	public int? MaxBatchSize { get; }
+	public bool IsChromaCloud { get; }
 
 	public ChromaHttpClient(HttpClient httpClient, ChromaConfigurationOptions options)
 	{
@@ -32,9 +33,10 @@ internal sealed class ChromaHttpClient
 		Routes = options.ApiVersion == ChromaApiVersion.V1 ? ChromaRoutes.V1 : ChromaRoutes.V2;
 		DeserializerOptions = HttpClientHelpers.DeserializerOptions(options.MetadataValues);
 		BatchSplitting = options.BatchSplitting;
+		IsChromaCloud = options.Uri.Host.EndsWith(".trychroma.com", StringComparison.OrdinalIgnoreCase);
 		// Chroma Cloud declares a max_batch_size of 1000, but takes 300 records per write and answers at most 300 per read, without an
 		// error: its quotas by default.
-		MaxBatchSize = options.MaxBatchSize ?? (options.Uri.Host.EndsWith(".trychroma.com", StringComparison.OrdinalIgnoreCase) ? 300 : null);
+		MaxBatchSize = options.MaxBatchSize ?? (IsChromaCloud ? 300 : null);
 		if (options.ChromaToken is not null and not [])
 		{
 			if (options.ChromaTokenTransportHeader == ChromaTokenTransportHeader.Authorization)
@@ -67,6 +69,7 @@ internal sealed class ChromaHttpClient
 		Routes = other.Routes;
 		BatchSplitting = other.BatchSplitting;
 		MaxBatchSize = other.MaxBatchSize;
+		IsChromaCloud = other.IsChromaCloud;
 		DeserializerOptions = HttpClientHelpers.DeserializerOptions(metadataValues);
 	}
 

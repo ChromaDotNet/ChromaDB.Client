@@ -434,13 +434,13 @@ public class ChromaClient : IDisposable
 			{
 				// Not canceled with the call: the answer arrived, so the collection is created, and it must go. A call canceled before the
 				// answer leaves nothing to tell whether the collection was created, so nothing is deleted then.
-				await DeleteCollectionAsync(collection.Name, tenant, database, CancellationToken.None);
+				await DeleteCollection(collection.Name, tenant, database, deleteRecordsFirst: false, CancellationToken.None);
 				throw new ChromaException("The server creates the collection without its schema: Chroma 1.3.0 and later apply it. The collection was deleted.");
 			}
 			// Chroma 1.3.0 creates the collection with the space of the schema ignored: l2.
 			if (SettingsIgnored(definition, collection) is { } ignored)
 			{
-				await DeleteCollectionAsync(collection.Name, tenant, database, CancellationToken.None);
+				await DeleteCollection(collection.Name, tenant, database, deleteRecordsFirst: false, CancellationToken.None);
 				throw new ChromaException($"{ignored} The collection was deleted.");
 			}
 			return collection;
@@ -503,13 +503,19 @@ public class ChromaClient : IDisposable
 		});
 
 	/// <summary>
-	/// Deletes the collection with the given name, in the tenant and database of the options, or in the ones it is given.
+	/// Deletes the collection with the given name, in the tenant and database of the options, or in the ones it is given. On
+	/// Chroma 1.x, except Chroma Cloud, it deletes the records first, in batches: Chroma 1.5 keeps the lists in their metadata
+	/// otherwise, and gives them to the next records it stores.
 	/// </summary>
 	/// <param name="name">The name of the collection.</param>
 	/// <param name="tenant">The tenant, or null for the one of the options.</param>
 	/// <param name="database">The database, or null for the one of the options.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task DeleteCollectionAsync(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+		=> DeleteCollection(name, tenant, database, deleteRecordsFirst: true, cancellationToken);
+
+	// A collection just created has no records to delete first.
+	private Task DeleteCollection(string name, string? tenant, string? database, bool deleteRecordsFirst, CancellationToken cancellationToken)
 		=> DatabaseOperation("delete_collection", name, tenant, database, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
@@ -518,8 +524,18 @@ public class ChromaClient : IDisposable
 				.Insert("{collectionName}", name)
 				.Insert("{tenant}", tenant)
 				.Insert("{database}", database);
+			if (deleteRecordsFirst && await KeepsTheListsOfDeletedRecords(cancellationToken))
+			{
+				await new ChromaCollectionClient(await GetCollectionCore(name, tenant, database, cancellationToken), _options, _httpClient).DeleteAllRecords(cancellationToken);
+			}
 			await _httpClient.Delete(_httpClient.Routes.CollectionByName, requestParams, cancellationToken);
 		});
+
+	// Chroma 1.5 keeps the lists in the metadata of the records of a collection or a database it deletes, and gives them to the next
+	// records it stores, in any collection and database; deleting the records first deletes their lists. Every Chroma 1.x sends the
+	// same version, so the records go first on all of them: not on Chroma 0.x, which stores no lists, nor on Chroma Cloud.
+	private async Task<bool> KeepsTheListsOfDeletedRecords(CancellationToken cancellationToken)
+		=> !_httpClient.IsChromaCloud && !await _httpClient.IsChroma0(cancellationToken);
 
 	/// <summary>
 	/// The version of the server. The 0.x servers send their own version; every Chroma 1.x answers <c>1.0.0</c>.
@@ -706,7 +722,8 @@ public class ChromaClient : IDisposable
 
 	/// <summary>
 	/// Deletes the database with the given name, in the tenant of the options, or in the one it is given. It needs the v2 API of
-	/// Chroma 0.6.3 or later: the older servers answer <c>405 Method Not Allowed</c>.
+	/// Chroma 0.6.3 or later: the older servers answer <c>405 Method Not Allowed</c>. On Chroma 1.x, except Chroma Cloud, it
+	/// deletes the records of its collections first, as <c>DeleteCollectionAsync</c> does.
 	/// </summary>
 	/// <param name="name">The name of the database.</param>
 	/// <param name="tenant">The tenant, or null for the one of the options.</param>
@@ -718,6 +735,13 @@ public class ChromaClient : IDisposable
 			var requestParams = new RequestQueryParams()
 				.Insert("{database}", name)
 				.Insert("{tenant}", tenant);
+			if (await KeepsTheListsOfDeletedRecords(cancellationToken))
+			{
+				foreach (var collection in await _httpClient.Get<List<ChromaCollection>>(_httpClient.Routes.Collections, requestParams, cancellationToken))
+				{
+					await new ChromaCollectionClient(collection, _options, _httpClient).DeleteAllRecords(cancellationToken);
+				}
+			}
 			await _httpClient.Delete(_httpClient.Routes.Database, requestParams, cancellationToken);
 		});
 }

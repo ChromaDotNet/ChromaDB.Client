@@ -162,6 +162,8 @@ In `UpdateAsync` and `UpsertAsync`, a null value deletes the key on every tested
 
 Chroma 1.5.0 and later store lists in metadata and filter them with `Contains` and `NotContains`. Chroma 1.0.0 to 1.4.1 reject them. Chroma 0.x accepts them but drops them without an error, so `AddAsync`, `UpdateAsync` and `UpsertAsync` throw a `ChromaException` before sending them. The client asks the server for its version once, and only when a record has a list.
 
+Chroma 1.5 keeps the lists of the records of a deleted collection or database, and gives them to the next records it stores, in any collection. So on Chroma 1.x, except Chroma Cloud, `DeleteCollectionAsync` and `DeleteDatabaseAsync` delete the records first, in batches; every Chroma 1.x reports the same version, so this happens on all of them. A collection with many records takes more requests to delete.
+
 An existing `ChromaClient`, for example one from dependency injection, gives a client that reads values the other way. That client shares the `HttpClient`, the options and what was learned about the server. `Options` returns the options of a client:
 
 ```csharp
