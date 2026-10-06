@@ -134,7 +134,7 @@ var results = await collectionClient.QueryAsync(new ReadOnlyMemory<float>([1f, 0
 var same = await collectionClient.QueryAsync(new ChromaQuery([new([1f, 0.5f, 0f])]) { Ids = ["a", "c"], NResults = 1 });
 ```
 
-`ChromaQuery` holds the query embeddings, the number of results, the filters, what to include and the ids to search among. Chroma 1.0.0 and later search only the records with those ids. An id without a record is left out, as Chroma Cloud does: Chroma 1.x fails on it, so `QueryAsync` asks again with the ids that have one. Chroma 0.x ignores the ids and searches all the records, so when a result falls outside the ids, `QueryAsync` throws a `ChromaException` instead of returning it.
+`ChromaQuery` holds the query embeddings, the number of results, the filters, what to include and the ids to search among, and the offset: Chroma has no offset in queries, so the client asks for the skipped records too and leaves them out. Chroma 1.0.0 and later search only the records with those ids. An id without a record is left out, as Chroma Cloud does: Chroma 1.x fails on it, so `QueryAsync` asks again with the ids that have one. Chroma 0.x ignores the ids and searches all the records, so when a result falls outside the ids, `QueryAsync` throws a `ChromaException` instead of returning it.
 
 ## Metadata values
 

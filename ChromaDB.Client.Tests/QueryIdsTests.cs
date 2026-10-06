@@ -61,6 +61,20 @@ public class QueryIdsTests
 		await Assert.ThatAsync(() => Client(handler).QueryAsync(new ChromaQuery([Embedding]) { Ids = [] }), Throws.InstanceOf<ChromaException>());
 	}
 
+	// Chroma has no offset in queries: the client asks for the skipped records too, and leaves them out.
+	[Test]
+	public async Task OffsetAsksForTheSkippedRecordsAndLeavesThemOut()
+	{
+		var handler = new RecordingHandler("""{"ids":[["a","b","c"],["d","e"]]}""");
+		var result = await Client(handler).QueryAsync(new ChromaQuery([Embedding, Embedding]) { NResults = 2, Offset = 1 });
+		Assert.That(handler.Body.GetProperty("n_results").GetInt32(), Is.EqualTo(3));
+		Assert.That(result.Select(entries => entries.Select(x => x.Id)), Is.EqualTo(new[] { new[] { "b", "c" }, new[] { "e" } }));
+	}
+
+	[Test]
+	public void NegativeOffsetThrows()
+		=> Assert.That(() => new ChromaQuery([Embedding]) { Offset = -1 }, Throws.InstanceOf<ArgumentOutOfRangeException>());
+
 	const string FindingIdError = """{"error":"InternalError","message":"Error executing plan: Internal error: Error finding id"}""";
 
 	// Chroma 1.x fails on an id without a record: the query goes again with the ids the server has, in their order.

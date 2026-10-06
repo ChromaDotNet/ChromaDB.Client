@@ -237,7 +237,7 @@ public class ChromaCollectionClient
 				=> _httpClient.Post<CollectionQueryRequest, CollectionEntriesQueryResponse>(_httpClient.Routes.Collection + "/query", new CollectionQueryRequest()
 				{
 					QueryEmbeddings = query.QueryEmbeddings,
-					NResults = query.NResults,
+					NResults = query.NResults + query.Offset,
 					Where = query.Where?.ToRequestWhere(),
 					WhereDocument = query.WhereDocument?.ToRequestWhereDocument(),
 					Include = (query.Include ?? ChromaQueryInclude.Metadatas | ChromaQueryInclude.Documents | ChromaQueryInclude.Distances).ToInclude(),
@@ -274,7 +274,7 @@ public class ChromaCollectionClient
 					throw new ChromaException("The server searched outside the ids of the query: it does not support them. Chroma 1.0.0 and later do.");
 				}
 			}
-			return result;
+			return query.Offset == 0 ? result : result.Select(entries => (IReadOnlyList<ChromaCollectionQueryEntry>)entries.Skip(query.Offset).ToList()).ToList();
 		});
 
 	/// <summary>

@@ -404,6 +404,15 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	}
 
 	[Test]
+	public async Task QueryWithOffset()
+	{
+		var client = await Init(withThird: true);
+		var all = await client.QueryAsync(new ChromaQuery([Embeddings1, Embeddings2]) { NResults = 3, Include = ChromaQueryInclude.Distances });
+		var skipped = await client.QueryAsync(new ChromaQuery([Embeddings1, Embeddings2]) { NResults = 2, Offset = 1, Include = ChromaQueryInclude.Distances });
+		Assert.That(skipped.Select(entries => entries.Select(x => x.Id)), Is.EqualTo(all.Select(entries => entries.Skip(1).Select(x => x.Id))));
+	}
+
+	[Test]
 	public async Task QueryWithIdsNResults1()
 	{
 		Assume.That(IdsInQuerySupported, Is.True, "Chroma 0.6.3 and earlier ignore the ids of a query.");
