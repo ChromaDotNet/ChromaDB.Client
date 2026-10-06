@@ -28,6 +28,8 @@ Website: [chromadotnet.org](https://chromadotnet.org)
 
 [docs/COMPATIBILITY.md](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/COMPATIBILITY.md) lists every tested release, the differences between them and the versions the CI runs.
 
+The [compatibility table](https://chromadotnet.org/compatibility/) shows every check of the latest release on Chroma 1.5.9 and on Chroma Cloud, on each .NET runtime and platform.
+
 Chroma 1.0.16 and later require embeddings in `AddAsync` and `UpsertAsync`. The client does not compute them, so pass them yourself.
 
 The package has three builds: .NET 8, .NET Framework 4.6.2 and .NET Standard 2.0. The tests run the .NET 8 build on every tested Chroma version, and the .NET Standard 2.0 build on Chroma 1.5.9. The .NET Framework 4.6.2 build has the same code as the .NET Standard 2.0 one. It is built against the assemblies that .NET Framework applications ship, so it runs next to OpenTelemetry without binding redirects.
