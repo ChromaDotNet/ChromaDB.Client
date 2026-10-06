@@ -1,4 +1,6 @@
 using System.Net;
+using System.Text.Json;
+using ChromaDB.Client.Models;
 using NUnit.Framework;
 
 namespace ChromaDB.Client.Tests;
@@ -105,6 +107,26 @@ public class CollectionClientByNameTests
 		Assert.That(server.Requests, Is.EqualTo(new[] { "GET collections/c" }));
 	}
 
+	// The operation runs again from the records given: what the client computed for the collection that is gone, like the sparse
+	// vectors of its schema, does not go to the new one.
+	[Test]
+	public async Task RunsAgainFromTheRecordsGiven()
+	{
+		var server = new FakeServer(First) { Schema = Bm25Schema };
+		var collection = Client(server).GetCollectionClient("c");
+		await collection.CountAsync();
+		server.Id = Second;
+		server.Schema = null;
+		server.MissingId = First;
+		await collection.UpsertAsync(new ChromaRecords(["a"]) { Embeddings = [new([1f, 0f])], Documents = ["apple pie"] });
+		var upserts = server.Bodies.Where(x => x.Path.EndsWith("/upsert")).Select(x => x.Body).ToList();
+		Assert.That(server.Bodies.Where(x => x.Path.EndsWith("/upsert")).Select(x => x.Path), Is.EqualTo(new[] { $"collections/{First}/upsert", $"collections/{Second}/upsert" }));
+		Assert.That(upserts[0].GetProperty("metadatas")[0].TryGetProperty("doc_bm25", out _), Is.True);
+		Assert.That(upserts[1].GetProperty("metadatas").ValueKind, Is.EqualTo(JsonValueKind.Null));
+	}
+
+	const string Bm25Schema = """{"defaults":{},"keys":{"doc_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"chroma_bm25","config":{}},"source_key":"#document"}}}}}}""";
+
 	static ChromaClient Client(HttpMessageHandler handler)
 		=> new(new ChromaConfigurationOptions("http://localhost:8000").WithBatchSplitting(false), new HttpClient(handler));
 
@@ -116,18 +138,25 @@ public class CollectionClientByNameTests
 		public string? MissingId { get; set; }
 		public (HttpStatusCode Status, string Body) MissingAnswer { get; set; } = (HttpStatusCode.NotFound, Missing);
 		public bool NameMissing { get; set; }
+		public string? Schema { get; set; }
 		public List<string> Requests { get; } = [];
+		public List<(string Path, JsonElement Body)> Bodies { get; } = [];
 
-		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+		protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
 		{
 			var path = request.RequestUri!.AbsolutePath.Replace("/api/v2/tenants/default_tenant/databases/default_database/", "");
 			Requests.Add($"{request.Method} {path}");
+			if (request.Content is not null)
+			{
+				Bodies.Add((path, JsonDocument.Parse(await request.Content.ReadAsStringAsync(cancellationToken)).RootElement.Clone()));
+			}
 			var (status, body) = path == "collections/c" && NameMissing ? (HttpStatusCode.NotFound, """{"error":"NotFoundError","message":"Collection [c] does not exist"}""")
-				: path == "collections/c" ? (HttpStatusCode.OK, $$"""{"id":"{{Id}}","name":"c"}""")
+				: path == "collections/c" ? (HttpStatusCode.OK, $$"""{"id":"{{Id}}","name":"c","schema":{{Schema ?? "null"}}}""")
 				: MissingId is { } missing && path.Contains(missing) ? MissingAnswer
 				: path.EndsWith("/count") ? (HttpStatusCode.OK, "3")
+				: path.EndsWith("/version") ? (HttpStatusCode.OK, "\"1.5.9\"")
 				: (HttpStatusCode.OK, "{}");
-			return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body) });
+			return new HttpResponseMessage(status) { Content = new StringContent(body) };
 		}
 	}
 }

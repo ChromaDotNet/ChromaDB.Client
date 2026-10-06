@@ -317,6 +317,10 @@ public class ChromaCollectionClient
 					Include = (query.Include ?? ChromaQueryInclude.Metadatas | ChromaQueryInclude.Documents | ChromaQueryInclude.Distances).ToInclude(),
 					Ids = ids,
 				}, requestParams, cancellationToken);
+			if (query.Offset > int.MaxValue - query.NResults)
+			{
+				throw new ArgumentOutOfRangeException(nameof(query), "The results and the offset of a query together go beyond the largest number of results.");
+			}
 			if (query.Where == ChromaWhereOperator.None)
 			{
 				return query.QueryEmbeddings.Select(_ => (IReadOnlyList<ChromaCollectionQueryEntry>)[]).ToList();
@@ -379,14 +383,15 @@ public class ChromaCollectionClient
 		=> Operation("add", cancellationToken, async () =>
 		{
 			ChromaRequestChecks.NoNullValues(records.Metadatas, nameof(records));
-			records = WithSparseVectors(records);
-			await CheckListsInMetadata(records, cancellationToken);
-			var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
+			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
+			var prepared = WithSparseVectors(records);
+			await CheckListsInMetadata(prepared, cancellationToken);
+			var base64 = prepared.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
-			await InBatches(records, async batch =>
+			await InBatches(prepared, async batch =>
 			{
 				var request = new CollectionAddRequest()
 				{
@@ -425,14 +430,15 @@ public class ChromaCollectionClient
 	public virtual Task UpdateAsync(ChromaRecords records, CancellationToken cancellationToken = default)
 		=> Operation("update", cancellationToken, async () =>
 		{
-			records = WithSparseVectors(await WithDeletions(records, cancellationToken));
-			await CheckListsInMetadata(records, cancellationToken);
-			var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
+			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
+			var prepared = WithSparseVectors(await WithDeletions(records, cancellationToken));
+			await CheckListsInMetadata(prepared, cancellationToken);
+			var base64 = prepared.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
-			await InBatches(records, async batch =>
+			await InBatches(prepared, async batch =>
 			{
 				var request = new CollectionUpdateRequest()
 				{
@@ -473,14 +479,15 @@ public class ChromaCollectionClient
 	public virtual Task UpsertAsync(ChromaRecords records, CancellationToken cancellationToken = default)
 		=> Operation("upsert", cancellationToken, async () =>
 		{
-			records = WithSparseVectors(await WithDeletions(records, cancellationToken));
-			await CheckListsInMetadata(records, cancellationToken);
-			var base64 = records.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
+			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
+			var prepared = WithSparseVectors(await WithDeletions(records, cancellationToken));
+			await CheckListsInMetadata(prepared, cancellationToken);
+			var base64 = prepared.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
-			await InBatches(records, async batch =>
+			await InBatches(prepared, async batch =>
 			{
 				var request = new CollectionUpsertRequest()
 				{

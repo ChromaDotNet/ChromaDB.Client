@@ -71,6 +71,15 @@ public class QueryIdsTests
 		Assert.That(result.Select(entries => entries.Select(x => x.Id)), Is.EqualTo(new[] { new[] { "b", "c" }, new[] { "e" } }));
 	}
 
+	// The results and the offset go together in n_results, which cannot go beyond the largest int.
+	[Test]
+	public async Task OffsetBeyondTheLargestNumberOfResultsThrows()
+	{
+		var handler = new RecordingHandler("""{"ids":[["a"]]}""");
+		await Assert.ThatAsync(() => Client(handler).QueryAsync(new ChromaQuery([Embedding]) { NResults = int.MaxValue, Offset = 1 }), Throws.InstanceOf<ArgumentOutOfRangeException>());
+		Assert.That(handler.Body.ValueKind, Is.EqualTo(System.Text.Json.JsonValueKind.Undefined));
+	}
+
 	[Test]
 	public void NegativeOffsetThrows()
 		=> Assert.That(() => new ChromaQuery([Embedding]) { Offset = -1 }, Throws.InstanceOf<ArgumentOutOfRangeException>());

@@ -23,7 +23,8 @@ public static class ChromaMetadataConvert
 	/// </summary>
 	/// <param name="value">The .NET value.</param>
 	/// <returns>The metadata value, or null for no value.</returns>
-	/// <exception cref="ArgumentException">The value has another type, or a sequence holds a null or a value of another type.</exception>
+	/// <exception cref="ArgumentException">The value has another type, or a sequence holds a null, a value of another type, or values of
+	/// more than one of the types of Chroma: strings, integers, floating-point numbers and Booleans.</exception>
 	public static object? ToMetadataValue(object? value)
 		=> value switch
 		{
@@ -33,12 +34,20 @@ public static class ChromaMetadataConvert
 			_ => ToScalar(value),
 		};
 
+	// A list of Chroma holds values of one type: an int and a long are both integers, a float and a double both floating-point numbers.
 	private static List<object>? ToList(IEnumerable values)
 	{
 		var list = new List<object>();
+		Type? listType = null;
 		foreach (var item in values)
 		{
-			list.Add(item is null ? throw new ArgumentException("A list in Chroma metadata cannot hold null.", nameof(values)) : ToScalar(item));
+			var value = item is null ? throw new ArgumentException("A list in Chroma metadata cannot hold null.", nameof(values)) : ToScalar(item);
+			var type = value switch { int or long => typeof(long), float or double => typeof(double), _ => value.GetType() };
+			if ((listType ??= type) != type)
+			{
+				throw new ArgumentException("A list in Chroma metadata holds values of one type: strings, integers, floating-point numbers or Booleans.", nameof(values));
+			}
+			list.Add(value);
 		}
 		return list.Count == 0 ? null : list;
 	}

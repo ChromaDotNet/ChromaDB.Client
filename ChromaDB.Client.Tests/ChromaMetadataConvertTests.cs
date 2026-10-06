@@ -56,6 +56,9 @@ public class ChromaMetadataConvertTests
 		Assert.That(ChromaMetadataConvert.ToMetadataValue(new[] { Opened }), Is.EqualTo(new List<object> { "2026-10-04T10:30:00.0000000+00:00" }));
 		Assert.That(ChromaMetadataConvert.ToMetadataValue(Array.Empty<int>()), Is.Null);
 		Assert.That(ChromaMetadataConvert.ToMetadataValue(new List<string>()), Is.Null);
+		// An int and a long are both integers, a float and a double both floating-point numbers.
+		Assert.That(ChromaMetadataConvert.ToMetadataValue(new object[] { 1, 2L }), Is.EqualTo(new List<object> { 1, 2L }));
+		Assert.That(ChromaMetadataConvert.ToMetadataValue(new object[] { 1.5f, 2.5 }), Is.EqualTo(new List<object> { 1.5f, 2.5 }));
 	}
 
 	[Test]
@@ -64,6 +67,8 @@ public class ChromaMetadataConvertTests
 		Assert.That(() => ChromaMetadataConvert.ToMetadataValue(1.5m), Throws.ArgumentException);
 		Assert.That(() => ChromaMetadataConvert.ToMetadataValue(new[] { Guid.Empty }), Throws.ArgumentException);
 		Assert.That(() => ChromaMetadataConvert.ToMetadataValue(new List<string?> { "a", null }), Throws.ArgumentException);
+		Assert.That(() => ChromaMetadataConvert.ToMetadataValue(new object[] { 1, "x" }), Throws.ArgumentException.With.Message.Contains("one type"));
+		Assert.That(() => ChromaMetadataConvert.ToMetadataValue(new object[] { 1.5, true }), Throws.ArgumentException.With.Message.Contains("one type"));
 	}
 
 	[TestCase("text", typeof(string), "text")]
