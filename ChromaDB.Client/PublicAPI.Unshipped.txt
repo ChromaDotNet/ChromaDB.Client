@@ -1,9 +1,7 @@
 #nullable enable
-*REMOVED*virtual ChromaDB.Client.ChromaClient.DeleteCollectionAsync(string! name, string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-*REMOVED*virtual ChromaDB.Client.ChromaClient.DeleteDatabaseAsync(string! name, string? tenant = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-virtual ChromaDB.Client.ChromaClient.DeleteCollectionAsync(string! name, string? tenant = null, string? database = null, bool deleteRecordsFirst = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+virtual ChromaDB.Client.ChromaClient.DeleteCollectionAsync(string! name, bool deleteRecordsFirst, string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 virtual ChromaDB.Client.ChromaClient.DeleteCollectionIfExistsAsync(string! name, string? tenant = null, string? database = null, bool deleteRecordsFirst = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
-virtual ChromaDB.Client.ChromaClient.DeleteDatabaseAsync(string! name, string? tenant = null, bool deleteRecordsFirst = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+virtual ChromaDB.Client.ChromaClient.DeleteDatabaseAsync(string! name, bool deleteRecordsFirst, string? tenant = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 ChromaDB.Client.ChromaCloudQuotas
 static readonly ChromaDB.Client.ChromaCloudQuotas.MaxDocumentBytes -> int
 static readonly ChromaDB.Client.ChromaCloudQuotas.MaxDocumentFilterBytes -> int

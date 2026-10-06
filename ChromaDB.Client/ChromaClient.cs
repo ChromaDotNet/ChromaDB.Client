@@ -539,17 +539,28 @@ public class ChromaClient : IDisposable
 		});
 
 	/// <summary>
-	/// Deletes the collection with the given name, in the tenant and database of the options, or in the ones it is given.
+	/// Deletes the collection with the given name, in the tenant and database of the options, or in the ones it is given, with one
+	/// request. The overload with <c>deleteRecordsFirst</c> can delete the records first.
 	/// </summary>
 	/// <param name="name">The name of the collection.</param>
 	/// <param name="tenant">The tenant, or null for the one of the options.</param>
 	/// <param name="database">The database, or null for the one of the options.</param>
+	/// <param name="cancellationToken">The token that cancels the operation.</param>
+	public virtual Task DeleteCollectionAsync(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+		=> DeleteCollectionAsync(name, deleteRecordsFirst: false, tenant, database, cancellationToken);
+
+	/// <summary>
+	/// Deletes the collection with the given name, in the tenant and database of the options, or in the ones it is given.
+	/// </summary>
+	/// <param name="name">The name of the collection.</param>
 	/// <param name="deleteRecordsFirst">Whether to delete the records first, in batches, on Chroma 1.x except Chroma Cloud. Chroma 1.5 gives
 	/// the lists in the metadata of the records of a deleted collection to the next records it stores, in other collections too: pass
 	/// true when the records have lists in their metadata. It takes about two requests for every 5,461 records, about 370 for a million.
 	/// If it stops halfway, the collection keeps part of its records or none of them: delete it again.</param>
+	/// <param name="tenant">The tenant, or null for the one of the options.</param>
+	/// <param name="database">The database, or null for the one of the options.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
-	public virtual Task DeleteCollectionAsync(string name, string? tenant = null, string? database = null, bool deleteRecordsFirst = false, CancellationToken cancellationToken = default)
+	public virtual Task DeleteCollectionAsync(string name, bool deleteRecordsFirst, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("delete_collection", name, tenant, database, () => DeleteCollectionCore(name, tenant, database, deleteRecordsFirst, cancellationToken));
 
 	/// <summary>
@@ -782,14 +793,25 @@ public class ChromaClient : IDisposable
 		});
 
 	/// <summary>
+	/// Deletes the database with the given name, in the tenant of the options, or in the one it is given, with one request. It needs
+	/// the v2 API of Chroma 0.6.3 or later: the older servers answer <c>405 Method Not Allowed</c>. The overload with
+	/// <c>deleteRecordsFirst</c> can delete the records of its collections first.
+	/// </summary>
+	/// <param name="name">The name of the database.</param>
+	/// <param name="tenant">The tenant, or null for the one of the options.</param>
+	/// <param name="cancellationToken">The token that cancels the operation.</param>
+	public virtual Task DeleteDatabaseAsync(string name, string? tenant = null, CancellationToken cancellationToken = default)
+		=> DeleteDatabaseAsync(name, deleteRecordsFirst: false, tenant, cancellationToken);
+
+	/// <summary>
 	/// Deletes the database with the given name, in the tenant of the options, or in the one it is given. It needs the v2 API of
 	/// Chroma 0.6.3 or later: the older servers answer <c>405 Method Not Allowed</c>.
 	/// </summary>
 	/// <param name="name">The name of the database.</param>
-	/// <param name="tenant">The tenant, or null for the one of the options.</param>
 	/// <param name="deleteRecordsFirst">Whether to delete the records of its collections first, as in <c>DeleteCollectionAsync</c>.</param>
+	/// <param name="tenant">The tenant, or null for the one of the options.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
-	public virtual Task DeleteDatabaseAsync(string name, string? tenant = null, bool deleteRecordsFirst = false, CancellationToken cancellationToken = default)
+	public virtual Task DeleteDatabaseAsync(string name, bool deleteRecordsFirst, string? tenant = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("delete_database", null, tenant, name, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
