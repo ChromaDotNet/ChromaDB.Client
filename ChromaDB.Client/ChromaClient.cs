@@ -539,16 +539,18 @@ public class ChromaClient : IDisposable
 		});
 
 	/// <summary>
-	/// Deletes the collection with the given name, in the tenant and database of the options, or in the ones it is given. On
-	/// Chroma 1.x, except Chroma Cloud, it deletes the records first, in batches: Chroma 1.5 keeps the lists in their metadata
-	/// otherwise, and gives them to the next records it stores.
+	/// Deletes the collection with the given name, in the tenant and database of the options, or in the ones it is given.
 	/// </summary>
 	/// <param name="name">The name of the collection.</param>
 	/// <param name="tenant">The tenant, or null for the one of the options.</param>
 	/// <param name="database">The database, or null for the one of the options.</param>
+	/// <param name="deleteRecordsFirst">Whether to delete the records first, in batches, on Chroma 1.x except Chroma Cloud. Chroma 1.5 gives
+	/// the lists in the metadata of the records of a deleted collection to the next records it stores, in other collections too: pass
+	/// true when the records have lists in their metadata. It takes about two requests for every 5,461 records, about 370 for a million.
+	/// If it stops halfway, the collection keeps part of its records or none of them: delete it again.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
-	public virtual Task DeleteCollectionAsync(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
-		=> DatabaseOperation("delete_collection", name, tenant, database, () => DeleteCollectionCore(name, tenant, database, deleteRecordsFirst: true, cancellationToken));
+	public virtual Task DeleteCollectionAsync(string name, string? tenant = null, string? database = null, bool deleteRecordsFirst = false, CancellationToken cancellationToken = default)
+		=> DatabaseOperation("delete_collection", name, tenant, database, () => DeleteCollectionCore(name, tenant, database, deleteRecordsFirst, cancellationToken));
 
 	/// <summary>
 	/// Deletes the collection with the given name when it exists, as <c>DeleteCollectionAsync</c> does, and tells whether it did. A missing
@@ -557,14 +559,15 @@ public class ChromaClient : IDisposable
 	/// <param name="name">The name of the collection.</param>
 	/// <param name="tenant">The tenant, or null for the one of the options.</param>
 	/// <param name="database">The database, or null for the one of the options.</param>
+	/// <param name="deleteRecordsFirst">Whether to delete the records first, as in <c>DeleteCollectionAsync</c>.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>Whether the collection existed and was deleted.</returns>
-	public virtual Task<bool> DeleteCollectionIfExistsAsync(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
+	public virtual Task<bool> DeleteCollectionIfExistsAsync(string name, string? tenant = null, string? database = null, bool deleteRecordsFirst = false, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("delete_collection", name, tenant, database, async () =>
 		{
 			try
 			{
-				await DeleteCollectionCore(name, tenant, database, deleteRecordsFirst: true, cancellationToken);
+				await DeleteCollectionCore(name, tenant, database, deleteRecordsFirst, cancellationToken);
 				return true;
 			}
 			catch (ChromaException ex) when (ex.IsMissingCollection)
@@ -780,20 +783,20 @@ public class ChromaClient : IDisposable
 
 	/// <summary>
 	/// Deletes the database with the given name, in the tenant of the options, or in the one it is given. It needs the v2 API of
-	/// Chroma 0.6.3 or later: the older servers answer <c>405 Method Not Allowed</c>. On Chroma 1.x, except Chroma Cloud, it
-	/// deletes the records of its collections first, as <c>DeleteCollectionAsync</c> does.
+	/// Chroma 0.6.3 or later: the older servers answer <c>405 Method Not Allowed</c>.
 	/// </summary>
 	/// <param name="name">The name of the database.</param>
 	/// <param name="tenant">The tenant, or null for the one of the options.</param>
+	/// <param name="deleteRecordsFirst">Whether to delete the records of its collections first, as in <c>DeleteCollectionAsync</c>.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
-	public virtual Task DeleteDatabaseAsync(string name, string? tenant = null, CancellationToken cancellationToken = default)
+	public virtual Task DeleteDatabaseAsync(string name, string? tenant = null, bool deleteRecordsFirst = false, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("delete_database", null, tenant, name, async () =>
 		{
 			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
 			var requestParams = new RequestQueryParams()
 				.Insert("{database}", name)
 				.Insert("{tenant}", tenant);
-			if (await KeepsTheListsOfDeletedRecords(cancellationToken))
+			if (deleteRecordsFirst && await KeepsTheListsOfDeletedRecords(cancellationToken))
 			{
 				foreach (var collection in await _httpClient.Get<List<ChromaCollection>>(_httpClient.Routes.Collections, requestParams, cancellationToken))
 				{

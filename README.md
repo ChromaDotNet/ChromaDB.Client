@@ -103,6 +103,8 @@ var database = await client.GetDatabaseAsync("my_database");
 
 `ModifyAsync` changes the name or the metadata of a collection. `PeekAsync` returns its first records. `DeleteCollectionIfExistsAsync` takes a missing collection as deleted already: each server tells it in its own way, which the client recognizes as `CollectionExistsAsync` does.
 
+`DeleteCollectionAsync`, `DeleteCollectionIfExistsAsync` and `DeleteDatabaseAsync` send one request, as Chroma does. Chroma 1.5 gives the lists in the metadata of the records of a deleted collection or database to the next records it stores, in other collections too. If your records have lists in their metadata, pass `deleteRecordsFirst: true`: on Chroma 1.x, except Chroma Cloud, the client then deletes the records first, in batches. That takes about two requests for every 5,461 records, about 370 for a million. If it stops halfway, the collection keeps part of its records or none of them: delete it again.
+
 ## API version
 
 The client uses the v2 API. For the servers that have only the v1 API, like Chroma 0.5.15, choose it once in the options:
@@ -167,7 +169,7 @@ In `UpdateAsync` and `UpsertAsync`, a null value or an empty list deletes the ke
 
 Chroma 1.5.0 and later store lists in metadata and filter them with `Contains` and `NotContains`. Chroma 1.0.0 to 1.4.1 reject them. Chroma 0.x accepts them but drops them without an error, so `AddAsync`, `UpdateAsync` and `UpsertAsync` throw a `ChromaException` before sending them. The client asks the server for its version once, and only when a record has a list.
 
-Chroma 1.5 keeps the lists of the records of a deleted collection or database, and gives them to the next records it stores, in any collection. So on Chroma 1.x, except Chroma Cloud, `DeleteCollectionAsync` and `DeleteDatabaseAsync` delete the records first, in batches; every Chroma 1.x reports the same version, so this happens on all of them. A collection with many records takes more requests to delete.
+Chroma 1.5 keeps the lists of the records of a deleted collection or database, and gives them to the next records it stores, in any collection: delete them with `deleteRecordsFirst: true`, as [Collections and records](#collections-and-records) says. Every Chroma 1.x reports the same version, so the records go first on all of them.
 
 An existing `ChromaClient`, for example one from dependency injection, gives a client that reads values the other way. That client shares the `HttpClient`, the options and what was learned about the server. `Options` returns the options of a client:
 

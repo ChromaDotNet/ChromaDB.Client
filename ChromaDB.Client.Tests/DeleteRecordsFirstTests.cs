@@ -5,18 +5,35 @@ using NUnit.Framework;
 namespace ChromaDB.Client.Tests;
 
 // Chroma 1.5 keeps the lists in the metadata of the records of a deleted collection or database, and gives them to the next records
-// it stores: on Chroma 1.x the client deletes the records first, a page of the batch size at a time.
+// it stores: with deleteRecordsFirst, on Chroma 1.x the client deletes the records first, a page of the batch size at a time.
 [TestFixture]
 public class DeleteRecordsFirstTests
 {
 	const string Id = "11111111-2222-3333-4444-555555555555";
 	const string OtherId = "66666666-7777-8888-9999-000000000000";
 
+	// By default each deletion is one request, as in Chroma.
+	[Test]
+	public async Task OneRequestByDefault()
+	{
+		var server = new FakeServer("1.0.0", "{}");
+		var client = Client(server);
+		await client.DeleteCollectionAsync("c");
+		await client.DeleteCollectionIfExistsAsync("c");
+		await client.DeleteDatabaseAsync("d");
+		Assert.That(server.Requests.Select(x => x.Request), Is.EqualTo(new[]
+		{
+			"DELETE tenants/default_tenant/databases/default_database/collections/c",
+			"DELETE tenants/default_tenant/databases/default_database/collections/c",
+			"DELETE tenants/default_tenant/databases/d",
+		}));
+	}
+
 	[Test]
 	public async Task DeleteCollectionDeletesTheRecordsFirst()
 	{
 		var server = new FakeServer("1.0.0", $$"""{"id":"{{Id}}","name":"c","tenant":"t2","database":"d2"}""", """["a","b"]""", """["c"]""", "[]");
-		await Client(server).DeleteCollectionAsync("c", tenant: "t2", database: "d2");
+		await Client(server).DeleteCollectionAsync("c", tenant: "t2", database: "d2", deleteRecordsFirst: true);
 		var records = $"tenants/t2/databases/d2/collections/{Id}";
 		Assert.That(server.Requests.Select(x => x.Request), Is.EqualTo(new[]
 		{
@@ -41,7 +58,7 @@ public class DeleteRecordsFirstTests
 	public async Task DeleteCollectionOnChroma0()
 	{
 		var server = new FakeServer("0.6.3", "{}");
-		await Client(server).DeleteCollectionAsync("c");
+		await Client(server).DeleteCollectionAsync("c", deleteRecordsFirst: true);
 		Assert.That(server.Requests.Select(x => x.Request), Is.EqualTo(new[] { "GET version", "DELETE tenants/default_tenant/databases/default_database/collections/c" }));
 	}
 
@@ -49,7 +66,7 @@ public class DeleteRecordsFirstTests
 	public async Task DeleteCollectionOnChromaCloud()
 	{
 		var server = new FakeServer("1.0.0", "{}");
-		await Client(server, "https://api.trychroma.com").DeleteCollectionAsync("c");
+		await Client(server, "https://api.trychroma.com").DeleteCollectionAsync("c", deleteRecordsFirst: true);
 		Assert.That(server.Requests.Select(x => x.Request), Is.EqualTo(new[] { "DELETE tenants/default_tenant/databases/default_database/collections/c" }));
 	}
 
@@ -58,7 +75,7 @@ public class DeleteRecordsFirstTests
 	public async Task RecordsThatStayStopTheDeletes()
 	{
 		var server = new FakeServer("1.0.0", $$"""{"id":"{{Id}}","name":"c"}""", """["a"]""", """["a"]""");
-		await Client(server).DeleteCollectionAsync("c");
+		await Client(server).DeleteCollectionAsync("c", deleteRecordsFirst: true);
 		var records = $"tenants/default_tenant/databases/default_database/collections/{Id}";
 		Assert.That(server.Requests.Select(x => x.Request), Is.EqualTo(new[]
 		{
@@ -77,7 +94,7 @@ public class DeleteRecordsFirstTests
 	{
 		var server = new FakeServer("1.0.0", $$"""[{"id":"{{Id}}","name":"x","tenant":"t","database":"d"},{"id":"{{OtherId}}","name":"y","tenant":"t","database":"d"}]""",
 			"""["a"]""", "[]", """["b"]""", "[]");
-		await Client(server).DeleteDatabaseAsync("d", tenant: "t");
+		await Client(server).DeleteDatabaseAsync("d", tenant: "t", deleteRecordsFirst: true);
 		Assert.That(server.Requests.Select(x => x.Request), Is.EqualTo(new[]
 		{
 			"GET version",
@@ -97,7 +114,7 @@ public class DeleteRecordsFirstTests
 	public async Task DeleteDatabaseOnChroma0()
 	{
 		var server = new FakeServer("0.6.3", "{}");
-		await Client(server).DeleteDatabaseAsync("d");
+		await Client(server).DeleteDatabaseAsync("d", deleteRecordsFirst: true);
 		Assert.That(server.Requests.Select(x => x.Request), Is.EqualTo(new[] { "GET version", "DELETE tenants/default_tenant/databases/d" }));
 	}
 

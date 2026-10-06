@@ -119,14 +119,15 @@ public abstract class ChromaTestsBase
 			}
 			foreach (var collection in collections.Where(x => place.Contains(x.Id)))
 			{
-				await client.DeleteCollectionAsync(collection.Name, place.Key.Tenant, place.Key.Database);
+				// On a Chroma 1.5 already running, the lists of the records would reach the records of the next tests.
+				await client.DeleteCollectionAsync(collection.Name, place.Key.Tenant, place.Key.Database, deleteRecordsFirst: true);
 			}
 		}
 		foreach (var (tenant, name) in _created.Databases.Keys)
 		{
 			try
 			{
-				await client.DeleteDatabaseAsync(name, tenant);
+				await client.DeleteDatabaseAsync(name, tenant, deleteRecordsFirst: true);
 			}
 			catch (ChromaException)
 			{

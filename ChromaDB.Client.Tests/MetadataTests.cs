@@ -231,13 +231,13 @@ public class MetadataTests : ChromaTestsBase
 	}
 
 	// Chroma 1.5 keeps the lists of the records of a deleted collection or database, and gives them to the next records it stores, in
-	// any collection: the client deletes the records first.
+	// any collection: with deleteRecordsFirst the client deletes the records first.
 	[Test]
 	public async Task DeletedCollectionLeavesNoLists()
 	{
 		Assume.That(MetadataListsSupported, Is.True, "Chroma 1.4.1 and earlier do not store lists in metadata.");
 		var deleted = await AddRecordsWithLists(BaseConfigurationOptions);
-		await new ChromaClient(BaseConfigurationOptions, HttpClient).DeleteCollectionAsync(deleted.Collection.Name);
+		await new ChromaClient(BaseConfigurationOptions, HttpClient).DeleteCollectionAsync(deleted.Collection.Name, deleteRecordsFirst: true);
 		await AssertNoListsInNewRecords();
 	}
 
@@ -251,7 +251,7 @@ public class MetadataTests : ChromaTestsBase
 		await chroma.CreateDatabaseAsync(database);
 		await AddRecordsWithLists(BaseConfigurationOptions.WithDatabase(database));
 		await AddRecordsWithLists(BaseConfigurationOptions.WithDatabase(database));
-		await chroma.DeleteDatabaseAsync(database);
+		await chroma.DeleteDatabaseAsync(database, deleteRecordsFirst: true);
 		await AssertNoListsInNewRecords();
 	}
 
