@@ -1,16 +1,16 @@
 #nullable enable
 virtual ChromaDB.Client.ChromaClient.DeleteCollectionIfExistsAsync(string! name, string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 ChromaDB.Client.ChromaCloudQuotas
-const ChromaDB.Client.ChromaCloudQuotas.MaxDocumentBytes = 16384 -> int
-const ChromaDB.Client.ChromaCloudQuotas.MaxDocumentFilterBytes = 256 -> int
-const ChromaDB.Client.ChromaCloudQuotas.MaxEmbeddingDimensions = 4096 -> int
-const ChromaDB.Client.ChromaCloudQuotas.MaxIdBytes = 128 -> int
-const ChromaDB.Client.ChromaCloudQuotas.MaxMetadataKeyBytes = 36 -> int
-const ChromaDB.Client.ChromaCloudQuotas.MaxMetadataKeys = 32 -> int
-const ChromaDB.Client.ChromaCloudQuotas.MaxMetadataValueBytes = 8182 -> int
-const ChromaDB.Client.ChromaCloudQuotas.MaxRecordsPerRequest = 300 -> int
-const ChromaDB.Client.ChromaCloudQuotas.MaxUriBytes = 256 -> int
-const ChromaDB.Client.ChromaCloudQuotas.MaxWherePredicates = 8 -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxDocumentBytes -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxDocumentFilterBytes -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxEmbeddingDimensions -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxIdBytes -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxMetadataKeyBytes -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxMetadataKeys -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxMetadataValueBytes -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxRecordsPerRequest -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxUriBytes -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxWherePredicates -> int
 ChromaDB.Client.Models.ChromaQuery.Offset.get -> int
 ChromaDB.Client.Models.ChromaQuery.Offset.init -> void
 ChromaDB.Client.Models.ChromaCollection.FindBm25Index(string! sourceKey) -> ChromaDB.Client.Models.ChromaSparseVectorIndex?

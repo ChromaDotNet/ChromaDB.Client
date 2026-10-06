@@ -10,50 +10,50 @@ public static class ChromaCloudQuotas
 	/// <summary>
 	/// The most records in a write, and in the results of a read: the batch size of the client on Chroma Cloud.
 	/// </summary>
-	public const int MaxRecordsPerRequest = 300;
+	public static readonly int MaxRecordsPerRequest = 300;
 
 	/// <summary>
 	/// The most bytes of a value in the metadata of a record, in UTF-8.
 	/// </summary>
-	public const int MaxMetadataValueBytes = 8182;
+	public static readonly int MaxMetadataValueBytes = 8182;
 
 	/// <summary>
 	/// The most bytes of a document, in UTF-8.
 	/// </summary>
-	public const int MaxDocumentBytes = 16384;
+	public static readonly int MaxDocumentBytes = 16384;
 
 	/// <summary>
 	/// The most keys in the metadata of a record.
 	/// </summary>
-	public const int MaxMetadataKeys = 32;
+	public static readonly int MaxMetadataKeys = 32;
 
 	/// <summary>
 	/// The most bytes of a metadata key, in UTF-8.
 	/// </summary>
-	public const int MaxMetadataKeyBytes = 36;
+	public static readonly int MaxMetadataKeyBytes = 36;
 
 	/// <summary>
 	/// The most predicates in a <c>where</c> filter, nested ones included; the values of <c>$in</c> do not count.
 	/// </summary>
-	public const int MaxWherePredicates = 8;
+	public static readonly int MaxWherePredicates = 8;
 
 	/// <summary>
 	/// The most bytes of the text of a full-text or regular expression filter on the documents, in UTF-8.
 	/// </summary>
-	public const int MaxDocumentFilterBytes = 256;
+	public static readonly int MaxDocumentFilterBytes = 256;
 
 	/// <summary>
 	/// The most bytes of the id of a record, in UTF-8.
 	/// </summary>
-	public const int MaxIdBytes = 128;
+	public static readonly int MaxIdBytes = 128;
 
 	/// <summary>
 	/// The most bytes of the URI of a record, in UTF-8.
 	/// </summary>
-	public const int MaxUriBytes = 256;
+	public static readonly int MaxUriBytes = 256;
 
 	/// <summary>
 	/// The most dimensions of an embedding.
 	/// </summary>
-	public const int MaxEmbeddingDimensions = 4096;
+	public static readonly int MaxEmbeddingDimensions = 4096;
 }
