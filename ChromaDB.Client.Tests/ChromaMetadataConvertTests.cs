@@ -119,6 +119,7 @@ public class ChromaMetadataConvertTests
 	{
 		Assert.That(() => ChromaMetadataConvert.FromMetadataValue(1.5, typeof(int)), Throws.InstanceOf<InvalidCastException>().With.Message.EqualTo("Cannot read the metadata value of type Double as Int32."));
 		Assert.That(() => ChromaMetadataConvert.FromMetadataValue("x", typeof(bool)), Throws.InstanceOf<InvalidCastException>());
+		Assert.That(() => ChromaMetadataConvert.FromMetadataValue(true, typeof(int)), Throws.InstanceOf<InvalidCastException>());
 		Assert.That(() => ChromaMetadataConvert.FromMetadataValue(long.MaxValue, typeof(int)), Throws.InstanceOf<InvalidCastException>().With.InnerException.InstanceOf<OverflowException>());
 		Assert.That(() => ChromaMetadataConvert.FromMetadataValue("not a date", typeof(DateTime)), Throws.InstanceOf<InvalidCastException>().With.InnerException.InstanceOf<FormatException>());
 		Assert.That(() => ChromaMetadataConvert.FromMetadataValue(new List<object> { 1L }, typeof(int)), Throws.InstanceOf<InvalidCastException>());

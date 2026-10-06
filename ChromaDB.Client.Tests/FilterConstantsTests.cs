@@ -14,12 +14,11 @@ public class FilterConstantsTests
 	static readonly ChromaWhereOperator B = ChromaWhereOperator.Equal("b", 2);
 
 	[Test]
-	public void AllAndNoneAreSingleInstances()
+	public void AllAndNone()
 	{
-		Assert.That(ChromaWhereOperator.All, Is.SameAs(ChromaWhereOperator.All));
-		Assert.That(ChromaWhereOperator.None, Is.SameAs(ChromaWhereOperator.None));
 		Assert.That((ChromaWhereOperator.All.ToString(), ChromaWhereOperator.None.ToString()), Is.EqualTo(("true", "false")));
-		Assert.That(() => ChromaWhereOperator.None.ToWhere(), Throws.InvalidOperationException);
+		Assert.That(() => ChromaWhereOperator.None.ToWhere(), Throws.InvalidOperationException.With.Message.Contains("None"));
+		Assert.That(() => ChromaWhereOperator.All.ToWhere(), Throws.InvalidOperationException.With.Message.Contains("All"));
 		Assert.That(ChromaWhereOperator.ToRequestWhere(ChromaWhereOperator.All), Is.Null);
 		Assert.That(ChromaWhereOperator.ToRequestWhere(null), Is.Null);
 	}

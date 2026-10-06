@@ -101,6 +101,17 @@ public class DeletionsInWritesTests
 		Assert.That(upsert.GetProperty("documents")[0].GetString(), Is.EqualTo(""));
 	}
 
+	// Without metadata, a document that goes takes its sparse vector along; a stored record without metadata has no key to delete.
+	[Test]
+	public async Task DocumentThatGoesWithoutMetadata()
+	{
+		var server = new FakeServer("""{"ids":["a","b"],"metadatas":[{"doc_bm25":1},null],"documents":["doc a","doc b"]}""");
+		await Client(server, Schema).UpsertAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Documents = [null!], NullDocumentsDelete = true });
+		Assert.That(server.Bodies[server.Paths.IndexOf("upsert")].GetProperty("metadatas")[0].GetRawText(), Is.EqualTo("""{"doc_bm25":null}"""));
+		await Client(server).UpsertAsync(new ChromaRecords(["b"]) { Embeddings = [Embedding], Metadatas = [new Dictionary<string, object> { ["k"] = null! }] });
+		Assert.That(server.Bodies.Last().GetProperty("metadatas").ValueKind, Is.EqualTo(JsonValueKind.Null));
+	}
+
 	static ChromaCollectionClient Client(HttpMessageHandler handler, string? schema = null)
 		=> new(new ChromaCollection("c") { Id = Guid.NewGuid(), SchemaJson = schema is null ? null : JsonDocument.Parse(schema).RootElement },
 			new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
