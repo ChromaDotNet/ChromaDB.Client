@@ -14,6 +14,7 @@ dotnet test
 ## Pull requests
 
 - A fix comes with a test that fails without it.
+- New functionality comes with tests in the automated test suite, which the CI runs on every pull request.
 - A behavior that differs between Chroma versions is tested on the versions where it changes, and the README names those versions.
 - The public API is listed in `PublicAPI.Shipped.txt`, the API marked as shipped, and `PublicAPI.Unshipped.txt`, what was added or removed since; the version bump after a release moves it to `PublicAPI.Shipped.txt`. A new public member goes in `PublicAPI.Unshipped.txt`, otherwise the build warns with RS0016; the code fix of the analyzer adds it.
 - Public types and members have XML documentation, which goes in the package.
