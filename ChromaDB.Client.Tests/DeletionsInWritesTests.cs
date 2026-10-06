@@ -112,20 +112,19 @@ public class DeletionsInWritesTests
 		Assert.That(server.Bodies.Last().GetProperty("metadatas").ValueKind, Is.EqualTo(JsonValueKind.Null));
 	}
 
-	// The copy of each document in DocumentCopyKey replaces what the metadata has there; a document too long for Chroma Cloud goes
-	// without it, and only there.
+	// The copy of each document under the document copy key replaces what the metadata has there; a document too long for Chroma Cloud
+	// goes without it, and only there.
 	[TestCase("http://localhost:8000", true)]
 	[TestCase("https://api.trychroma.com", false)]
 	public async Task DocumentCopyInAnAdd(string uri, bool longCopied)
 	{
 		var server = new FakeServer("""{"ids":[]}""");
 		var longText = new string('a', ChromaCloudQuotas.MaxMetadataValueBytes + 1);
-		await Client(server, uri: uri).AddAsync(new ChromaRecords(["a", "b", "c"])
+		await Client(server, uri: uri).WithDocumentCopyKey("text").AddAsync(new ChromaRecords(["a", "b", "c"])
 		{
 			Embeddings = [Embedding, Embedding, Embedding],
 			Metadatas = [new Dictionary<string, object> { ["text"] = "old", ["k"] = 1 }, null!, null!],
 			Documents = ["short", longText, null!],
-			DocumentCopyKey = "text",
 		});
 		var metadatas = server.Bodies[server.Paths.IndexOf("add")].GetProperty("metadatas");
 		Assert.That(metadatas[0].GetRawText(), Is.EqualTo("""{"text":"short","k":1}"""));
@@ -141,11 +140,10 @@ public class DeletionsInWritesTests
 	{
 		var server = new FakeServer("""{"ids":["a","b"],"metadatas":[{"text":"old a"},{"text":"old b"}],"documents":["old a","old b"]}""");
 		var longText = new string('a', ChromaCloudQuotas.MaxMetadataValueBytes + 1);
-		await Client(server, uri: "https://api.trychroma.com").UpsertAsync(new ChromaRecords(["a", "b", "c"])
+		await Client(server, uri: "https://api.trychroma.com").WithDocumentCopyKey("text").UpsertAsync(new ChromaRecords(["a", "b", "c"])
 		{
 			Embeddings = [Embedding, Embedding, Embedding],
 			Documents = [longText, null!, "new c"],
-			DocumentCopyKey = "text",
 			NullDocumentsDelete = nullDocumentsDelete,
 		});
 		var upsert = server.Bodies[server.Paths.IndexOf("upsert")];
@@ -159,7 +157,7 @@ public class DeletionsInWritesTests
 	public async Task NoDocumentsNoCopy()
 	{
 		var server = new FakeServer("""{"ids":[]}""");
-		await Client(server).UpsertAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], DocumentCopyKey = "text" });
+		await Client(server).WithDocumentCopyKey("text").UpsertAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding] });
 		Assert.That(server.Paths, Is.EqualTo(new[] { "pre-flight-checks", "upsert" }));
 		Assert.That(server.Bodies[1].GetProperty("metadatas").ValueKind, Is.EqualTo(JsonValueKind.Null));
 	}
@@ -169,7 +167,7 @@ public class DeletionsInWritesTests
 	public async Task NoCopyNoMetadata()
 	{
 		var server = new FakeServer("""{"ids":[]}""");
-		await Client(server).AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Documents = [null!], DocumentCopyKey = "text" });
+		await Client(server).WithDocumentCopyKey("text").AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Documents = [null!] });
 		Assert.That(server.Bodies[server.Paths.IndexOf("add")].GetProperty("metadatas").ValueKind, Is.EqualTo(JsonValueKind.Null));
 	}
 

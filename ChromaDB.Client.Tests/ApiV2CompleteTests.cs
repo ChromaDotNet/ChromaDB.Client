@@ -258,9 +258,9 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		var tooLong = new ChromaCollectionDefinition(name) { Schema = new ChromaCollectionSchema().WithIndex(ChromaSchemaIndex.StringInverted, new string('k', 37)) };
 		Assert.That(() => client.CreateCollectionAsync(tooLong), Throws.ArgumentException);
 		Assert.That(await client.CollectionExistsAsync(name), Is.False);
-		var collection = client.GetCollectionClient(await client.CreateCollectionAsync(name));
+		var collection = client.GetCollectionClient(await client.CreateCollectionAsync(name)).WithDocumentCopyKey("text");
 		var longText = new string('a', ChromaCloudQuotas.MaxMetadataValueBytes + 1);
-		await collection.AddAsync(new ChromaRecords(["short", "long"]) { Embeddings = [new([1f, 0f]), new([0f, 1f])], Documents = ["apple pie", longText], DocumentCopyKey = "text" });
+		await collection.AddAsync(new ChromaRecords(["short", "long"]) { Embeddings = [new([1f, 0f]), new([0f, 1f])], Documents = ["apple pie", longText] });
 		var records = (await collection.GetAsync(include: ChromaGetInclude.Metadatas | ChromaGetInclude.Documents)).ToDictionary(x => x.Id);
 		Assert.That(records["short"].Metadata!["text"], Is.EqualTo("apple pie"));
 		Assert.That((records["long"].Metadata, records["long"].Document), Is.EqualTo(((IReadOnlyDictionary<string, object>?)null, longText)));

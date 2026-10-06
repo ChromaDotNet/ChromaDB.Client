@@ -28,16 +28,9 @@ public class ChromaRecords
 	/// <summary>
 	/// Whether a null document deletes the stored document in <c>UpdateAsync</c> and <c>UpsertAsync</c>, and the sparse vectors the
 	/// client computes from it, instead of keeping it as Chroma does. Chroma has no deletion of a document: the client writes an empty
-	/// one, which a read returns as an empty string.
+	/// one, which a read returns as an empty string, or as null from a client with <c>WithDocumentCopyKey</c>.
 	/// </summary>
 	public bool NullDocumentsDelete { get; init; }
-	/// <summary>
-	/// The metadata key where the client copies the document of each record, so that a <c>where</c> filter can compare the whole
-	/// text, which <c>where_document</c> cannot. The copy replaces what the metadata has under the key. Chroma Cloud takes a metadata
-	/// value of at most 8,182 bytes: there a longer document goes without its copy, and in <c>UpdateAsync</c> and <c>UpsertAsync</c> its
-	/// stored copy is deleted, as for a document that <c>NullDocumentsDelete</c> deletes. Null for no copy.
-	/// </summary>
-	public string? DocumentCopyKey { get; init; }
 	/// <summary>
 	/// The URIs of the records, in the order of the ids. A record without a URI has null at its position.
 	/// </summary>

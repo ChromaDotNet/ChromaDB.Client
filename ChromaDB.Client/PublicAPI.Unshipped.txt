@@ -26,5 +26,4 @@ ChromaDB.Client.Models.ChromaRecords.NullDocumentsDelete.get -> bool
 ChromaDB.Client.Models.ChromaRecords.NullDocumentsDelete.init -> void
 virtual ChromaDB.Client.ChromaClient.GetCollectionClient(string! name) -> ChromaDB.Client.ChromaCollectionClient!
 virtual ChromaDB.Client.ChromaCollectionClient.GetCollectionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaCollection!>!
-ChromaDB.Client.Models.ChromaRecords.DocumentCopyKey.get -> string?
-ChromaDB.Client.Models.ChromaRecords.DocumentCopyKey.init -> void
+virtual ChromaDB.Client.ChromaCollectionClient.WithDocumentCopyKey(string! documentCopyKey) -> ChromaDB.Client.ChromaCollectionClient!

@@ -19,6 +19,7 @@ public class ChromaCollectionClient
 	private readonly string _tenant;
 	private readonly string _database;
 	private readonly Uri _server;
+	private readonly string? _documentCopyKey;
 
 	/// <summary>
 	/// Creates a client for the records of the collection, which sends its requests with the options and the
@@ -52,6 +53,19 @@ public class ChromaCollectionClient
 		: this(new ChromaCollection(name), options, httpClient)
 	{
 		_byName = true;
+	}
+
+	// The same client with a document copy key; a client made by name starts from the collection read last, and reads it again by itself.
+	private ChromaCollectionClient(ChromaCollectionClient client, string documentCopyKey)
+	{
+		_collection = client._collection;
+		_httpClient = client._httpClient;
+		_byName = client._byName;
+		_resolved = client._resolved;
+		_tenant = client._tenant;
+		_database = client._database;
+		_server = client._server;
+		_documentCopyKey = documentCopyKey;
 	}
 
 	/// <summary>
@@ -152,6 +166,24 @@ public class ChromaCollectionClient
 		=> _byName ? Operation("get_collection", cancellationToken, () => Task.FromResult(_collection)) : Task.FromResult(_collection);
 
 	/// <summary>
+	/// A client of the same collection that copies each document into the metadata key, so that a <c>where</c> filter can compare
+	/// the whole text, which <c>where_document</c> cannot; the copy replaces what the metadata has under the key. Chroma has no deletion
+	/// of a document: for a null document with <c>ChromaRecords.NullDocumentsDelete</c> the client writes an empty one and deletes its
+	/// copy, and it reads an empty document without its copy as null, so that a document comes back as it was written, empty or null.
+	/// For that it reads the metadata with the documents, and leaves it out of the results that do not ask for it. Chroma Cloud takes a
+	/// metadata value of at most 8,182 bytes: there a longer document goes without its copy, and an update or an upsert deletes the
+	/// copy it had.
+	/// </summary>
+	/// <param name="documentCopyKey">The metadata key of the copies.</param>
+	/// <returns>The client of the same collection, with the copies.</returns>
+	public virtual ChromaCollectionClient WithDocumentCopyKey(string documentCopyKey)
+		=> new(this, documentCopyKey ?? throw new ArgumentNullException(nameof(documentCopyKey)));
+
+	// With a document copy key, the documents are read with the metadata, which tells a deleted document from an empty one.
+	private DocumentCopyReader ReadsDocuments(bool documents, bool metadata)
+		=> _documentCopyKey is { } key && documents ? new DocumentCopyReader(key, metadata) : default;
+
+	/// <summary>
 	/// Gets the record with the id, or null when the server returns none. Without <c>include</c>, the metadata and the
 	/// document are included.
 	/// </summary>
@@ -247,6 +279,8 @@ public class ChromaCollectionClient
 			.Insert("{tenant}", _tenant)
 			.Insert("{database}", _database)
 			.Insert("{collection_id}", _collection.Id);
+		var asked = include ?? ChromaGetInclude.Metadatas | ChromaGetInclude.Documents;
+		var copy = ReadsDocuments(asked.HasFlag(ChromaGetInclude.Documents), asked.HasFlag(ChromaGetInclude.Metadatas));
 		var request = new CollectionGetRequest()
 		{
 			Ids = ids,
@@ -254,10 +288,10 @@ public class ChromaCollectionClient
 			WhereDocument = whereDocument?.ToRequestWhereDocument(),
 			Limit = limit,
 			Offset = offset,
-			Include = (include ?? ChromaGetInclude.Metadatas | ChromaGetInclude.Documents).ToInclude(),
+			Include = (copy.ReadsMetadata ? asked | ChromaGetInclude.Metadatas : asked).ToInclude(),
 		};
 		var response = await _httpClient.Post<CollectionGetRequest, CollectionEntriesGetResponse>(_httpClient.Routes.Collection + "/get", request, requestParams, cancellationToken);
-		return response.Map() ?? [];
+		return response.Map(copy) ?? [];
 	}
 
 	/// <summary>
@@ -307,6 +341,8 @@ public class ChromaCollectionClient
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
+			var asked = query.Include ?? ChromaQueryInclude.Metadatas | ChromaQueryInclude.Documents | ChromaQueryInclude.Distances;
+			var copy = ReadsDocuments(asked.HasFlag(ChromaQueryInclude.Documents), asked.HasFlag(ChromaQueryInclude.Metadatas));
 			Task<CollectionEntriesQueryResponse> Send(IReadOnlyList<string>? ids)
 				=> _httpClient.Post<CollectionQueryRequest, CollectionEntriesQueryResponse>(_httpClient.Routes.Collection + "/query", new CollectionQueryRequest()
 				{
@@ -314,7 +350,7 @@ public class ChromaCollectionClient
 					NResults = query.NResults + query.Offset,
 					Where = ChromaWhereOperator.ToRequestWhere(query.Where),
 					WhereDocument = query.WhereDocument?.ToRequestWhereDocument(),
-					Include = (query.Include ?? ChromaQueryInclude.Metadatas | ChromaQueryInclude.Documents | ChromaQueryInclude.Distances).ToInclude(),
+					Include = (copy.ReadsMetadata ? asked | ChromaQueryInclude.Metadatas : asked).ToInclude(),
 					Ids = ids,
 				}, requestParams, cancellationToken);
 			if (query.Offset > int.MaxValue - query.NResults)
@@ -345,7 +381,7 @@ public class ChromaCollectionClient
 				}
 				response = await Send(query.Ids.Where(found.Contains).ToList());
 			}
-			var result = response.Map() ?? [];
+			var result = response.Map(copy) ?? [];
 			// Chroma 0.x ignores the ids and searches all the records: a result outside the ids shows it. When all the results
 			// are among the ids, they are also the nearest among them, so the answer is right on those servers too.
 			if (query.Ids is not null)
@@ -501,12 +537,12 @@ public class ChromaCollectionClient
 			}, cancellationToken);
 		});
 
-	// The copy of each document in DocumentCopyKey, when the server takes it: Chroma Cloud takes a metadata value of at most 8,182 bytes.
-	// In an update or an upsert, a document without its copy, as one too long or one deleted, deletes the stored copy with a null,
-	// which WithDeletions sends only to the records that have it; a null document that stays keeps its copy.
+	// The copy of each document under the document copy key, when the server takes it: Chroma Cloud takes a metadata value of at most
+	// 8,182 bytes. In an update or an upsert, a document without its copy, as one too long or one deleted, deletes the stored copy with
+	// a null, which WithDeletions sends only to the records that have it; a null document that stays keeps its copy.
 	private ChromaRecords WithDocumentCopies(ChromaRecords records, bool update)
 	{
-		if (records.DocumentCopyKey is not { } key || records.Documents is not { } documents)
+		if (_documentCopyKey is not { } key || records.Documents is not { } documents)
 		{
 			return records;
 		}
@@ -935,21 +971,25 @@ public class ChromaCollectionClient
 					Rank = search.Rank?.ToRank(EmbedText),
 					GroupBy = search.GroupBy?.ToGroupBy() ?? [],
 					Limit = new CollectionSearchLimit() { Offset = search.Offset, Limit = search.Limit },
-					Select = new CollectionSearchSelect() { Keys = search.Select?.Distinct().ToList() ?? [] },
+					Select = new CollectionSearchSelect() { Keys = SearchSelect(search) },
 				}).ToList(),
 				ReadLevel = readLevel is { } level ? ReadLevelName(level) : null,
 			};
 			var response = await _httpClient.Post<CollectionSearchRequest, CollectionSearchResponse>(_httpClient.Routes.Collection + "/search", request, requestParams, cancellationToken);
 			var results = response.Ids
-				.Select((ids, i) => (IReadOnlyList<ChromaSearchEntry>)ids
-					.Select((id, j) => new ChromaSearchEntry(id)
-					{
-						Document = response.Documents?[i]?[j],
-						Embedding = response.Embeddings?[i]?[j],
-						Metadata = response.Metadatas?[i]?[j],
-						Score = response.Scores?[i]?[j],
-					})
-					.ToList())
+				.Select((ids, i) =>
+				{
+					var copy = SearchReadsDocuments(sent[i]);
+					return (IReadOnlyList<ChromaSearchEntry>)ids
+						.Select((id, j) => new ChromaSearchEntry(id)
+						{
+							Document = copy.Document(response.Documents?[i]?[j], response.Metadatas?[i]?[j]),
+							Embedding = response.Embeddings?[i]?[j],
+							Metadata = copy.Metadata(response.Metadatas?[i]?[j]),
+							Score = response.Scores?[i]?[j],
+						})
+						.ToList();
+				})
 				.ToList();
 			if (sent.Count == searches.Count)
 			{
@@ -958,6 +998,23 @@ public class ChromaCollectionClient
 			var next = 0;
 			return searches.Select(search => search.Where == ChromaWhereOperator.None ? [] : results[next++]).ToList();
 		});
+
+	// The keys a search selects, and with the documents the copy key, which tells a deleted document from an empty one.
+	private List<string> SearchSelect(ChromaSearch search)
+	{
+		var keys = search.Select?.Distinct().ToList() ?? [];
+		if (SearchReadsDocuments(search).ReadsMetadata && !keys.Contains(ChromaSearchKeys.Metadata) && !keys.Contains(_documentCopyKey!))
+		{
+			keys.Add(_documentCopyKey!);
+		}
+		return keys;
+	}
+
+	// The metadata stays in the results of a search that selects it, or the copy key itself.
+	private DocumentCopyReader SearchReadsDocuments(ChromaSearch search)
+		=> search.Select is { } select
+			? ReadsDocuments(select.Contains(ChromaSearchKeys.Document), select.Contains(ChromaSearchKeys.Metadata) || _documentCopyKey is { } key && select.Contains(key))
+			: default;
 
 	// The where clause of the Search API holds the metadata, the documents (#document) and the ids (#id); several filters go in $and.
 	private static Dictionary<string, object>? SearchFilter(ChromaSearch search)

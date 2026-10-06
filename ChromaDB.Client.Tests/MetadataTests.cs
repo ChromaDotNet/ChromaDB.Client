@@ -181,17 +181,20 @@ public class MetadataTests : ChromaTestsBase
 		Assert.That(records["b"].Document, Is.Null);
 	}
 
-	// The copy of the document in DocumentCopyKey lets a where filter find the whole text, and goes with a document that is deleted.
+	// The copy of the document under the document copy key lets a where filter find the whole text. A document comes back as it was
+	// written: empty, or null when it was deleted, which takes its copy along.
 	[Test]
 	public async Task DocumentCopy()
 	{
-		var client = await Init(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact));
-		await client.AddAsync(new ChromaRecords(["a", "b"]) { Embeddings = [Embedding1, Embedding2], Documents = ["apple pie", "banana split"], DocumentCopyKey = "text" });
+		var client = (await Init(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact))).WithDocumentCopyKey("text");
+		await client.AddAsync(new ChromaRecords(["a", "b"]) { Embeddings = [Embedding1, Embedding2], Documents = ["apple pie", "banana split"] });
 		var found = await client.GetAsync(where: ChromaWhereOperator.Equal("text", "apple pie"), include: ChromaGetInclude.None);
 		Assert.That(found.Select(x => x.Id), Is.EqualTo(new[] { "a" }));
-		await client.UpsertAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Documents = [null!], DocumentCopyKey = "text", NullDocumentsDelete = true });
+		await client.UpsertAsync(new ChromaRecords(["a", "b"]) { Embeddings = [Embedding1, Embedding2], Documents = [null!, ""], NullDocumentsDelete = true });
+		var records = (await client.GetAsync(include: ChromaGetInclude.Documents)).ToDictionary(x => x.Id);
+		Assert.That((records["a"].Document, records["b"].Document), Is.EqualTo(((string?)null, "")));
 		var record = (await client.GetAsync("a", include: ChromaGetInclude.Metadatas | ChromaGetInclude.Documents))!;
-		Assert.That((record.Metadata, record.Document), Is.EqualTo(((IReadOnlyDictionary<string, object>?)null, "")));
+		Assert.That((record.Metadata, record.Document), Is.EqualTo(((IReadOnlyDictionary<string, object>?)null, (string?)null)));
 	}
 
 	// The values of ChromaMetadataConvert come back as they were written, and a filter with a converted value finds the same instant
