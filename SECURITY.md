@@ -27,7 +27,7 @@ Include the version of the package, the version of Chroma or Chroma Cloud, and t
 
 ## Verifying a package
 
-Each GitHub release has the packages published on nuget.org and their Sigstore signatures (`.sigstore.json`), made by the release workflow of this repository:
+Each GitHub release has the packages published on nuget.org and their Sigstore signatures (`.sigstore.json`), made by the release workflow of this repository. With Cosign 3 or later:
 
 ```
 cosign verify-blob ChromaDotNet.Client.2.10.0.nupkg --bundle ChromaDotNet.Client.2.10.0.nupkg.sigstore.json --certificate-identity-regexp '^https://github.com/ChromaDotNet/ChromaDB.Client/\.github/workflows/release-assets\.yml@' --certificate-oidc-issuer https://token.actions.githubusercontent.com
