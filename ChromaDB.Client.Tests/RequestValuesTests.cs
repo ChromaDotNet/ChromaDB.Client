@@ -47,27 +47,28 @@ public class RequestValuesTests
 	}
 
 	// An empty list in the metadata of a record: Chroma 0.6.3 and 1.5.9 drop the key without an error, 1.0 to 1.4
-	// reject it, Chroma Cloud stores it; the Python client rejects it.
+	// reject it, Chroma Cloud stores it; the Python client rejects it. In an update or an upsert it deletes the key, as a null does,
+	// so the client reads the record first.
 	[Test]
 	public void EmptyListsInRecords()
 	{
-		var collection = Collection(new NoRequests());
 		var empty = new Dictionary<string, object> { ["tags"] = new List<string>(), ["x"] = 1L };
-		Assert.That(() => collection.AddAsync(["a"], [Embedding], [empty]), Throws.ArgumentException.With.Message.Contains("\"tags\""));
-		Assert.That(() => collection.UpsertAsync(["a"], [Embedding], [empty]), Throws.ArgumentException);
-		Assert.That(() => collection.UpdateAsync(["a"], metadatas: [new Dictionary<string, object> { ["n"] = Array.Empty<long>() }]), Throws.ArgumentException);
+		Assert.That(() => Collection(new NoRequests()).AddAsync(["a"], [Embedding], [empty]), Throws.ArgumentException.With.Message.Contains("\"tags\""));
+		var collection = Collection(new PreFlightOnly());
+		Assert.That(() => collection.UpsertAsync(["a"], [Embedding], [empty]), Throws.InvalidOperationException.With.Message.Contains("/get"));
+		Assert.That(() => collection.UpdateAsync(["a"], metadatas: [new Dictionary<string, object> { ["n"] = Array.Empty<long>() }]), Throws.InvalidOperationException.With.Message.Contains("/get"));
 	}
 
-	// A null value deletes the key in an update or an upsert, on every tested Chroma; a new record has none to delete: Chroma 0.x
-	// drops the key and 1.x rejects the request, so AddAsync rejects it before.
+	// A null value deletes the key in an update or an upsert, on every tested Chroma, so the client reads the record first; a new
+	// record has none to delete: Chroma 0.x drops the key and 1.x rejects the request, so AddAsync rejects it before.
 	[Test]
 	public void NullValuesInRecords()
 	{
 		var withNull = new Dictionary<string, object> { ["a"] = null!, ["b"] = 1L };
 		Assert.That(() => Collection(new NoRequests()).AddAsync(["a"], [Embedding], [withNull]), Throws.ArgumentException.With.Message.Contains("\"a\""));
 		var collection = Collection(new PreFlightOnly());
-		Assert.That(() => collection.UpdateAsync(["a"], metadatas: [withNull]), Throws.InvalidOperationException.With.Message.Contains("/update"));
-		Assert.That(() => collection.UpsertAsync(["a"], [Embedding], [withNull]), Throws.InvalidOperationException.With.Message.Contains("/upsert"));
+		Assert.That(() => collection.UpdateAsync(["a"], metadatas: [withNull]), Throws.InvalidOperationException.With.Message.Contains("/get"));
+		Assert.That(() => collection.UpsertAsync(["a"], [Embedding], [withNull]), Throws.InvalidOperationException.With.Message.Contains("/get"));
 	}
 
 	// No Chroma stores a list in the metadata of a collection: 0.x and 1.0 to 1.4 reject it, Chroma Cloud answers 500

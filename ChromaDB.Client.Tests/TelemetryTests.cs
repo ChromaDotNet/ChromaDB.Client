@@ -80,7 +80,8 @@ public class TelemetryTests
 		Assert.That((span.DisplayName, span.Status, span.GetTagItem("error.type")), Is.EqualTo(("collection_exists articles", ActivityStatusCode.Unset, (object?)null)));
 	}
 
-	// The operations on the server have no namespace, the ones on a tenant the tenant, the ones in a database tenant|database.
+	// The operations on the server have no namespace, the ones on a tenant the tenant, the ones in a database tenant|database. The
+	// records that a delete of a collection deletes first make no spans of their own.
 	[Test]
 	public async Task NamespaceOfEachOperation()
 	{
@@ -88,6 +89,9 @@ public class TelemetryTests
 		using var recorder = new Recorder(port);
 		var server = new FakeServer(r => r.EndsWith("/heartbeat") ? (HttpStatusCode.OK, """{"nanosecond heartbeat":1}""")
 			: r.EndsWith("/databases") ? (HttpStatusCode.OK, "[]")
+			: r.EndsWith("/version") ? (HttpStatusCode.OK, "\"1.0.0\"")
+			: r.EndsWith("/collections/articles") ? (HttpStatusCode.OK, """{"id":"11111111-2222-3333-4444-555555555555","name":"articles"}""")
+			: r.EndsWith("/get") ? (HttpStatusCode.OK, """{"ids":[]}""")
 			: (HttpStatusCode.OK, "{}"));
 		var client = Client(server, port);
 		await client.HeartbeatAsync();

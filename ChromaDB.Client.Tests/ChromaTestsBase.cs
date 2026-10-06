@@ -119,14 +119,15 @@ public abstract class ChromaTestsBase
 			}
 			foreach (var collection in collections.Where(x => place.Contains(x.Id)))
 			{
-				await client.DeleteCollectionAsync(collection.Name, place.Key.Tenant, place.Key.Database);
+				// On a Chroma 1.5 already running, the lists of the records would reach the records of the next tests.
+				await client.DeleteCollectionAsync(collection.Name, deleteRecordsFirst: true, place.Key.Tenant, place.Key.Database);
 			}
 		}
 		foreach (var (tenant, name) in _created.Databases.Keys)
 		{
 			try
 			{
-				await client.DeleteDatabaseAsync(name, tenant);
+				await client.DeleteDatabaseAsync(name, deleteRecordsFirst: true, tenant);
 			}
 			catch (ChromaException)
 			{
@@ -199,6 +200,9 @@ public abstract class ChromaTestsBase
 
 	// Chroma 1.5.3 and later apply the limit of a delete, declare it in their OpenAPI description and answer how many records they deleted.
 	protected static bool DeleteLimitSupported => ChromaImage.Version >= new Version(1, 5, 3);
+
+	// $ne and $nin match the records without the key from Chroma 0.5.15; 0.4.10 to 0.4.23 leave them out.
+	protected static bool NotEqualMatchesRecordsWithoutTheKey => ChromaImage.Version >= new Version(0, 5, 15);
 
 	// Chroma 1.0.6 and later apply a new configuration of a collection; the earlier versions answer without applying it.
 	protected static bool NewConfigurationApplied => ChromaImage.Version >= new Version(1, 0, 6);

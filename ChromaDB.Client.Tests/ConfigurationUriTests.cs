@@ -22,6 +22,13 @@ public class ConfigurationUriTests
 		Assert.That(handler.RequestUri?.AbsoluteUri, Is.EqualTo(expected));
 	}
 
+	[TestCase("https://api.trychroma.com", true)]
+	[TestCase("https://API.TRYCHROMA.COM/api/v2", true)]
+	[TestCase("http://localhost:8000", false)]
+	[TestCase("https://trychroma.com.example.com", false)]
+	public void IsChromaCloud(string uri, bool chromaCloud)
+		=> Assert.That(new ChromaConfigurationOptions(uri).IsChromaCloud, Is.EqualTo(chromaCloud));
+
 	sealed class RecordingHandler : HttpMessageHandler
 	{
 		public Uri? RequestUri { get; private set; }

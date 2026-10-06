@@ -14,6 +14,16 @@ public class ChromaQuery
 	/// </summary>
 	public int NResults { get; init; } = 10;
 	/// <summary>
+	/// How many of the nearest records to skip for each query embedding before the results, 0 by default. Chroma has no offset in
+	/// queries: the client asks for <c>NResults</c> plus the offset, and leaves out the first ones.
+	/// </summary>
+	public int Offset
+	{
+		get => _offset;
+		init => _offset = value >= 0 ? value : throw new ArgumentOutOfRangeException(nameof(Offset), value, "The offset of a query cannot be negative.");
+	}
+	private readonly int _offset;
+	/// <summary>
 	/// The filter on the metadata.
 	/// </summary>
 	public ChromaWhereOperator? Where { get; init; }
@@ -30,6 +40,11 @@ public class ChromaQuery
 	/// <c>ChromaException</c>.
 	/// </summary>
 	public IReadOnlyList<string>? Ids { get; init; }
+	/// <summary>
+	/// The space the distances of the results are expected in: <c>QueryAsync</c> throws an <c>InvalidOperationException</c>, before
+	/// the query, when the collection has another one. A collection whose space the server does not report is taken. Null for any.
+	/// </summary>
+	public ChromaSpace? ExpectedSpace { get; init; }
 
 	/// <summary>
 	/// Creates a query for the embeddings.

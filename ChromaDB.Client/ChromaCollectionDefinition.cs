@@ -24,7 +24,7 @@ public class ChromaCollectionDefinition
 
 	/// <summary>
 	/// The indexes of the keys of the collection, like a sparse vector index for BM25. Chroma 1.3.0 and later apply a schema, but
-	/// sparse vector indexes only on Chroma Cloud: a single server rejects them.
+	/// sparse vector indexes only on Chroma Cloud: a single server rejects them, and does not get the ones added with <c>ifSupported</c>.
 	/// </summary>
 	public ChromaCollectionSchema? Schema { get; init; }
 
@@ -61,6 +61,14 @@ public class ChromaCollectionDefinition
 		{
 			throw new ArgumentException($"Chroma ignores the {ChromaSpaceNames.MetadataKey} metadata next to SPANN settings: set the space in Configuration.Space instead.", nameof(Metadata));
 		}
+	}
+
+	// The definition as the server gets it, without the indexes added with ifSupported that it does not take: all of them on a server
+	// other than Chroma Cloud, and on Chroma Cloud the ones whose key is beyond its quota of bytes.
+	internal ChromaCollectionDefinition ForServer(bool chromaCloud)
+	{
+		var schema = Schema?.WithoutIndexesIfSupported(key => !chromaCloud || System.Text.Encoding.UTF8.GetByteCount(key) > ChromaCloudQuotas.MaxMetadataKeyBytes);
+		return schema == Schema ? this : new(Name) { Metadata = Metadata, Configuration = Configuration, Schema = schema };
 	}
 
 	internal Dictionary<string, object>? ToRequestSchema()

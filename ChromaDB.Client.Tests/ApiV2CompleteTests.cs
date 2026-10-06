@@ -247,6 +247,47 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		Assert.That(hybrid.Single().Id, Is.EqualTo("b"));
 	}
 
+	// Chroma Cloud takes a metadata value of at most 8,182 bytes, and a document of 16,384: a longer document goes without its copy.
+	// A key of the schema beyond 36 bytes, which Chroma Cloud takes and then rejects on every write, stops before the request.
+	[Test]
+	public async Task QuotasOfChromaCloud()
+	{
+		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has these quotas.");
+		var client = new ChromaClient(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact), HttpClient);
+		var name = $"collection{Random.Shared.Next()}";
+		var tooLong = new ChromaCollectionDefinition(name) { Schema = new ChromaCollectionSchema().WithIndex(ChromaSchemaIndex.StringInverted, new string('k', 37)) };
+		Assert.That(() => client.CreateCollectionAsync(tooLong), Throws.ArgumentException);
+		Assert.That(await client.CollectionExistsAsync(name), Is.False);
+		var collection = client.GetCollectionClient(await client.CreateCollectionAsync(name)).WithDocumentCopyKey("text");
+		var longText = new string('a', ChromaCloudQuotas.MaxMetadataValueBytes + 1);
+		await collection.AddAsync(new ChromaRecords(["short", "long"]) { Embeddings = [new([1f, 0f]), new([0f, 1f])], Documents = ["apple pie", longText] });
+		var records = (await collection.GetAsync(include: ChromaGetInclude.Metadatas | ChromaGetInclude.Documents)).ToDictionary(x => x.Id);
+		Assert.That(records["short"].Metadata!["text"], Is.EqualTo("apple pie"));
+		Assert.That((records["long"].Metadata, records["long"].Document), Is.EqualTo(((IReadOnlyDictionary<string, object>?)null, longText)));
+	}
+
+	// With HybridRrf the records without the terms of the text get no points from it: they keep the order of the dense search.
+	[Test]
+	public async Task HybridRrfOnChromaCloud()
+	{
+		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has sparse vector indexes.");
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var collection = client.GetCollectionClient(await client.CreateCollectionAsync(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}")
+		{
+			Configuration = new() { Space = ChromaSpace.Cosine },
+			Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, new ChromaBm25().Reference),
+		}));
+		await collection.AddAsync(new ChromaRecords(["a", "b", "c", "d"])
+		{
+			Embeddings = [new([1f, 0f]), new([0f, 1f]), new([0.6f, 0.8f]), new([0.8f, 0.6f])],
+			Documents = ["apple pie", "banana split", "cherry tart", "date cake"],
+		});
+		var bm25Key = collection.Collection.FindBm25Index(ChromaSearchKeys.Document)!.Key;
+		var results = await collection.SearchAsync(new ChromaSearch { Rank = ChromaRank.HybridRrf(new([0f, 1f]), "banana", bm25Key, limit: 4), Limit = 4, Select = [ChromaSearchKeys.Score] });
+		Assert.That(results.Select(x => x.Id), Is.EqualTo(new[] { "b", "c", "d", "a" }));
+		Assert.That(results[1].Score!.Value, Is.EqualTo(1 / 61.0).Within(1e-6));
+	}
+
 	async Task<ChromaCollectionClient> Init()
 	{
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);

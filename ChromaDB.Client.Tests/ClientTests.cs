@@ -150,6 +150,19 @@ public class ClientTests : ChromaTestsBase
 		Assert.That(existing.Space, Is.EqualTo(ChromaSpace.Cosine));
 	}
 
+	// A collection that exists keeps its space: GetOrCreateCollectionAsync throws when it has another one than the definition asks for,
+	// where the server reports it.
+	[Test]
+	public async Task GetOrCreateCollectionWithAnotherSpace()
+	{
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var name = $"collection{Random.Shared.Next()}";
+		var created = await client.CreateCollectionAsync(new ChromaCollectionDefinition(name) { Configuration = new() { Space = ChromaSpace.L2 } });
+		Assume.That(created.Space, Is.Not.Null, "The server does not report the space of the collection.");
+		await Assert.ThatAsync(() => client.GetOrCreateCollectionAsync(new ChromaCollectionDefinition(name) { Configuration = new() { Space = ChromaSpace.Cosine } }),
+			Throws.InstanceOf<ChromaException>().With.Message.Contains("not cosine"));
+	}
+
 	// Without a space Chroma uses l2; the servers before 1.0.6 do not report it reliably.
 	[Test]
 	public async Task SpaceOfACollectionWithoutOne()
@@ -336,6 +349,37 @@ public class ClientTests : ChromaTestsBase
 
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
 		await Assert.ThatAsync(async () => await client.DeleteCollectionAsync(name), Throws.InstanceOf<ChromaException>().With.Message.Matches($@"^Collection \[?{name}\]? does not exist"));
+	}
+
+	// A client made by name works on the collection of that name also after it was deleted and created again elsewhere.
+	[Test]
+	public async Task CollectionClientByName()
+	{
+		var name = $"collection{Random.Shared.Next()}";
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		await client.CreateCollectionAsync(name);
+		var byName = client.GetCollectionClient(name);
+		await byName.AddAsync(["a", "b"], embeddings: [new([1f, 0f]), new([0f, 1f])]);
+		var first = (await byName.GetCollectionAsync()).Id;
+		await client.DeleteCollectionAsync(name);
+		await client.CreateCollectionAsync(name);
+		Assert.That(await byName.CountAsync(), Is.EqualTo(0));
+		await byName.AddAsync(["c"], embeddings: [new([1f, 1f])]);
+		Assert.That((await byName.GetAsync()).Select(x => x.Id), Is.EqualTo(new[] { "c" }));
+		Assert.That(byName.Collection.Id, Is.Not.EqualTo(first));
+	}
+
+	// Every tested server tells a missing collection in its own way, which DeleteCollectionIfExistsAsync recognizes.
+	[Test]
+	public async Task DeleteCollectionIfExists()
+	{
+		var name = $"collection{Random.Shared.Next()}";
+
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		await client.CreateCollectionAsync(name);
+		Assert.That(await client.DeleteCollectionIfExistsAsync(name), Is.True);
+		Assert.That(await client.CollectionExistsAsync(name), Is.False);
+		Assert.That(await client.DeleteCollectionIfExistsAsync(name), Is.False);
 	}
 
 	[Test]

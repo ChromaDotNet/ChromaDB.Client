@@ -404,6 +404,15 @@ public class CollectionClientQueryTests : ChromaTestsBase
 	}
 
 	[Test]
+	public async Task QueryWithOffset()
+	{
+		var client = await Init(withThird: true);
+		var all = await client.QueryAsync(new ChromaQuery([Embeddings1, Embeddings2]) { NResults = 3, Include = ChromaQueryInclude.Distances });
+		var skipped = await client.QueryAsync(new ChromaQuery([Embeddings1, Embeddings2]) { NResults = 2, Offset = 1, Include = ChromaQueryInclude.Distances });
+		Assert.That(skipped.Select(entries => entries.Select(x => x.Id)), Is.EqualTo(all.Select(entries => entries.Skip(1).Select(x => x.Id))));
+	}
+
+	[Test]
 	public async Task QueryWithIdsNResults1()
 	{
 		Assume.That(IdsInQuerySupported, Is.True, "Chroma 0.6.3 and earlier ignore the ids of a query.");
@@ -434,14 +443,42 @@ public class CollectionClientQueryTests : ChromaTestsBase
 		Assert.That((await client.QueryAsync(query)).Single(), Is.Empty);
 	}
 
-	// Chroma 1.x answers 500 "Error finding id" when an id of the query does not exist; Chroma 0.x ignores the ids.
+	// Chroma 1.x answers 500 "Error finding id" when an id of the query does not exist, and Chroma Cloud leaves it out: the client
+	// leaves it out on both. Chroma 0.x ignores the ids.
 	[Test]
-	public async Task QueryWithMissingIdThrows()
+	public async Task QueryWithMissingIdLeavesItOut()
 	{
-		Assume.That(RunningServer, Is.False, "On a server already running the answer may differ: Chroma Cloud leaves out the ids that do not exist.");
 		var client = await Init(withThird: true);
-		await Assert.ThatAsync(() => client.QueryAsync(new ChromaQuery([Embeddings1]) { Ids = [Id1, "missing"] }),
-			Throws.InstanceOf<ChromaException>().With.Message.Contains(IdsInQuerySupported ? "Error finding id" : "outside the ids"));
+		var query = new ChromaQuery([Embeddings1, Embeddings2]) { Ids = [Id1, "missing", Id3], Include = ChromaQueryInclude.Distances };
+		if (!IdsInQuerySupported)
+		{
+			await Assert.ThatAsync(() => client.QueryAsync(query), Throws.InstanceOf<ChromaException>().With.Message.Contains("outside the ids"));
+			return;
+		}
+		var result = await client.QueryAsync(query);
+		Assert.That(result, Has.Count.EqualTo(2));
+		Assert.That(result[0].Select(x => x.Id), Is.EqualTo(new[] { Id1, Id3 }));
+		Assert.That(result[1].Select(x => x.Id), Is.EquivalentTo(new[] { Id1, Id3 }));
+	}
+
+	[Test]
+	public async Task QueryWithDeletedIdLeavesItOut()
+	{
+		Assume.That(IdsInQuerySupported, Is.True, "Chroma 0.6.3 and earlier ignore the ids of a query.");
+		var client = await Init(withThird: true);
+		await client.DeleteAsync([Id1]);
+		var result = await client.QueryAsync(new ChromaQuery([Embeddings1]) { Ids = [Id1, Id2] });
+		Assert.That(result.Single().Select(x => x.Id), Is.EqualTo(new[] { Id2 }));
+	}
+
+	[Test]
+	public async Task QueryWithOnlyMissingIdsHasNoResults()
+	{
+		Assume.That(IdsInQuerySupported, Is.True, "Chroma 0.6.3 and earlier ignore the ids of a query.");
+		var client = await Init(withThird: true);
+		var result = await client.QueryAsync(new ChromaQuery([Embeddings1, Embeddings2]) { Ids = ["missing", "other"] });
+		Assert.That(result, Has.Count.EqualTo(2));
+		Assert.That(result, Has.All.Empty);
 	}
 
 	// Chroma 1.x sends null for an embedding beyond the range of a float in a cosine collection, and for the distance to it in an l2

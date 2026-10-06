@@ -94,13 +94,16 @@ var count = await client.CountCollectionsAsync();
 await collectionClient.ModifyAsync(name: "renamed", metadata: new Dictionary<string, object> { ["owner"] = "me" });
 var first = await collectionClient.PeekAsync(5);
 await client.DeleteCollectionAsync("renamed");
+var deleted = await client.DeleteCollectionIfExistsAsync("renamed");   // false: it no longer exists
 var heartbeat = await client.HeartbeatAsync();
 var checks = await client.GetPreFlightChecksAsync();   // MaxBatchSize, SupportsBase64Encoding
 var identity = await client.GetUserIdentityAsync();    // UserId, Tenant, Databases
 var database = await client.GetDatabaseAsync("my_database");
 ```
 
-`ModifyAsync` changes the name or the metadata of a collection. `PeekAsync` returns its first records.
+`ModifyAsync` changes the name or the metadata of a collection. `PeekAsync` returns its first records. `DeleteCollectionIfExistsAsync` takes a missing collection as deleted already: each server tells it in its own way, which the client recognizes as `CollectionExistsAsync` does.
+
+`DeleteCollectionAsync`, `DeleteCollectionIfExistsAsync` and `DeleteDatabaseAsync` send one request, as Chroma does. Chroma 1.5 gives the lists in the metadata of the records of a deleted collection or database to the next records it stores, in other collections too. If your records have lists in their metadata, pass `deleteRecordsFirst: true`: on Chroma 1.x, except Chroma Cloud, the client then deletes the records first, in batches. That takes about two requests for every 5,461 records, about 370 for a million. If it stops halfway, the collection keeps part of its records or none of them: delete it again.
 
 ## API version
 
@@ -133,7 +136,7 @@ var results = await collectionClient.QueryAsync(new ReadOnlyMemory<float>([1f, 0
 var same = await collectionClient.QueryAsync(new ChromaQuery([new([1f, 0.5f, 0f])]) { Ids = ["a", "c"], NResults = 1 });
 ```
 
-`ChromaQuery` holds the query embeddings, the number of results, the filters, what to include and the ids to search among. Chroma 1.0.0 and later search only the records with those ids. Chroma 0.x ignores them and searches all the records, so when a result falls outside the ids, `QueryAsync` throws a `ChromaException` instead of returning it.
+`ChromaQuery` holds the query embeddings, the number of results, the filters, what to include and the ids to search among, and the offset: Chroma has no offset in queries, so the client asks for the skipped records too and leaves them out. Chroma 1.0.0 and later search only the records with those ids. An id without a record is left out, as Chroma Cloud does: Chroma 1.x fails on it, so `QueryAsync` asks again with the ids that have one. Chroma 0.x ignores the ids and searches all the records, so when a result falls outside the ids, `QueryAsync` throws a `ChromaException` instead of returning it. With `ExpectedSpace`, `QueryAsync` throws an `InvalidOperationException` before the query when the collection has another space, whose distances would not be the expected ones.
 
 ## Metadata values
 
@@ -158,9 +161,15 @@ await collectionClient.AddAsync(new ChromaRecords(["a"]) { Embeddings = [new([1f
 var tagged = await collectionClient.GetAsync(where: ChromaWhereOperator.Contains("tags", "red"));
 ```
 
-In `UpdateAsync` and `UpsertAsync`, a null value deletes the key on every tested Chroma. The type does not allow null, so write `null!`. `AddAsync` throws an `ArgumentException` for a null value: Chroma 0.x would drop the key, and 1.x rejects the request. A record without metadata keys comes back with `Metadata` null.
+In `UpdateAsync` and `UpsertAsync`, a null value or an empty list deletes the key on every tested Chroma, with the sparse vectors the client computes from its text. The type does not allow null, so write `null!`. The client sends a deletion only to a record that has the key, so it reads those records first: Chroma Cloud counts a null against its quota of keys, and a new record has nothing to delete. The keys the metadata does not have stay, as in Chroma. A null document keeps the stored one, as in Chroma; with `NullDocumentsDelete = true` in `ChromaRecords` it deletes it, which Chroma cannot do, so the client writes an empty document, read back as an empty string, or as null with a document copy key. `AddAsync` throws an `ArgumentException` for a null value or an empty list: Chroma 0.x would drop the key, and 1.x rejects the request. A record without metadata keys comes back with `Metadata` null. In `ChromaRecords` a record can have null metadata or a null document, and a list of metadata that are all null goes as no metadata.
+
+`WithDocumentCopyKey(key)` of a collection client returns a client of the same collection that copies each document into the metadata key, so that a `where` filter can compare the whole text, which `where_document` cannot. A document deleted with `NullDocumentsDelete` loses its copy, so the client reads an empty document without its copy as null: a document comes back as it was written, empty or null. For that it reads the metadata with the documents, and leaves it out of the results that do not ask for it. On Chroma Cloud, which takes a metadata value of at most 8,182 bytes, a longer document goes without its copy, and an update or an upsert deletes the copy it had; on a single server every document has its copy.
+
+`ChromaMetadataConvert` converts .NET values to metadata values and back, always in the same form: `ToMetadataValue` writes a `DateTimeOffset` as round-trip text in UTC, so that equal instants are equal text, a `DateTime` as round-trip text with its `Kind`, a `DateOnly` as `yyyy-MM-dd`, and a sequence as a list; null and an empty sequence give null, no value. `FromMetadataValue(value, type)` reads a value of `ChromaMetadataValues.Exact` as the type, also arrays and lists, and throws an `InvalidCastException` for a value that does not convert. A filter with a converted value finds the values converted the same way. `ToMetadata(values)` builds the metadata of a record from keys and .NET values, each converted with `ToMetadataValue`; a value that converts to null stays as null, which deletes the key in `UpdateAsync` and `UpsertAsync`. The client does not convert the values of a metadata dictionary by itself.
 
 Chroma 1.5.0 and later store lists in metadata and filter them with `Contains` and `NotContains`. Chroma 1.0.0 to 1.4.1 reject them. Chroma 0.x accepts them but drops them without an error, so `AddAsync`, `UpdateAsync` and `UpsertAsync` throw a `ChromaException` before sending them. The client asks the server for its version once, and only when a record has a list.
+
+Chroma 1.5 keeps the lists of the records of a deleted collection or database, and gives them to the next records it stores, in any collection: delete them with `deleteRecordsFirst: true`, as [Collections and records](#collections-and-records) says. Every Chroma 1.x reports the same version, so the records go first on all of them.
 
 An existing `ChromaClient`, for example one from dependency injection, gives a client that reads values the other way. That client shares the `HttpClient`, the options and what was learned about the server. `Options` returns the options of a client:
 
@@ -168,6 +177,8 @@ An existing `ChromaClient`, for example one from dependency injection, gives a c
 var inferred = client.WithMetadataValues(ChromaMetadataValues.Inferred);
 Console.WriteLine(inferred.Options.MetadataValues); // Inferred
 ```
+
+`WithMetadataValues` of a collection client does the same for one collection.
 
 ## Errors
 
@@ -211,7 +222,9 @@ Console.WriteLine(where); // {"$and":[{"year":{"$eq":2026}},{"lang":{"$in":["en"
 - `ChromaWhereOperator` has `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, `LessThanOrEqual`, `In`, `NotIn`, `Contains` and `NotContains`, combined with `&` and `|`.
 - `ChromaWhereDocumentOperator` has `Contains`, `NotContains`, `Regex` and `NotRegex`.
 - A chain of the same operator, like `a & b & c` or one built in a loop, goes as one list, `{"$and":[a,b,c]}`, as the Python client writes it.
-- `In` and `NotIn` without values throw an `ArgumentException`: every tested Chroma rejects `$in` and `$nin` without values.
+- `Not` negates a filter. Chroma has no `$not`, so the negation goes into the operators: `$eq` becomes `$ne`, `$gt` becomes `$lte`, `$in` becomes `$nin`, `$contains` becomes `$not_contains`, `$regex` becomes `$not_regex`, and `$and` becomes `$or` of the negations. `$ne`, `$nin` and `$not_contains` match the records without the key, `$ne` and `$nin` from Chroma 0.5.15, and a comparison like `$lte` does not: `Not(GreaterThan("k", 5))` leaves out the records without `k`, as `GreaterThan("k", 5)` does.
+- `ChromaWhereOperator` also filters the ids, with `Equal` and `In` on `ChromaSearchKeys.Id`, and the documents, with `Document(filter)`, as the where clause of the Search API does. Get, query and delete take neither in their `where`: the client sends them as the ids and the `where_document` of the request, which takes them only joined to the other conditions with `&`, and throws a `NotSupportedException` otherwise, like for an id inside an `|`.
+- `ChromaWhereOperator.All` matches every record and `None` no record, which Chroma has no filter for: the client sends no `where` for `All`, and no request for `None`, so a read with it returns nothing and a delete deletes nothing. `&` and `|` simplify with them, and each is a single instance, which `Not` also returns. `In` without values is `None`, and `NotIn` without values `All`: every tested Chroma rejects `$in` and `$nin` without values.
 
 **Very long filters.** A single Chroma server turns a list of filters into an SQLite expression as deep as the list, and SQLite stops at 1000. Chroma 1.5.9 takes 987 to 994 filters in one list, depending on the operator. Beyond that it answers 500, and from about 4,400 it crashes. So the client counts that depth, the length of the lists along the deepest path of the filter. Beyond 900, it splits each list of n filters into ⌈√n⌉ lists with the same meaning. Split this way, Chroma 1.5.9 takes up to 8,167 filters, and Chroma 1.0.0 about 4,090. Beyond that, SQLite answers "too many SQL variables", the client throws a `ChromaException`, and the server stays up. That limit counts the values of the query, not the filters: on Chroma 1.5.9 an `In` or a `NotIn` takes about 16,000 values. Chroma 0.6.3 counts every filter of the query, however they are nested, and answers 500 from about 490.
 
@@ -240,6 +253,8 @@ var options = new ChromaConfigurationOptions(uri: "https://api.trychroma.com").W
 	.WithTenant(tenant).WithDatabase(database)
 	.WithBatchSplitting(maxBatchSize: 1000); // a quota raised to 1000 records
 ```
+
+`ChromaCloudQuotas` holds the default quotas of a Chroma Cloud tenant, as its documentation lists them: 300 records per request, 8,182 bytes per metadata value, 16,384 per document, 32 metadata keys of at most 36 bytes, 8 predicates per filter. A single Chroma server has none of them. Chroma Cloud creates a collection whose schema names a key beyond 36 bytes, and then rejects every write with that key, so on Chroma Cloud `CreateCollectionAsync` and `GetOrCreateCollectionAsync` throw an `ArgumentException` before the request.
 
 ## Deleting records
 
@@ -290,10 +305,13 @@ A `ChromaClient` hands out the clients for the records of its collections, with 
 ```csharp
 var collectionClient = client.GetCollectionClient(collection);
 var sameCollection = client.GetCollectionClient(collectionId, "my_collection");
+var byName = client.GetCollectionClient("my_collection");   // whichever collection has the name
 
 // or without a ChromaClient; the tenant and database come from the options
 var standalone = new ChromaCollectionClient(collectionId, "my_collection", options, httpClient);
 ```
+
+A collection client made by name reads the collection before its first request, which `GetCollectionAsync` returns. When a request fails on that id, it reads the collection again: if the name has another id, as when the collection was deleted and created again elsewhere, the operation runs again, once, on that collection, and otherwise the failure stands. The servers tell a collection gone in their own ways, like Chroma 0.4 with `500` "coroutine raised StopIteration", so the client compares the ids.
 
 ## Distance of a collection
 
@@ -305,7 +323,7 @@ var collection = await client.CreateCollectionAsync(new ChromaCollectionDefiniti
 Console.WriteLine(collection.Space);
 ```
 
-`ChromaSpace` is `L2` (Chroma's default), `Cosine` or `InnerProduct`. The client sends it as the `hnsw:space` metadata, which every tested Chroma applies. `GetOrCreateCollectionAsync` takes a `ChromaCollectionDefinition` too.
+`ChromaSpace` is `L2` (Chroma's default), `Cosine` or `InnerProduct`. The client sends it as the `hnsw:space` metadata, which every tested Chroma applies. `GetOrCreateCollectionAsync` takes a `ChromaCollectionDefinition` too. A collection that exists keeps its space, so `GetOrCreateCollectionAsync` throws a `ChromaException` when it has another space than the definition asks for. Chroma 0.4.23 would write the asked space into the metadata of that collection, whose index keeps its own, so on the 0.x servers the client reads the collection first and throws before the request.
 
 `ChromaCollection.Space` reads the space back from that metadata, or from the configuration that Chroma 1.0.6 and later and Chroma Cloud send. It is null for a collection created without a space on the older servers, which do not report it reliably. `ChromaCollection.ConfigurationJson` holds the configuration as the server sends it.
 
@@ -465,7 +483,7 @@ foreach (var result in results)
 }
 ```
 
-`ChromaSearch` holds the filters, which combine with `$and`, the ids, the ranking, the page and the fields to return. Without `Select`, a search returns only the ids. The records with the lowest score come first.
+`ChromaSearch` holds the filters, which combine with `$and`, the ids, the ranking, the page and the fields to return. Without `Select`, a search returns only the ids. The records with the lowest score come first, but with `ChromaRank.HybridRrf`, whose results come with the fused score, positive, highest first.
 
 `ChromaRank` builds the ranking:
 
@@ -511,7 +529,8 @@ var results = await collectionClient.SearchAsync(new ChromaSearch { Rank = Chrom
 - **`ChromaCollectionSchema`** declares the indexes of a new collection:
   - With `bm25`, the server applies the inverse document frequency of BM25. A source key needs an embedding function, because Chroma Cloud rejects one without the other.
   - `ChromaEmbeddingFunctionReference.ChromaBm25()` declares the BM25 function of Chroma with the settings of its Python client, so the clients that know it compute the vectors.
-  - `ChromaCollection.SparseVectorIndexes` and `ChromaCollection.SchemaJson` read it back. `EmbeddingFunctionConfig` of an index holds the settings of its function, and `Bm25Function` the `ChromaBm25` with those settings.
+  - `ChromaCollection.SparseVectorIndexes` and `ChromaCollection.SchemaJson` read it back. `EmbeddingFunctionConfig` of an index holds the settings of its function, and `Bm25Function` the `ChromaBm25` with those settings. `FindBm25Index(sourceKey)` returns the BM25 index on the text of a key, like `#document`, or null.
+  - `WithBm25Index(sourceKey)` declares a BM25 index with `chroma_bm25` on the text of a metadata key or of the documents, on the key named after the source, like `title_bm25` or `document_bm25`. With `ifSupported: true` the client creates the collection without it on a server other than Chroma Cloud, which rejects it, and on Chroma Cloud when the key is longer than 36 bytes. A write that gives that key a value other than a sparse vector throws an `ArgumentException`. `FindBm25IndexAsync(sourceKey)` of a collection client finds the index, and for the document copy key also the one on the documents.
   - `ToString()` returns the JSON the client sends.
 - **The indexes of the values**, like `create_index` and `delete_index` of the Python client. `WithIndex` and `WithoutIndex` turn on or off:
   - the index of the string, integer, floating-point or Boolean values (`ChromaSchemaIndex.StringInverted`, `IntInverted`, `FloatInverted`, `BoolInverted`) of a metadata key, or of every key without a setting of its own;
@@ -530,7 +549,7 @@ var results = await collectionClient.SearchAsync(new ChromaSearch { Rank = Chrom
 - **The space with a schema:** `Configuration = new() { Space = ... }` goes in the schema, on `#embedding`, as `create_index(VectorIndexConfig(space=...))` of the Python client writes it, and not in the `hnsw:space` metadata. Chroma rejects the two together: "Cannot set both collection config and schema simultaneously".
 - **Where the schema works:**
   - Chroma 1.3.0 and later apply it;
-  - a single server rejects a sparse vector index;
+  - a single server rejects a sparse vector index, and does not get the ones added with `ifSupported`;
   - Chroma 1.0.0 to 1.2.2 and 0.6.3 create the collection without the schema. Then `CreateCollectionAsync` deletes it and throws a `ChromaException`, and `GetOrCreateCollectionAsync` throws and keeps it, since it may have existed before;
   - Chroma 1.3.0 ignores the space in the schema, which 1.3.2 and later apply, so the client does the same when the collection has another space.
 
@@ -559,7 +578,7 @@ var results = await collectionClient.SearchAsync(new ChromaSearch
   - The schema comes with the collection, from `CreateCollectionAsync` or `GetCollectionAsync`. A collection client created from an id alone has no schema, so a text query throws a `ChromaException`. So does a function other than `chroma_bm25`, unless the metadata has the vectors.
 - **By hand:** `new ChromaBm25()` with the same settings, or `Bm25Function` of the index, gives the vectors to put in the metadata or in `SparseKnn`. `Embed(text)` returns the vector of a text, and `Reference` declares the function in the schema.
 - **Other functions:** `ChromaEmbeddingFunctionReference.Known(name, config)` declares another function that the clients of Chroma know. The client only declares it.
-- **Records without the terms of the query:** Chroma Cloud ranks them too, among the `limit` of `SparseKnn`, with the score 1, one minus the dot product. With `returnRank` they take the next positions, so in `Rrf` they get points from the sparse part as well.
+- **Records without the terms of the query:** Chroma Cloud ranks them too, among the `limit` of `SparseKnn`, with the score 1, one minus the dot product. With `returnRank` they take the next positions, so in `Rrf` they get points from the sparse part as well. `ChromaRank.HybridRrf(embedding, text, key, limit)` fuses the dense search and the BM25 search of the text so that only the records with a term of the text get points from it; the others keep the order of the dense search.
 - **License:** the license of the stemmer is in [THIRD-PARTY-NOTICES.md](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/THIRD-PARTY-NOTICES.md).
 
 ## Authentication

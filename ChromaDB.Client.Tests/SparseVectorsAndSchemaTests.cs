@@ -113,7 +113,8 @@ public class SparseVectorsAndSchemaTests
 	[TestCase("get_or_create")]
 	public async Task SpaceInTheSchema(string operation)
 	{
-		var server = new FakeServer(_ => (HttpStatusCode.OK, $$$"""{"id":"11111111-2222-3333-4444-555555555555","name":"c","configuration_json":{"hnsw":null,"spann":{"space":"cosine"}},"schema":{{{Bm25Schema}}}}"""));
+		var server = new FakeServer(r => r.Path.EndsWith("/version") ? (HttpStatusCode.OK, "\"1.0.0\"")
+			: (HttpStatusCode.OK, $$$"""{"id":"11111111-2222-3333-4444-555555555555","name":"c","configuration_json":{"hnsw":null,"spann":{"space":"cosine"}},"schema":{{{Bm25Schema}}}}"""));
 		var definition = new ChromaCollectionDefinition("c")
 		{
 			Metadata = new Dictionary<string, object> { ["x"] = 1 },
@@ -122,13 +123,13 @@ public class SparseVectorsAndSchemaTests
 		};
 		var collection = operation == "create" ? await Client(server).CreateCollectionAsync(definition) : await Client(server).GetOrCreateCollectionAsync(definition);
 		Assert.That(collection.Space, Is.EqualTo(ChromaSpace.Cosine));
-		var body = server.Requests.Single().Body;
+		var body = server.Requests.Single(x => x.Method == "POST").Body;
 		Assert.That(body.GetProperty("metadata").GetRawText(), Is.EqualTo("""{"x":1}"""));
 		Assert.That(body.GetProperty("schema").GetRawText(), Is.EqualTo("""
 			{"defaults":{"float_list":{"vector_index":{"enabled":false,"config":{"space":"cosine"}}}},
 			"keys":{"doc_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"chroma_bm25","config":{"k":1.2,"b":0.75,"avg_doc_length":256.0,"token_max_length":40,"include_tokens":false}},"source_key":"#document","bm25":true}}}},
 			"#embedding":{"float_list":{"vector_index":{"enabled":true,"config":{"space":"cosine"}}}}}}
-			""".Replace("\n", "").Replace("\t", "")));
+			""".Replace("\r", "").Replace("\n", "").Replace("\t", "")));
 	}
 
 	// Chroma 1.3.0 creates the collection with the space of the schema ignored, l2: CreateCollection deletes it and throws,
@@ -138,6 +139,7 @@ public class SparseVectorsAndSchemaTests
 	public async Task SpaceIgnoredByTheServer(string operation, bool deleted)
 	{
 		var server = new FakeServer(r => r.Method == "DELETE" ? (HttpStatusCode.OK, "{}")
+			: r.Path.EndsWith("/version") ? (HttpStatusCode.OK, "\"1.0.0\"")
 			: (HttpStatusCode.OK, """{"id":"11111111-2222-3333-4444-555555555555","name":"c","configuration_json":{"hnsw":{"space":"l2"}},"schema":{"defaults":{},"keys":{}}}"""));
 		var definition = new ChromaCollectionDefinition("c") { Configuration = new() { Space = ChromaSpace.Cosine }, Schema = new ChromaCollectionSchema() };
 		await Assert.ThatAsync(() => operation == "create" ? Client(server).CreateCollectionAsync(definition) : Client(server).GetOrCreateCollectionAsync(definition),
@@ -247,6 +249,23 @@ public class SparseVectorsAndSchemaTests
 		Assert.That(Index("""{"type":"known","name":"chroma_bm25","config":{"token_max_length":12.7}}""").Bm25Function!.TokenMaxLength, Is.EqualTo(12));
 	}
 
+	// The index whose vectors come from BM25 on the text of the key; not one with another function, nor one without a source key.
+	[Test]
+	public void FindBm25Index()
+	{
+		const string Bm25 = """{"type":"known","name":"chroma_bm25","config":{}}""";
+		const string Splade = """{"type":"known","name":"splade","config":{}}""";
+		static string Key(string name, string function, string? source)
+			=> "\"" + name + "\":" + """{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":""" + function
+				+ (source is null ? "" : ",\"source_key\":\"" + source + "\"") + "}}}}";
+		var keys = string.Join(",", Key("a", Bm25, "#document"), Key("b", Splade, "title"), Key("c", Bm25, "title"), Key("d", Bm25, null));
+		var collection = new ChromaCollection("c") { SchemaJson = JsonDocument.Parse("""{"defaults":{},"keys":{""" + keys + "}}").RootElement };
+		Assert.That(collection.FindBm25Index("#document")?.Key, Is.EqualTo("a"));
+		Assert.That(collection.FindBm25Index("title")?.Key, Is.EqualTo("c"));
+		Assert.That(collection.FindBm25Index("body"), Is.Null);
+		Assert.That(new ChromaCollection("c").FindBm25Index("#document"), Is.Null);
+	}
+
 	// Where the Python client keeps no function: another function, no config, or a setting of the wrong type.
 	[TestCase("""{"type":"known","name":"splade","config":{}}""")]
 	[TestCase("""{"type":"known","name":"chroma_bm25"}""")]
@@ -288,7 +307,7 @@ public class SparseVectorsAndSchemaTests
 			{"doc_bm25":{{given}}},
 			null,
 			{"title":5,"doc_bm25":{{bm25.Embed("cherry tart")}}}]
-			""".Replace("\n", "").Replace("\t", "")));
+			""".Replace("\r", "").Replace("\n", "").Replace("\t", "")));
 		Assert.That(metadatas[0].Keys, Is.EqualTo(new[] { "title" }));
 		Assert.That(records.Metadatas, Is.SameAs(metadatas));
 	}

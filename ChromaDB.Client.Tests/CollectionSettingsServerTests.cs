@@ -103,6 +103,23 @@ public class CollectionSettingsServerTests : ChromaTestsBase
 		Assert.That(configuration.GetProperty("embedding_function").GetProperty("name").GetString(), Is.EqualTo("openai"));
 	}
 
+	// A BM25 index added with ifSupported: Chroma Cloud creates the collection with it, every other server without it, as it rejects
+	// sparse vector indexes.
+	[Test]
+	public async Task Bm25IndexIfSupported()
+	{
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var created = await client.CreateCollectionAsync(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}")
+		{
+			Configuration = new() { Space = ChromaSpace.Cosine },
+			Schema = new ChromaCollectionSchema().WithBm25Index(ChromaSearchKeys.Document, ifSupported: true),
+		});
+		Assert.That(created.FindBm25Index(ChromaSearchKeys.Document), ChromaCloud ? Is.Not.Null : Is.Null);
+		var collection = client.GetCollectionClient(created);
+		await collection.AddAsync(new ChromaRecords(["a"]) { Embeddings = [new([1f, 0f])], Documents = ["apple pie"] });
+		Assert.That((await collection.GetAsync(include: ChromaGetInclude.Documents)).Single().Document, Is.EqualTo("apple pie"));
+	}
+
 	// Chroma 1.3.0 and later apply the indexes of a schema.
 	[Test]
 	public async Task IndexesOfTheSchema()

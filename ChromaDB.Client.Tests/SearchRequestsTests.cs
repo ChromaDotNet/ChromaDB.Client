@@ -33,7 +33,7 @@ public class SearchRequestsTests
 			"rank":{"$knn":{"query":[1.0,0.0],"key":"#embedding","limit":16}},
 			"group_by":{"keys":["category"],"aggregate":{"$min_k":{"keys":["#score"],"k":1}}},
 			"limit":{"offset":1,"limit":3},"select":{"keys":["#document","#score","category"]}}],"read_level":"index_only"}
-			""".Replace("\n", "").Replace("\t", "")));
+			""".Replace("\r", "").Replace("\n", "").Replace("\t", "")));
 	}
 
 	// Like the Python client: no filter and no rank are null, no grouping is {}, the offset is always sent.
@@ -74,8 +74,26 @@ public class SearchRequestsTests
 			{"$mul":[{"$val":-1.0},{"$sum":[
 			{"$div":{"left":{"$val":1.0},"right":{"$sum":[{"$val":60.0},{"$knn":{"query":[1.0,0.0],"key":"#embedding","limit":16,"return_rank":true}}]}}},
 			{"$div":{"left":{"$val":1.0},"right":{"$sum":[{"$val":60.0},{"$knn":{"query":[0.0,1.0],"key":"#embedding","limit":16,"return_rank":true}}]}}}]}]}
-			""".Replace("\n", "").Replace("\t", "")));
+			""".Replace("\r", "").Replace("\n", "").Replace("\t", "")));
 	}
+
+	// Only the records with a term of the text get points from it: 1 above a dot product of one millionth, 0 at the score 1 of the others.
+	[Test]
+	public void HybridRrf()
+	{
+		var rrf = ChromaRank.HybridRrf(new([1f, 0f]), "apples", "doc_bm25", limit: 4);
+		Assert.That(rrf.ToString(), Is.EqualTo("""
+			{"$mul":[{"$val":-1.0},{"$sum":[
+			{"$div":{"left":{"$val":1.0},"right":{"$sum":[{"$val":60.0},{"$knn":{"query":[1.0,0.0],"key":"#embedding","limit":4,"default":4.0,"return_rank":true}}]}}},
+			{"$div":{"left":{"$min":[{"$val":1.0},{"$mul":[{"$sub":{"left":{"$val":1.0},"right":{"$knn":{"query":"apples","key":"doc_bm25","limit":4,"default":1.0}}}},{"$val":1000000.0}]}]},
+			"right":{"$sum":[{"$val":60.0},{"$knn":{"query":"apples","key":"doc_bm25","limit":4,"default":4.0,"return_rank":true}}]}}}]}]}
+			""".Replace("\r", "").Replace("\n", "").Replace("\t", "")));
+	}
+
+	[TestCase(0, 60)]
+	[TestCase(4, 0)]
+	public void HybridRrfWithoutAPositiveLimitOrK(int limit, double k)
+		=> Assert.That(() => ChromaRank.HybridRrf(new([1f, 0f]), "apples", "doc_bm25", limit, k), Throws.InstanceOf<ArgumentOutOfRangeException>());
 
 	[Test]
 	public void RrfOfOneRankWithWeights()
@@ -126,6 +144,20 @@ public class SearchRequestsTests
 		Assert.That(results[0][1].Embedding, Is.Null);
 		var second = results[1][0];
 		Assert.That((second.Document, second.Embedding, second.Metadata, second.Score), Is.EqualTo(((string?)null, (ReadOnlyMemory<float>?)null, (Dictionary<string, object>?)null, (float?)null)));
+	}
+
+	// A search ranked by HybridRrf comes back with the fused score, the highest first; another one with the score of Chroma.
+	[Test]
+	public async Task ScoresOfHybridRrf()
+	{
+		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"ids":[["a"],["b"]],"scores":[[-0.032],[0.5]],"select":[["#score"],["#score"]]}"""));
+		// The BM25 index of the schema computes the vector of the text.
+		var schema = JsonDocument.Parse("""{"keys":{"doc_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"source_key":"#document","bm25":true,"embedding_function":{"type":"known","name":"chroma_bm25","config":{}}}}}}}}""").RootElement.Clone();
+		var client = new ChromaCollectionClient(new ChromaCollection("c") { Id = Guid.Parse("11111111-2222-3333-4444-555555555555"), SchemaJson = schema },
+			new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(server));
+		var hybrid = new ChromaSearch { Rank = ChromaRank.HybridRrf(new([1f, 0f]), "apples", "doc_bm25", limit: 4), Select = [ChromaSearchKeys.Score] };
+		var results = await client.SearchAsync([hybrid, new ChromaSearch { Rank = ChromaRank.Knn(new([1f, 0f])), Select = [ChromaSearchKeys.Score] }]);
+		Assert.That((results[0][0].Score, results[1][0].Score), Is.EqualTo(((float?)0.032f, (float?)0.5f)));
 	}
 
 	// What the Python client rejects, or what would ask the server for nothing: no request is sent.

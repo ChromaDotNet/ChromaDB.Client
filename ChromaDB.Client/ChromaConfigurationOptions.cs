@@ -14,6 +14,10 @@ public class ChromaConfigurationOptions
 	/// </summary>
 	public Uri Uri { get; init; }
 	/// <summary>
+	/// Whether <c>Uri</c> is an address of Chroma Cloud, under <c>trychroma.com</c>.
+	/// </summary>
+	public bool IsChromaCloud => Uri.Host.EndsWith(".trychroma.com", StringComparison.OrdinalIgnoreCase);
+	/// <summary>
 	/// The tenant of the requests that are not given one; when null or empty, <c>default_tenant</c>.
 	/// </summary>
 	public string? Tenant { get; init; }

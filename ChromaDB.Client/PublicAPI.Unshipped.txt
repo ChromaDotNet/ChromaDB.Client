@@ -1,1 +1,43 @@
 #nullable enable
+virtual ChromaDB.Client.ChromaClient.DeleteCollectionAsync(string! name, bool deleteRecordsFirst, string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+virtual ChromaDB.Client.ChromaClient.DeleteCollectionIfExistsAsync(string! name, string? tenant = null, string? database = null, bool deleteRecordsFirst = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+virtual ChromaDB.Client.ChromaClient.DeleteDatabaseAsync(string! name, bool deleteRecordsFirst, string? tenant = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ChromaDB.Client.ChromaCloudQuotas
+ChromaDB.Client.ChromaConfigurationOptions.IsChromaCloud.get -> bool
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxDocumentBytes -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxDocumentFilterBytes -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxEmbeddingDimensions -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxIdBytes -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxMetadataKeyBytes -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxMetadataKeys -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxMetadataValueBytes -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxRecordsPerRequest -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxUriBytes -> int
+static readonly ChromaDB.Client.ChromaCloudQuotas.MaxWherePredicates -> int
+ChromaDB.Client.Models.ChromaQuery.Offset.get -> int
+ChromaDB.Client.Models.ChromaQuery.Offset.init -> void
+ChromaDB.Client.Models.ChromaCollection.FindBm25Index(string! sourceKey) -> ChromaDB.Client.Models.ChromaSparseVectorIndex?
+static ChromaDB.Client.ChromaRank.HybridRrf(System.ReadOnlyMemory<float> embedding, string! text, string! sparseKey, int limit, double k = 60, string! embeddingKey = "#embedding") -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaWhereDocumentOperator.Not(ChromaDB.Client.ChromaWhereDocumentOperator! filter) -> ChromaDB.Client.ChromaWhereDocumentOperator!
+static ChromaDB.Client.ChromaWhereOperator.All.get -> ChromaDB.Client.ChromaWhereOperator!
+static ChromaDB.Client.ChromaWhereOperator.None.get -> ChromaDB.Client.ChromaWhereOperator!
+static ChromaDB.Client.ChromaWhereOperator.Not(ChromaDB.Client.ChromaWhereOperator! filter) -> ChromaDB.Client.ChromaWhereOperator!
+ChromaDB.Client.ChromaMetadataConvert
+static ChromaDB.Client.ChromaMetadataConvert.FromMetadataValue(object? value, System.Type! type) -> object?
+static ChromaDB.Client.ChromaMetadataConvert.ToMetadataValue(object? value) -> object?
+ChromaDB.Client.Models.ChromaRecords.NullDocumentsDelete.get -> bool
+ChromaDB.Client.Models.ChromaRecords.NullDocumentsDelete.init -> void
+virtual ChromaDB.Client.ChromaClient.GetCollectionClient(string! name) -> ChromaDB.Client.ChromaCollectionClient!
+virtual ChromaDB.Client.ChromaCollectionClient.GetCollectionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaCollection!>!
+virtual ChromaDB.Client.ChromaCollectionClient.WithDocumentCopyKey(string! documentCopyKey) -> ChromaDB.Client.ChromaCollectionClient!
+ChromaDB.Client.Models.ChromaQuery.ExpectedSpace.get -> ChromaDB.Client.ChromaSpace?
+ChromaDB.Client.Models.ChromaQuery.ExpectedSpace.init -> void
+static ChromaDB.Client.ChromaWhereOperator.Document(ChromaDB.Client.ChromaWhereDocumentOperator! filter) -> ChromaDB.Client.ChromaWhereOperator!
+*REMOVED*ChromaDB.Client.Models.ChromaRecords.Documents.get -> System.Collections.Generic.IReadOnlyList<string!>?
+*REMOVED*ChromaDB.Client.Models.ChromaRecords.Metadatas.get -> System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyDictionary<string!, object!>!>?
+ChromaDB.Client.Models.ChromaRecords.Documents.get -> System.Collections.Generic.IReadOnlyList<string?>?
+ChromaDB.Client.Models.ChromaRecords.Metadatas.get -> System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyDictionary<string!, object!>?>?
+static ChromaDB.Client.ChromaMetadataConvert.ToMetadata(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, object?>>! values) -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>?
+virtual ChromaDB.Client.ChromaCollectionClient.WithMetadataValues(ChromaDB.Client.ChromaMetadataValues metadataValues) -> ChromaDB.Client.ChromaCollectionClient!
+ChromaDB.Client.Models.ChromaCollectionSchema.WithBm25Index(string! sourceKey, bool ifSupported = false) -> ChromaDB.Client.Models.ChromaCollectionSchema!
+virtual ChromaDB.Client.ChromaCollectionClient.FindBm25IndexAsync(string! sourceKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaSparseVectorIndex?>!

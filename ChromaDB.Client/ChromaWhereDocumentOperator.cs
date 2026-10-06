@@ -22,6 +22,17 @@ public abstract class ChromaWhereDocumentOperator
 
 	internal abstract Dictionary<string, object> ToWhereDocument();
 
+	internal abstract ChromaWhereDocumentOperator Negate();
+
+	/// <summary>
+	/// The documents that the filter does not match: Chroma has no <c>$not</c>, so the negation goes into the operators,
+	/// <c>$contains</c> to <c>$not_contains</c>, <c>$regex</c> to <c>$not_regex</c>, and <c>$and</c> to <c>$or</c> of the negations.
+	/// </summary>
+	/// <param name="filter">The filter to negate.</param>
+	/// <returns>The negated filter.</returns>
+	public static ChromaWhereDocumentOperator Not(ChromaWhereDocumentOperator filter)
+		=> filter.Negate();
+
 	// The filter as it goes to the server, with the long lists split as the server takes them.
 	internal Dictionary<string, object> ToRequestWhereDocument() => Common.ChromaFilterLists.Shape(ToWhereDocument());
 
@@ -50,7 +61,7 @@ public abstract class ChromaWhereDocumentOperator
 	/// <param name="value">The text the documents contain.</param>
 	/// <returns>The filter.</returns>
 	public static ChromaWhereDocumentOperator Contains(string value)
-		=> new ChromaWhereDocumentStringOperator("$contains", value);
+		=> new ChromaWhereDocumentStringOperator("$contains", "$not_contains", value);
 
 	/// <summary>
 	/// The documents that do not contain the character, with <c>$not_contains</c>.
@@ -65,7 +76,7 @@ public abstract class ChromaWhereDocumentOperator
 	/// <param name="value">The text the documents do not contain.</param>
 	/// <returns>The filter.</returns>
 	public static ChromaWhereDocumentOperator NotContains(string value)
-		=> new ChromaWhereDocumentStringOperator("$not_contains", value);
+		=> new ChromaWhereDocumentStringOperator("$not_contains", "$contains", value);
 
 	/// <summary>
 	/// The documents that match the regular expression, with <c>$regex</c>, from Chroma 1.0.12; the earlier versions reject it.
@@ -73,14 +84,14 @@ public abstract class ChromaWhereDocumentOperator
 	/// <param name="pattern">The regular expression.</param>
 	/// <returns>The filter.</returns>
 	public static ChromaWhereDocumentOperator Regex(string pattern)
-		=> new ChromaWhereDocumentStringOperator("$regex", pattern);
+		=> new ChromaWhereDocumentStringOperator("$regex", "$not_regex", pattern);
 	/// <summary>
 	/// The documents that do not match the regular expression, with <c>$not_regex</c>, from Chroma 1.0.12; the earlier versions reject it.
 	/// </summary>
 	/// <param name="pattern">The regular expression.</param>
 	/// <returns>The filter.</returns>
 	public static ChromaWhereDocumentOperator NotRegex(string pattern)
-		=> new ChromaWhereDocumentStringOperator("$not_regex", pattern);
+		=> new ChromaWhereDocumentStringOperator("$not_regex", "$regex", pattern);
 
 	/// <summary>
 	/// Always <c>false</c>, so that <c>||</c> combines two filters with <c>$or</c>, like <c>|</c>.
@@ -141,6 +152,10 @@ internal class ChromaWhereDocumentLogicalOperator : ChromaWhereDocumentOperator
 			{ Operator, Operands().Select(x => (object)x.ToSearchWhere()).ToArray() }
 		};
 
+	// !(a & b) is !a | !b, and !(a | b) is !a & !b.
+	internal override ChromaWhereDocumentOperator Negate()
+		=> Operands().Select(x => x.Negate()).Aggregate((left, right) => Operator == "$and" ? left | right : left & right);
+
 	// The filters of a chain of the same operator, in their order, without recursion for a long chain.
 	private List<ChromaWhereDocumentOperator> Operands()
 	{
@@ -166,12 +181,18 @@ internal class ChromaWhereDocumentLogicalOperator : ChromaWhereDocumentOperator
 internal class ChromaWhereDocumentStringOperator : ChromaWhereDocumentOperator
 {
 	protected string String { get; }
+	// The operator of the negation, like $not_contains for $contains: Chroma has no $not.
+	protected string NegatedOperator { get; }
 
-	internal ChromaWhereDocumentStringOperator(string @operator, string @string)
+	internal ChromaWhereDocumentStringOperator(string @operator, string negatedOperator, string @string)
 		: base(@operator)
 	{
+		NegatedOperator = negatedOperator;
 		String = @string;
 	}
+
+	internal override ChromaWhereDocumentOperator Negate()
+		=> new ChromaWhereDocumentStringOperator(NegatedOperator, Operator, String);
 
 	internal override Dictionary<string, object> ToWhereDocument()
 		=> new()

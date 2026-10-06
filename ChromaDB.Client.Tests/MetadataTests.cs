@@ -150,6 +150,135 @@ public class MetadataTests : ChromaTestsBase
 		Assert.That(ex!.Message, Does.Contain("$contains"));
 	}
 
+	// A null deletes a key and a null document with NullDocumentsDelete the document, which comes back empty; a key the metadata
+	// does not have stays, and a new record gets none of the nulls.
+	[Test]
+	public async Task DeletionsInAnUpsert()
+	{
+		var client = await Init(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact));
+		var metadata = new Dictionary<string, object> { ["k"] = 1L, ["keep"] = 2L };
+		if (MetadataListsSupported)
+		{
+			metadata["tags"] = new[] { "x" };
+		}
+		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [metadata], Documents = ["doc"] });
+		var upsert = new Dictionary<string, object> { ["k"] = null!, ["x"] = 3L };
+		if (MetadataListsSupported)
+		{
+			upsert["tags"] = Array.Empty<string>();
+		}
+		await client.UpsertAsync(new ChromaRecords(["a", "b"])
+		{
+			Embeddings = [Embedding1, Embedding2],
+			Metadatas = [upsert, new Dictionary<string, object> { ["k"] = null! }],
+			Documents = [null!, null!],
+			NullDocumentsDelete = true,
+		});
+		var records = (await client.GetAsync(["a", "b"], include: ChromaGetInclude.Metadatas | ChromaGetInclude.Documents)).ToDictionary(x => x.Id);
+		Assert.That(records["a"].Metadata, Is.EquivalentTo(new Dictionary<string, object> { ["keep"] = 2L, ["x"] = 3L }));
+		Assert.That(records["a"].Document, Is.EqualTo(""));
+		Assert.That(records["b"].Metadata, Is.Null);
+		Assert.That(records["b"].Document, Is.Null);
+	}
+
+	// The copy of the document under the document copy key lets a where filter find the whole text. A document comes back as it was
+	// written: empty, or null when it was deleted, which takes its copy along.
+	[Test]
+	public async Task DocumentCopy()
+	{
+		var client = (await Init(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact))).WithDocumentCopyKey("text");
+		await client.AddAsync(new ChromaRecords(["a", "b"]) { Embeddings = [Embedding1, Embedding2], Documents = ["apple pie", "banana split"] });
+		var found = await client.GetAsync(where: ChromaWhereOperator.Equal("text", "apple pie"), include: ChromaGetInclude.None);
+		Assert.That(found.Select(x => x.Id), Is.EqualTo(new[] { "a" }));
+		await client.UpsertAsync(new ChromaRecords(["a", "b"]) { Embeddings = [Embedding1, Embedding2], Documents = [null!, ""], NullDocumentsDelete = true });
+		var records = (await client.GetAsync(include: ChromaGetInclude.Documents)).ToDictionary(x => x.Id);
+		Assert.That((records["a"].Document, records["b"].Document), Is.EqualTo(((string?)null, "")));
+		var record = (await client.GetAsync("a", include: ChromaGetInclude.Metadatas | ChromaGetInclude.Documents))!;
+		Assert.That((record.Metadata, record.Document), Is.EqualTo(((IReadOnlyDictionary<string, object>?)null, (string?)null)));
+	}
+
+	// The values of ChromaMetadataConvert come back as they were written, and a filter with a converted value finds the same instant
+	// at another offset.
+	[Test]
+	public async Task ConvertedValues()
+	{
+		var client = await Init(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact));
+		var opened = new DateTimeOffset(2026, 10, 5, 13, 0, 0, TimeSpan.FromHours(2));
+		var updated = new DateTime(2026, 10, 5, 11, 0, 0, DateTimeKind.Local);
+		var metadata = new Dictionary<string, object>
+		{
+			["opened"] = ChromaMetadataConvert.ToMetadataValue(opened)!,
+			["updated"] = ChromaMetadataConvert.ToMetadataValue(updated)!,
+			["count"] = ChromaMetadataConvert.ToMetadataValue(3)!,
+		};
+		if (MetadataListsSupported)
+		{
+			metadata["days"] = ChromaMetadataConvert.ToMetadataValue(new[] { opened, opened.AddDays(1) })!;
+		}
+		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [metadata] });
+		var read = (await client.GetAsync("a", include: ChromaGetInclude.Metadatas))!.Metadata!;
+		Assert.That(ChromaMetadataConvert.FromMetadataValue(read["opened"], typeof(DateTimeOffset)), Is.EqualTo(opened));
+		var readUpdated = (DateTime)ChromaMetadataConvert.FromMetadataValue(read["updated"], typeof(DateTime))!;
+		Assert.That((readUpdated, readUpdated.Kind), Is.EqualTo((updated, DateTimeKind.Local)));
+		Assert.That(ChromaMetadataConvert.FromMetadataValue(read["count"], typeof(int)), Is.EqualTo(3));
+		var sameInstant = ChromaMetadataConvert.ToMetadataValue(opened.ToUniversalTime())!;
+		Assert.That((await client.GetAsync(where: ChromaWhereOperator.Equal("opened", sameInstant), include: ChromaGetInclude.None)).Select(x => x.Id), Is.EqualTo(new[] { "a" }));
+		if (MetadataListsSupported)
+		{
+			Assert.That(ChromaMetadataConvert.FromMetadataValue(read["days"], typeof(List<DateTimeOffset>)), Is.EqualTo(new List<DateTimeOffset> { opened, opened.AddDays(1) }));
+			Assert.That((await client.GetAsync(where: ChromaWhereOperator.Contains("days", sameInstant), include: ChromaGetInclude.None)).Select(x => x.Id), Is.EqualTo(new[] { "a" }));
+		}
+	}
+
+	// Chroma 1.5 keeps the lists of the records of a deleted collection or database, and gives them to the next records it stores, in
+	// any collection: with deleteRecordsFirst the client deletes the records first.
+	[Test]
+	public async Task DeletedCollectionLeavesNoLists()
+	{
+		Assume.That(MetadataListsSupported, Is.True, "Chroma 1.4.1 and earlier do not store lists in metadata.");
+		var deleted = await AddRecordsWithLists(BaseConfigurationOptions);
+		await new ChromaClient(BaseConfigurationOptions, HttpClient).DeleteCollectionAsync(deleted.Collection.Name, deleteRecordsFirst: true);
+		await AssertNoListsInNewRecords();
+	}
+
+	[Test]
+	public async Task DeletedDatabaseLeavesNoLists()
+	{
+		Assume.That(MetadataListsSupported, Is.True, "Chroma 1.4.1 and earlier do not store lists in metadata.");
+		Assume.That(OtherTenantsAndDatabasesTested, Is.True, "A server already running may not let the tests create or look up other tenants and databases.");
+		var chroma = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var database = $"database{Random.Shared.Next()}";
+		await chroma.CreateDatabaseAsync(database);
+		await AddRecordsWithLists(BaseConfigurationOptions.WithDatabase(database));
+		await AddRecordsWithLists(BaseConfigurationOptions.WithDatabase(database));
+		await chroma.DeleteDatabaseAsync(database, deleteRecordsFirst: true);
+		await AssertNoListsInNewRecords();
+	}
+
+	async Task<ChromaCollectionClient> AddRecordsWithLists(ChromaConfigurationOptions options)
+	{
+		var client = await Init(options);
+		await client.AddAsync(new ChromaRecords(["a", "b"])
+		{
+			Embeddings = [Embedding1, Embedding2],
+			Metadatas = [new Dictionary<string, object> { ["texts"] = new[] { "x", "y" } }, new Dictionary<string, object> { ["ints"] = new[] { 1, 2 } }],
+		});
+		return client;
+	}
+
+	async Task AssertNoListsInNewRecords()
+	{
+		var client = await Init(BaseConfigurationOptions);
+		var ids = Enumerable.Range(0, 4).Select(i => $"new{i}").ToList();
+		await client.AddAsync(new ChromaRecords(ids)
+		{
+			Embeddings = ids.Select(_ => Embedding1).ToList(),
+			Metadatas = ids.Select(_ => (IReadOnlyDictionary<string, object>)new Dictionary<string, object> { ["k"] = 1 }).ToList(),
+		});
+		Assert.That((await client.GetAsync(include: ChromaGetInclude.Metadatas)).Select(x => string.Join(",", x.Metadata!.Keys)), Has.All.EqualTo("k"));
+		Assert.That(await client.GetAsync(where: ChromaWhereOperator.Contains("texts", "x"), include: ChromaGetInclude.None), Is.Empty);
+	}
+
 	async Task<ChromaCollectionClient> Init(ChromaConfigurationOptions options)
 	{
 		var collection = await new ChromaClient(options, HttpClient).CreateCollectionAsync($"collection{Random.Shared.Next()}");

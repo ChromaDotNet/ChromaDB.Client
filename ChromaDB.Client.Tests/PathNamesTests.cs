@@ -36,9 +36,12 @@ public class PathNamesTests
 		Assert.That(() => client.GetCollectionAsync(name), Throws.Exception.With.Message.Contains("/collections/" + name));
 	}
 
+	// Only the version goes: on Chroma 1.x a delete of a collection gets it first, to delete the records before.
 	sealed class NoRequests : HttpMessageHandler
 	{
 		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-			=> throw new InvalidOperationException("Request to " + request.RequestUri!.AbsolutePath);
+			=> request.RequestUri!.AbsolutePath.EndsWith("/version")
+				? Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent("\"1.0.0\"") })
+				: throw new InvalidOperationException("Request to " + request.RequestUri!.AbsolutePath);
 	}
 }

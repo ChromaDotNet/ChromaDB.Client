@@ -145,6 +145,7 @@ public class CollectionConfigurationTests
 		}
 	}
 
+	// Answers the version 1.0.0, and every other request with the response; records the last body.
 	sealed class RecordingHandler(string response) : HttpMessageHandler
 	{
 		public JsonElement Body { get; private set; }
@@ -157,7 +158,7 @@ public class CollectionConfigurationTests
 			{
 				Body = JsonDocument.Parse(await request.Content.ReadAsStringAsync(cancellationToken)).RootElement.Clone();
 			}
-			return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(response) };
+			return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Path.EndsWith("/version") ? "\"1.0.0\"" : response) };
 		}
 	}
 }

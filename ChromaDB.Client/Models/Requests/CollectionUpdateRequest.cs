@@ -11,10 +11,10 @@ internal class CollectionUpdateRequest
 	public Common.ChromaEmbeddings? Embeddings { get; init; }
 
 	[JsonPropertyName("metadatas")]
-	public IReadOnlyList<IReadOnlyDictionary<string, object>>? Metadatas { get; init; }
+	public IReadOnlyList<IReadOnlyDictionary<string, object>?>? Metadatas { get; init; }
 
 	[JsonPropertyName("documents")]
-	public IReadOnlyList<string>? Documents { get; init; }
+	public IReadOnlyList<string?>? Documents { get; init; }
 
 	// Left out when null, so that the requests without URIs stay the same for the servers that do not know them.
 	[JsonPropertyName("uris")]

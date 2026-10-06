@@ -12,19 +12,22 @@ public sealed class ChromaCollectionSchema
 	// Value type, then index, for the keys not named in _keys.
 	private readonly Dictionary<string, Dictionary<string, object>> _defaults;
 	private readonly string? _gcpCmek;
+	// The keys of the indexes left out on a server without sparse vector indexes.
+	private readonly HashSet<string> _keysIfSupported;
 
 	/// <summary>
 	/// An empty schema.
 	/// </summary>
 	public ChromaCollectionSchema()
-		: this([], [], null)
+		: this([], [], null, [])
 	{ }
 
-	private ChromaCollectionSchema(Dictionary<string, Dictionary<string, Dictionary<string, object>>> keys, Dictionary<string, Dictionary<string, object>> defaults, string? gcpCmek)
+	private ChromaCollectionSchema(Dictionary<string, Dictionary<string, Dictionary<string, object>>> keys, Dictionary<string, Dictionary<string, object>> defaults, string? gcpCmek, HashSet<string> keysIfSupported)
 	{
 		_keys = keys;
 		_defaults = defaults;
 		_gcpCmek = gcpCmek;
+		_keysIfSupported = keysIfSupported;
 	}
 
 	/// <summary>
@@ -41,6 +44,24 @@ public sealed class ChromaCollectionSchema
 	/// <returns>The new schema; this one does not change.</returns>
 	public ChromaCollectionSchema WithSparseVectorIndex(string key, string? sourceKey = null, bool bm25 = false, ChromaEmbeddingFunctionReference? embeddingFunction = null)
 		=> WithSparseVectorIndex(key, ChromaSparseIndexAlgorithm.Wand, sourceKey, bm25, embeddingFunction);
+
+	/// <summary>
+	/// A copy of the schema with a BM25 index on the text of the source key, a metadata key or <c>ChromaSearchKeys.Document</c>, with
+	/// the <c>chroma_bm25</c> function, whose vectors the client computes as it writes the records. The index is on the metadata key
+	/// named after the source, like <c>title_bm25</c>, or <c>document_bm25</c> for the documents; a write that gives that key another
+	/// value than a sparse vector throws an <c>ArgumentException</c>. Only Chroma Cloud has sparse vector indexes: with <c>ifSupported</c>
+	/// the client leaves the index out on the other servers, which reject it, and on Chroma Cloud when its key is longer than
+	/// <c>ChromaCloudQuotas.MaxMetadataKeyBytes</c>.
+	/// </summary>
+	/// <param name="sourceKey">The key of the text: a metadata key, or <c>ChromaSearchKeys.Document</c>.</param>
+	/// <param name="ifSupported">Whether the client leaves the index out where the server does not take it.</param>
+	/// <returns>The new schema; this one does not change.</returns>
+	public ChromaCollectionSchema WithBm25Index(string sourceKey, bool ifSupported = false)
+	{
+		var key = (sourceKey ?? throw new ArgumentNullException(nameof(sourceKey))) == ChromaSearchKeys.Document ? "document_bm25" : sourceKey + "_bm25";
+		var schema = WithSparseVectorIndex(key, sourceKey, bm25: true, ChromaEmbeddingFunctionReference.ChromaBm25());
+		return ifSupported ? new(schema._keys, schema._defaults, schema._gcpCmek, [.. schema._keysIfSupported, key]) : schema;
+	}
 
 	/// <summary>
 	/// The same as the overload without <c>algorithm</c>, with the algorithm of the index: <c>MaxScore</c> is on Chroma Cloud for the
@@ -118,7 +139,7 @@ public sealed class ChromaCollectionSchema
 		{
 			throw new ArgumentException("A key of Google Cloud KMS is projects/{project}/locations/{location}/keyRings/{key ring}/cryptoKeys/{key}.", nameof(resource));
 		}
-		return new(_keys, _defaults, resource);
+		return new(_keys, _defaults, resource, _keysIfSupported);
 	}
 
 	// The pattern of the Python client, with one segment for each part and nothing after the key, not even a key version.
@@ -156,7 +177,7 @@ public sealed class ChromaCollectionSchema
 		{
 			var defaults = Copy(_defaults);
 			defaults[valueType] = new Dictionary<string, object>(defaults.TryGetValue(valueType, out var indexes) ? indexes : []) { [name] = Index(enabled, []) };
-			return new(_keys, defaults, _gcpCmek);
+			return new(_keys, defaults, _gcpCmek, _keysIfSupported);
 		}
 		return WithKeyIndex(key, valueType, name, enabled, []);
 	}
@@ -167,7 +188,8 @@ public sealed class ChromaCollectionSchema
 		var types = keys.TryGetValue(key, out var existing) ? existing : [];
 		types[valueType] = new Dictionary<string, object>(types.TryGetValue(valueType, out var indexes) ? indexes : []) { [name] = Index(enabled, config) };
 		keys[key] = types;
-		return new(keys, _defaults, _gcpCmek);
+		// An index added later on the key keeps the key on every server.
+		return new(keys, _defaults, _gcpCmek, [.. _keysIfSupported.Where(x => x != key)]);
 	}
 
 	private static Dictionary<string, object> Index(bool enabled, Dictionary<string, object> config)
@@ -176,8 +198,24 @@ public sealed class ChromaCollectionSchema
 	private static Dictionary<string, Dictionary<string, object>> Copy(Dictionary<string, Dictionary<string, object>> types)
 		=> types.ToDictionary(x => x.Key, x => new Dictionary<string, object>(x.Value));
 
+	// The metadata keys the schema names.
+	internal IEnumerable<string> Keys => _keys.Keys;
+
+	// The schema without the indexes added with ifSupported whose keys are left out, or null when nothing else is in it.
+	internal ChromaCollectionSchema? WithoutIndexesIfSupported(Func<string, bool> leftOut)
+	{
+		var left = new HashSet<string>(_keysIfSupported.Where(leftOut));
+		if (left.Count == 0)
+		{
+			return this;
+		}
+		var keys = _keys.Where(x => !left.Contains(x.Key)).ToDictionary(x => x.Key, x => Copy(x.Value));
+		return keys.Count == 0 && _defaults.Count == 0 && _gcpCmek is null ? null : new(keys, _defaults, _gcpCmek, [.. _keysIfSupported.Except(left)]);
+	}
+
 	// The settings of the vector index go as create_index(VectorIndexConfig(...)) of the Python client writes them: in the defaults
 	// and on #embedding. Chroma rejects a configuration, like the hnsw:space metadata, together with a schema.
+
 	internal Dictionary<string, object> ToSchema(ChromaCollectionConfiguration? configuration)
 	{
 		var defaults = Copy(_defaults);
