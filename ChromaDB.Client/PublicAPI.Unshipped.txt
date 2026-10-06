@@ -1,2 +1,13 @@
 #nullable enable
 virtual ChromaDB.Client.ChromaClient.DeleteCollectionIfExistsAsync(string! name, string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ChromaDB.Client.ChromaCloudQuotas
+const ChromaDB.Client.ChromaCloudQuotas.MaxDocumentBytes = 16384 -> int
+const ChromaDB.Client.ChromaCloudQuotas.MaxDocumentFilterBytes = 256 -> int
+const ChromaDB.Client.ChromaCloudQuotas.MaxEmbeddingDimensions = 4096 -> int
+const ChromaDB.Client.ChromaCloudQuotas.MaxIdBytes = 128 -> int
+const ChromaDB.Client.ChromaCloudQuotas.MaxMetadataKeyBytes = 36 -> int
+const ChromaDB.Client.ChromaCloudQuotas.MaxMetadataKeys = 32 -> int
+const ChromaDB.Client.ChromaCloudQuotas.MaxMetadataValueBytes = 8182 -> int
+const ChromaDB.Client.ChromaCloudQuotas.MaxRecordsPerRequest = 300 -> int
+const ChromaDB.Client.ChromaCloudQuotas.MaxUriBytes = 256 -> int
+const ChromaDB.Client.ChromaCloudQuotas.MaxWherePredicates = 8 -> int

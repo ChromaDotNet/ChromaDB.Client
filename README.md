@@ -244,6 +244,8 @@ var options = new ChromaConfigurationOptions(uri: "https://api.trychroma.com").W
 	.WithBatchSplitting(maxBatchSize: 1000); // a quota raised to 1000 records
 ```
 
+`ChromaCloudQuotas` holds the default quotas of a Chroma Cloud tenant, as its documentation lists them: 300 records per request, 8,182 bytes per metadata value, 16,384 per document, 32 metadata keys of at most 36 bytes, 8 predicates per filter. A single Chroma server has none of them.
+
 ## Deleting records
 
 ```csharp

@@ -36,7 +36,7 @@ internal sealed class ChromaHttpClient
 		IsChromaCloud = options.Uri.Host.EndsWith(".trychroma.com", StringComparison.OrdinalIgnoreCase);
 		// Chroma Cloud declares a max_batch_size of 1000, but takes 300 records per write and answers at most 300 per read, without an
 		// error: its quotas by default.
-		MaxBatchSize = options.MaxBatchSize ?? (IsChromaCloud ? 300 : null);
+		MaxBatchSize = options.MaxBatchSize ?? (IsChromaCloud ? ChromaCloudQuotas.MaxRecordsPerRequest : null);
 		if (options.ChromaToken is not null and not [])
 		{
 			if (options.ChromaTokenTransportHeader == ChromaTokenTransportHeader.Authorization)
