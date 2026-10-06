@@ -3,6 +3,9 @@
 /// <summary>
 /// A filter on the metadata of the records, sent as <c>where</c>.
 /// The <c>&amp;</c> and <c>|</c> operators combine filters with <c>$and</c> and <c>$or</c>.
+/// It can also filter the ids, with <c>Equal</c> and <c>In</c> on <c>ChromaSearchKeys.Id</c>, and the documents, with <c>Document</c>,
+/// as the where clause of the Search API does. Get, query and delete take neither in their where clause: the client sends them as
+/// the ids and the <c>where_document</c> of the request, which takes them only joined to the other conditions with <c>&amp;</c>.
 /// </summary>
 public abstract class ChromaWhereOperator
 {
@@ -28,6 +31,59 @@ public abstract class ChromaWhereOperator
 	// The where clause of a request: none for All, which matches every record. A request with None is not sent.
 	internal static Dictionary<string, object>? ToRequestWhere(ChromaWhereOperator? where)
 		=> where is null || where == All ? null : where.ToRequestWhere();
+
+	// The conditions joined with $and at the top of the filter: the filter itself for any other.
+	internal virtual IEnumerable<ChromaWhereOperator> Conjuncts() => [this];
+
+	// Whether the filter has a condition on the ids or on the documents, which only the Search API takes in its where clause.
+	internal virtual bool HasSearchOnlyCondition => false;
+
+	// The filter as a filter on the documents, when it has only conditions on the documents; null otherwise.
+	internal virtual ChromaWhereDocumentOperator? AsDocumentFilter() => null;
+
+	// For get, query and delete, whose where clause takes neither ids nor documents: the conditions on the ids, with Equal and In, and
+	// the ones on the documents, joined to the others with $and, go to the ids and to where_document of the request. The ids of the
+	// conditions and the given ones are the ones in all of them; with none left, the filter is None.
+	internal static (ChromaWhereOperator? Where, ChromaWhereDocumentOperator? WhereDocument, IReadOnlyList<string>? Ids) Split(
+		ChromaWhereOperator? where, ChromaWhereDocumentOperator? whereDocument, IReadOnlyList<string>? ids)
+	{
+		if (where is null || !where.HasSearchOnlyCondition)
+		{
+			return (where, whereDocument, ids);
+		}
+		var rest = All;
+		var keptIds = ids;
+		foreach (var condition in where.Conjuncts())
+		{
+			if (condition is ChromaWhereValueOperator value && value.Ids() is { } conditionIds)
+			{
+				keptIds = keptIds is null ? conditionIds : keptIds.Intersect(conditionIds).ToList();
+			}
+			else if (condition.AsDocumentFilter() is { } document)
+			{
+				whereDocument = whereDocument is null ? document : whereDocument & document;
+			}
+			else if (condition.HasSearchOnlyCondition)
+			{
+				throw new NotSupportedException(
+					"Get, query and delete take a condition on the ids, with Equal or In, or on the documents only joined to the other conditions with &: the Search API takes them anywhere.");
+			}
+			else
+			{
+				rest &= condition;
+			}
+		}
+		return keptIds is [] ? (None, null, null) : (rest, whereDocument, keptIds);
+	}
+
+	/// <summary>
+	/// The records whose document the filter matches, as a condition of the where clause on <c>ChromaSearchKeys.Document</c>, which
+	/// the Search API takes. For get, query and delete the client sends it as <c>where_document</c>.
+	/// </summary>
+	/// <param name="filter">The filter on the documents.</param>
+	/// <returns>The filter.</returns>
+	public static ChromaWhereOperator Document(ChromaWhereDocumentOperator filter)
+		=> new ChromaWhereDocumentFilter(filter ?? throw new ArgumentNullException(nameof(filter)));
 
 	/// <summary>
 	/// The filter that matches every record: the client sends no <c>where</c>, which Chroma has no value for. It is a single instance,
@@ -232,6 +288,18 @@ internal class ChromaWhereLogicalOperator : ChromaWhereOperator
 	internal override ChromaWhereOperator Negate()
 		=> Operands().Select(x => x.Negate()).Aggregate((left, right) => Operator == "$and" ? left | right : left & right);
 
+	internal override IEnumerable<ChromaWhereOperator> Conjuncts()
+		=> Operator == "$and" ? Operands() : [this];
+
+	internal override bool HasSearchOnlyCondition
+		=> Operands().Any(x => x.HasSearchOnlyCondition);
+
+	internal override ChromaWhereDocumentOperator? AsDocumentFilter()
+	{
+		var filters = Operands().Select(x => x.AsDocumentFilter()).ToList();
+		return filters.Contains(null) ? null : filters.Aggregate((left, right) => Operator == "$and" ? left! & right! : left! | right!);
+	}
+
 	// The filters of a chain of the same operator, in their order, without recursion for a long chain.
 	private List<ChromaWhereOperator> Operands()
 	{
@@ -277,4 +345,28 @@ internal class ChromaWhereValueOperator : ChromaWhereOperator
 
 	internal override ChromaWhereOperator Negate()
 		=> new ChromaWhereValueOperator(Key, NegatedOperator, Operator, Value);
+
+	internal override bool HasSearchOnlyCondition => Key == ChromaSearchKeys.Id;
+
+	// The ids of a condition on the ids with $eq or $in, which get, query and delete send as their ids; null for any other.
+	internal IReadOnlyList<string>? Ids()
+		=> Key != ChromaSearchKeys.Id ? null
+			: Operator == "$eq" ? [Id(Value)]
+			: Operator == "$in" ? ((IEnumerable<object>)Value).Select(Id).ToList()
+			: null;
+
+	private static string Id(object id)
+		=> id as string ?? throw new ArgumentException("The ids of the records are strings.", nameof(id));
+}
+
+// A filter on the documents in the where clause, which the Search API takes on #document.
+internal sealed class ChromaWhereDocumentFilter(ChromaWhereDocumentOperator filter) : ChromaWhereOperator(ChromaSearchKeys.Document)
+{
+	internal override Dictionary<string, object> ToWhere() => filter.ToSearchWhere();
+
+	internal override ChromaWhereOperator Negate() => new ChromaWhereDocumentFilter(ChromaWhereDocumentOperator.Not(filter));
+
+	internal override bool HasSearchOnlyCondition => true;
+
+	internal override ChromaWhereDocumentOperator? AsDocumentFilter() => filter;
 }

@@ -40,6 +40,11 @@ public class ChromaQuery
 	/// <c>ChromaException</c>.
 	/// </summary>
 	public IReadOnlyList<string>? Ids { get; init; }
+	/// <summary>
+	/// The space the distances of the results are expected in: <c>QueryAsync</c> throws an <c>InvalidOperationException</c>, before
+	/// the query, when the collection has another one. A collection whose space the server does not report is taken. Null for any.
+	/// </summary>
+	public ChromaSpace? ExpectedSpace { get; init; }
 
 	/// <summary>
 	/// Creates a query for the embeddings.
