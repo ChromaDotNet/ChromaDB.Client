@@ -298,10 +298,13 @@ A `ChromaClient` hands out the clients for the records of its collections, with 
 ```csharp
 var collectionClient = client.GetCollectionClient(collection);
 var sameCollection = client.GetCollectionClient(collectionId, "my_collection");
+var byName = client.GetCollectionClient("my_collection");   // whichever collection has the name
 
 // or without a ChromaClient; the tenant and database come from the options
 var standalone = new ChromaCollectionClient(collectionId, "my_collection", options, httpClient);
 ```
+
+A collection client made by name reads the collection before its first request, which `GetCollectionAsync` returns. When the server no longer finds its id, as when the collection was deleted and created again elsewhere, it reads the collection again, once, and runs the operation again on the collection of that name.
 
 ## Distance of a collection
 

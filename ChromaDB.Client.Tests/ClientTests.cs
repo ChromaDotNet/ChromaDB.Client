@@ -338,6 +338,24 @@ public class ClientTests : ChromaTestsBase
 		await Assert.ThatAsync(async () => await client.DeleteCollectionAsync(name), Throws.InstanceOf<ChromaException>().With.Message.Matches($@"^Collection \[?{name}\]? does not exist"));
 	}
 
+	// A client made by name works on the collection of that name also after it was deleted and created again elsewhere.
+	[Test]
+	public async Task CollectionClientByName()
+	{
+		var name = $"collection{Random.Shared.Next()}";
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		await client.CreateCollectionAsync(name);
+		var byName = client.GetCollectionClient(name);
+		await byName.AddAsync(["a", "b"], embeddings: [new([1f, 0f]), new([0f, 1f])]);
+		var first = (await byName.GetCollectionAsync()).Id;
+		await client.DeleteCollectionAsync(name);
+		await client.CreateCollectionAsync(name);
+		Assert.That(await byName.CountAsync(), Is.EqualTo(0));
+		await byName.AddAsync(["c"], embeddings: [new([1f, 1f])]);
+		Assert.That((await byName.GetAsync()).Select(x => x.Id), Is.EqualTo(new[] { "c" }));
+		Assert.That(byName.Collection.Id, Is.Not.EqualTo(first));
+	}
+
 	// Every tested server tells a missing collection in its own way, which DeleteCollectionIfExistsAsync recognizes.
 	[Test]
 	public async Task DeleteCollectionIfExists()

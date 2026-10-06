@@ -259,17 +259,11 @@ public class ChromaClient : IDisposable
 				await GetCollectionCore(name, tenant, database, cancellationToken);
 				return true;
 			}
-			catch (ChromaException ex) when (IsMissingCollection(ex))
+			catch (ChromaException ex) when (ex.IsMissingCollection)
 			{
 				return false;
 			}
 		});
-
-	// A missing collection: 404 from Chroma 1.x, 400 or 500 from the 0.x servers, always with "does not exist" in the message, also when
-	// the tenant or the database is missing. A bare 404, like the one of a wrong address, is not one.
-	private static bool IsMissingCollection(ChromaException ex)
-		=> ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError
-			&& (ex.Message.Contains("does not exist") || ex.ErrorType == "NotFoundError" && ex.Message.StartsWith("Collection", StringComparison.Ordinal));
 
 	/// <summary>
 	/// The same client, reading metadata values another way: same <c>HttpClient</c> and options, and what it learned about the
@@ -317,6 +311,17 @@ public class ChromaClient : IDisposable
 	/// <returns>The client of the records of the collection.</returns>
 	public virtual ChromaCollectionClient GetCollectionClient(ChromaCollection collection)
 		=> new(collection, _options, _httpClient);
+
+	/// <summary>
+	/// A client for the records of the collection with the name, in the tenant and database of the options, whichever collection has
+	/// that name: it reads the collection before its first request, and again, once, when the server no longer finds the id it has, as
+	/// when the collection was deleted and created again elsewhere, and then runs the operation again on the collection of that name.
+	/// No request is sent now.
+	/// </summary>
+	/// <param name="name">The name of the collection.</param>
+	/// <returns>The client of the records of the collection with the name.</returns>
+	public virtual ChromaCollectionClient GetCollectionClient(string name)
+		=> new(name, _options, _httpClient);
 
 	/// <summary>
 	/// The same as the overload that takes a <c>ChromaCollection</c>, without getting the collection first: the requests on
@@ -536,7 +541,7 @@ public class ChromaClient : IDisposable
 				await DeleteCollectionCore(name, tenant, database, deleteRecordsFirst: true, cancellationToken);
 				return true;
 			}
-			catch (ChromaException ex) when (IsMissingCollection(ex))
+			catch (ChromaException ex) when (ex.IsMissingCollection)
 			{
 				return false;
 			}

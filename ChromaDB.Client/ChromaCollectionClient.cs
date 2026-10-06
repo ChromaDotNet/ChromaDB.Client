@@ -11,8 +11,11 @@ namespace ChromaDB.Client;
 /// </summary>
 public class ChromaCollectionClient
 {
-	private readonly ChromaCollection _collection;
+	// For a client made by name, the collection read last, which changes when the server no longer finds its id.
+	private volatile ChromaCollection _collection;
 	private readonly ChromaHttpClient _httpClient;
+	private readonly bool _byName;
+	private volatile bool _resolved;
 	private readonly string _tenant;
 	private readonly string _database;
 	private readonly Uri _server;
@@ -44,6 +47,13 @@ public class ChromaCollectionClient
 			: ClientConstants.DefaultDatabaseName;
 	}
 
+	// The client of the collection with the name, whichever it is: ChromaClient.GetCollectionClient(name).
+	internal ChromaCollectionClient(string name, ChromaConfigurationOptions options, ChromaHttpClient httpClient)
+		: this(new ChromaCollection(name), options, httpClient)
+	{
+		_byName = true;
+	}
+
 	/// <summary>
 	/// Creates a client without getting the collection first: the requests on a collection need only its id, and the
 	/// tenant and database of the options.
@@ -70,16 +80,56 @@ public class ChromaCollectionClient
 	}
 
 	// The span and the duration of each operation on the collection.
-	private Task<T> Operation<T>(string name, Func<Task<T>> body)
-		=> ChromaInstrumentation.Run(name, _collection.Name, $"{_tenant}|{_database}", _server, body);
+	private Task<T> Operation<T>(string name, CancellationToken cancellationToken, Func<Task<T>> body)
+		=> ChromaInstrumentation.Run(name, _collection.Name, $"{_tenant}|{_database}", _server, _byName ? () => ByName(body, cancellationToken) : body);
 
-	private Task Operation(string name, Func<Task> body)
-		=> ChromaInstrumentation.Run(name, _collection.Name, $"{_tenant}|{_database}", _server, body);
+	private Task Operation(string name, CancellationToken cancellationToken, Func<Task> body)
+		=> ChromaInstrumentation.Run(name, _collection.Name, $"{_tenant}|{_database}", _server, _byName ? () => ByName(async () => { await body(); return true; }, cancellationToken) : body);
+
+	// A client made by name reads the collection before its first request, and again, once, when the server no longer finds the id it
+	// has, as when the collection was deleted and created again elsewhere: the operation then runs again on the collection of that name.
+	private async Task<T> ByName<T>(Func<Task<T>> body, CancellationToken cancellationToken)
+	{
+		var resolved = _resolved;
+		if (!resolved)
+		{
+			await Resolve(cancellationToken);
+		}
+		try
+		{
+			return await body();
+		}
+		catch (ChromaException ex) when (resolved && ex.IsMissingCollection)
+		{
+			await Resolve(cancellationToken);
+			return await body();
+		}
+	}
+
+	private async Task Resolve(CancellationToken cancellationToken)
+	{
+		var requestParams = new RequestQueryParams()
+			.Insert("{collectionName}", _collection.Name)
+			.Insert("{tenant}", _tenant)
+			.Insert("{database}", _database);
+		_collection = await _httpClient.Get<ChromaCollection>(_httpClient.Routes.CollectionByName, requestParams, cancellationToken);
+		_resolved = true;
+	}
 
 	/// <summary>
-	/// The collection the client works on.
+	/// The collection the client works on. For a client made by name, with <c>ChromaClient.GetCollectionClient(name)</c>, the
+	/// collection read last, or one with the name only before the first request.
 	/// </summary>
 	public virtual ChromaCollection Collection => _collection;
+
+	/// <summary>
+	/// The collection the client works on, as <c>Collection</c>. A client made by name reads it on the first call or request, and
+	/// again when the server no longer finds its id; the other clients send no request.
+	/// </summary>
+	/// <param name="cancellationToken">The token that cancels the operation.</param>
+	/// <returns>The collection.</returns>
+	public virtual Task<ChromaCollection> GetCollectionAsync(CancellationToken cancellationToken = default)
+		=> _byName ? Operation("get_collection", cancellationToken, () => Task.FromResult(_collection)) : Task.FromResult(_collection);
 
 	/// <summary>
 	/// Gets the record with the id, or null when the server returns none. Without <c>include</c>, the metadata and the
@@ -109,7 +159,7 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>The records.</returns>
 	public virtual Task<IReadOnlyList<ChromaCollectionEntry>> GetAsync(IReadOnlyList<string>? ids = null, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, int? limit = null, int? offset = null, ChromaGetInclude? include = null, CancellationToken cancellationToken = default)
-		=> Operation<IReadOnlyList<ChromaCollectionEntry>>("get", async () => await GetEntries(ids, where, whereDocument, limit, offset, include, cancellationToken));
+		=> Operation<IReadOnlyList<ChromaCollectionEntry>>("get", cancellationToken, async () => await GetEntries(ids, where, whereDocument, limit, offset, include, cancellationToken));
 
 	private async Task<List<ChromaCollectionEntry>> GetEntries(IReadOnlyList<string>? ids, ChromaWhereOperator? where, ChromaWhereDocumentOperator? whereDocument, int? limit, int? offset, ChromaGetInclude? include, CancellationToken cancellationToken)
 	{
@@ -231,7 +281,7 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>For each query embedding, its nearest records, nearest first.</returns>
 	public virtual Task<IReadOnlyList<IReadOnlyList<ChromaCollectionQueryEntry>>> QueryAsync(ChromaQuery query, CancellationToken cancellationToken = default)
-		=> Operation<IReadOnlyList<IReadOnlyList<ChromaCollectionQueryEntry>>>("query", async () =>
+		=> Operation<IReadOnlyList<IReadOnlyList<ChromaCollectionQueryEntry>>>("query", cancellationToken, async () =>
 		{
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -306,7 +356,7 @@ public class ChromaCollectionClient
 	/// <param name="records">The records: ids, and embeddings, metadatas, documents and URIs when given.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task AddAsync(ChromaRecords records, CancellationToken cancellationToken = default)
-		=> Operation("add", async () =>
+		=> Operation("add", cancellationToken, async () =>
 		{
 			ChromaRequestChecks.NoNullValues(records.Metadatas, nameof(records));
 			records = WithSparseVectors(records);
@@ -353,7 +403,7 @@ public class ChromaCollectionClient
 	/// <param name="records">The records: ids, and embeddings, metadatas, documents and URIs when given.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task UpdateAsync(ChromaRecords records, CancellationToken cancellationToken = default)
-		=> Operation("update", async () =>
+		=> Operation("update", cancellationToken, async () =>
 		{
 			records = WithSparseVectors(await WithDeletions(records, cancellationToken));
 			await CheckListsInMetadata(records, cancellationToken);
@@ -401,7 +451,7 @@ public class ChromaCollectionClient
 	/// <param name="records">The records: ids, and embeddings, metadatas, documents and URIs when given.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task UpsertAsync(ChromaRecords records, CancellationToken cancellationToken = default)
-		=> Operation("upsert", async () =>
+		=> Operation("upsert", cancellationToken, async () =>
 		{
 			records = WithSparseVectors(await WithDeletions(records, cancellationToken));
 			await CheckListsInMetadata(records, cancellationToken);
@@ -636,7 +686,7 @@ public class ChromaCollectionClient
 	/// <param name="whereDocument">The filter on the documents, or null for none.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task DeleteAsync(IReadOnlyList<string> ids, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, CancellationToken cancellationToken = default)
-		=> Operation("delete", async () =>
+		=> Operation("delete", cancellationToken, async () =>
 		{
 			if (where == ChromaWhereOperator.None)
 			{
@@ -666,7 +716,7 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>How many records were deleted, from Chroma 1.5.3; null from the earlier servers.</returns>
 	public virtual Task<int?> DeleteAsync(ChromaDelete delete, CancellationToken cancellationToken = default)
-		=> Operation("delete", async () =>
+		=> Operation("delete", cancellationToken, async () =>
 		{
 			// The rules of Chroma and of its Python client, checked before any request. All is no filter.
 			var where = delete.Where == ChromaWhereOperator.All ? null : delete.Where;
@@ -742,7 +792,7 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>The number of records.</returns>
 	public virtual Task<int> CountAsync(CancellationToken cancellationToken = default)
-		=> Operation("count", async () =>
+		=> Operation("count", cancellationToken, async () =>
 		{
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -759,7 +809,7 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>The number of records.</returns>
 	public virtual Task<int> CountAsync(ChromaReadLevel readLevel, CancellationToken cancellationToken = default)
-		=> Operation("count", async () =>
+		=> Operation("count", cancellationToken, async () =>
 		{
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -789,7 +839,7 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>For each search, the records it ranks, in order.</returns>
 	public virtual Task<IReadOnlyList<IReadOnlyList<ChromaSearchEntry>>> SearchAsync(IReadOnlyList<ChromaSearch> searches, ChromaReadLevel? readLevel = null, CancellationToken cancellationToken = default)
-		=> Operation<IReadOnlyList<IReadOnlyList<ChromaSearchEntry>>>("search", async () =>
+		=> Operation<IReadOnlyList<IReadOnlyList<ChromaSearchEntry>>>("search", cancellationToken, async () =>
 		{
 			if (searches is not { Count: > 0 })
 			{
@@ -888,7 +938,7 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>The new collection.</returns>
 	public virtual Task<ChromaCollection> ForkAsync(string newName, CancellationToken cancellationToken = default)
-		=> Operation("fork", async () =>
+		=> Operation("fork", cancellationToken, async () =>
 		{
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -907,7 +957,7 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>The number of forks.</returns>
 	public virtual Task<int> ForkCountAsync(CancellationToken cancellationToken = default)
-		=> Operation("fork_count", async () =>
+		=> Operation("fork_count", cancellationToken, async () =>
 		{
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -922,7 +972,7 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>How many writes are indexed.</returns>
 	public virtual Task<ChromaIndexingStatus> GetIndexingStatusAsync(CancellationToken cancellationToken = default)
-		=> Operation("get_indexing_status", async () =>
+		=> Operation("get_indexing_status", cancellationToken, async () =>
 		{
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -943,7 +993,7 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>The attached function, and whether it was created now.</returns>
 	public virtual Task<(ChromaAttachedFunction AttachedFunction, bool Created)> AttachFunctionAsync(string function, string name, string outputCollection, IReadOnlyDictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
-		=> Operation("attach_function", async () =>
+		=> Operation("attach_function", cancellationToken, async () =>
 		{
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -967,7 +1017,7 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>The attached function.</returns>
 	public virtual Task<ChromaAttachedFunction> GetAttachedFunctionAsync(string name, CancellationToken cancellationToken = default)
-		=> Operation("get_attached_function", async () =>
+		=> Operation("get_attached_function", cancellationToken, async () =>
 		{
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -987,7 +1037,7 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>Whether the function was detached.</returns>
 	public virtual Task<bool> DetachFunctionAsync(string name, bool deleteOutputCollection = false, CancellationToken cancellationToken = default)
-		=> Operation("detach_function", async () =>
+		=> Operation("detach_function", cancellationToken, async () =>
 		{
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -1008,7 +1058,7 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>The first records.</returns>
 	public virtual Task<IReadOnlyList<ChromaCollectionEntry>> PeekAsync(int limit = 10, CancellationToken cancellationToken = default)
-		=> Operation<IReadOnlyList<ChromaCollectionEntry>>("peek", async () =>
+		=> Operation<IReadOnlyList<ChromaCollectionEntry>>("peek", cancellationToken, async () =>
 		{
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -1029,7 +1079,7 @@ public class ChromaCollectionClient
 	/// <param name="metadata">The new metadata of the collection, or null to keep it.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task ModifyAsync(string? name = null, IReadOnlyDictionary<string, object>? metadata = null, CancellationToken cancellationToken = default)
-		=> Operation("modify", async () =>
+		=> Operation("modify", cancellationToken, async () =>
 		{
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -1054,7 +1104,7 @@ public class ChromaCollectionClient
 	/// <param name="configuration">The settings of the index to change.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task ModifyConfigurationAsync(ChromaCollectionConfigurationUpdate configuration, CancellationToken cancellationToken = default)
-		=> Operation("modify", async () =>
+		=> Operation("modify", cancellationToken, async () =>
 		{
 			ChromaHnswConfiguration.CheckMaxNeighbors(configuration.Hnsw?.MaxNeighbors, nameof(configuration));
 			var current = await CurrentConfiguration(cancellationToken);

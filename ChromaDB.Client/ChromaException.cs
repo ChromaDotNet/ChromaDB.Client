@@ -33,4 +33,10 @@ public class ChromaException : Exception
 	/// <c>InvalidCollection</c> from Chroma 0.5 and 0.6, <c>ValueError</c> from the v1 API of Chroma 0.4; null when it names none.
 	/// </summary>
 	public string? ErrorType { get; init; }
+
+	// A missing collection: 404 from Chroma 1.x, 400 or 500 from the 0.x servers, always with "does not exist" in the message, also when
+	// the tenant or the database is missing. A bare 404, like the one of a wrong address, is not one.
+	internal bool IsMissingCollection
+		=> StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError
+			&& (Message.Contains("does not exist") || ErrorType == "NotFoundError" && Message.StartsWith("Collection", StringComparison.Ordinal));
 }
