@@ -150,6 +150,39 @@ public class MetadataTests : ChromaTestsBase
 		Assert.That(ex!.Message, Does.Contain("$contains"));
 	}
 
+	// The values of ChromaMetadataConvert come back as they were written, and a filter with a converted value finds the same instant
+	// at another offset.
+	[Test]
+	public async Task ConvertedValues()
+	{
+		var client = await Init(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact));
+		var opened = new DateTimeOffset(2026, 10, 5, 13, 0, 0, TimeSpan.FromHours(2));
+		var updated = new DateTime(2026, 10, 5, 11, 0, 0, DateTimeKind.Local);
+		var metadata = new Dictionary<string, object>
+		{
+			["opened"] = ChromaMetadataConvert.ToMetadataValue(opened)!,
+			["updated"] = ChromaMetadataConvert.ToMetadataValue(updated)!,
+			["count"] = ChromaMetadataConvert.ToMetadataValue(3)!,
+		};
+		if (MetadataListsSupported)
+		{
+			metadata["days"] = ChromaMetadataConvert.ToMetadataValue(new[] { opened, opened.AddDays(1) })!;
+		}
+		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [metadata] });
+		var read = (await client.GetAsync("a", include: ChromaGetInclude.Metadatas))!.Metadata!;
+		Assert.That(ChromaMetadataConvert.FromMetadataValue(read["opened"], typeof(DateTimeOffset)), Is.EqualTo(opened));
+		var readUpdated = (DateTime)ChromaMetadataConvert.FromMetadataValue(read["updated"], typeof(DateTime))!;
+		Assert.That((readUpdated, readUpdated.Kind), Is.EqualTo((updated, DateTimeKind.Local)));
+		Assert.That(ChromaMetadataConvert.FromMetadataValue(read["count"], typeof(int)), Is.EqualTo(3));
+		var sameInstant = ChromaMetadataConvert.ToMetadataValue(opened.ToUniversalTime())!;
+		Assert.That((await client.GetAsync(where: ChromaWhereOperator.Equal("opened", sameInstant), include: ChromaGetInclude.None)).Select(x => x.Id), Is.EqualTo(new[] { "a" }));
+		if (MetadataListsSupported)
+		{
+			Assert.That(ChromaMetadataConvert.FromMetadataValue(read["days"], typeof(List<DateTimeOffset>)), Is.EqualTo(new List<DateTimeOffset> { opened, opened.AddDays(1) }));
+			Assert.That((await client.GetAsync(where: ChromaWhereOperator.Contains("days", sameInstant), include: ChromaGetInclude.None)).Select(x => x.Id), Is.EqualTo(new[] { "a" }));
+		}
+	}
+
 	// Chroma 1.5 keeps the lists of the records of a deleted collection or database, and gives them to the next records it stores, in
 	// any collection: the client deletes the records first.
 	[Test]

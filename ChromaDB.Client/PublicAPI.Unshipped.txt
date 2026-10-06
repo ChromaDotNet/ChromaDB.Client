@@ -19,3 +19,6 @@ static ChromaDB.Client.ChromaWhereDocumentOperator.Not(ChromaDB.Client.ChromaWhe
 static ChromaDB.Client.ChromaWhereOperator.All.get -> ChromaDB.Client.ChromaWhereOperator!
 static ChromaDB.Client.ChromaWhereOperator.None.get -> ChromaDB.Client.ChromaWhereOperator!
 static ChromaDB.Client.ChromaWhereOperator.Not(ChromaDB.Client.ChromaWhereOperator! filter) -> ChromaDB.Client.ChromaWhereOperator!
+ChromaDB.Client.ChromaMetadataConvert
+static ChromaDB.Client.ChromaMetadataConvert.FromMetadataValue(object? value, System.Type! type) -> object?
+static ChromaDB.Client.ChromaMetadataConvert.ToMetadataValue(object? value) -> object?
