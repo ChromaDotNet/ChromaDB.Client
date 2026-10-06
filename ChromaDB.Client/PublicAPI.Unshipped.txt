@@ -1,1 +1,2 @@
 #nullable enable
+virtual ChromaDB.Client.ChromaClient.DeleteCollectionIfExistsAsync(string! name, string? tenant = null, string? database = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!

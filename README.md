@@ -94,13 +94,14 @@ var count = await client.CountCollectionsAsync();
 await collectionClient.ModifyAsync(name: "renamed", metadata: new Dictionary<string, object> { ["owner"] = "me" });
 var first = await collectionClient.PeekAsync(5);
 await client.DeleteCollectionAsync("renamed");
+var deleted = await client.DeleteCollectionIfExistsAsync("renamed");   // false: it no longer exists
 var heartbeat = await client.HeartbeatAsync();
 var checks = await client.GetPreFlightChecksAsync();   // MaxBatchSize, SupportsBase64Encoding
 var identity = await client.GetUserIdentityAsync();    // UserId, Tenant, Databases
 var database = await client.GetDatabaseAsync("my_database");
 ```
 
-`ModifyAsync` changes the name or the metadata of a collection. `PeekAsync` returns its first records.
+`ModifyAsync` changes the name or the metadata of a collection. `PeekAsync` returns its first records. `DeleteCollectionIfExistsAsync` takes a missing collection as deleted already: each server tells it in its own way, which the client recognizes as `CollectionExistsAsync` does.
 
 ## API version
 

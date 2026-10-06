@@ -338,6 +338,19 @@ public class ClientTests : ChromaTestsBase
 		await Assert.ThatAsync(async () => await client.DeleteCollectionAsync(name), Throws.InstanceOf<ChromaException>().With.Message.Matches($@"^Collection \[?{name}\]? does not exist"));
 	}
 
+	// Every tested server tells a missing collection in its own way, which DeleteCollectionIfExistsAsync recognizes.
+	[Test]
+	public async Task DeleteCollectionIfExists()
+	{
+		var name = $"collection{Random.Shared.Next()}";
+
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		await client.CreateCollectionAsync(name);
+		Assert.That(await client.DeleteCollectionIfExistsAsync(name), Is.True);
+		Assert.That(await client.CollectionExistsAsync(name), Is.False);
+		Assert.That(await client.DeleteCollectionIfExistsAsync(name), Is.False);
+	}
+
 	[Test]
 	public async Task GetOrCreateCollectionDoesNotExist()
 	{

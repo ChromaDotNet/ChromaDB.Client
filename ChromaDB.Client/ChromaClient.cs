@@ -259,12 +259,17 @@ public class ChromaClient : IDisposable
 				await GetCollectionCore(name, tenant, database, cancellationToken);
 				return true;
 			}
-			catch (ChromaException ex) when (ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError
-				&& (ex.Message.Contains("does not exist") || ex.ErrorType == "NotFoundError" && ex.Message.StartsWith("Collection", StringComparison.Ordinal)))
+			catch (ChromaException ex) when (IsMissingCollection(ex))
 			{
 				return false;
 			}
 		});
+
+	// A missing collection: 404 from Chroma 1.x, 400 or 500 from the 0.x servers, always with "does not exist" in the message, also when
+	// the tenant or the database is missing. A bare 404, like the one of a wrong address, is not one.
+	private static bool IsMissingCollection(ChromaException ex)
+		=> ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError
+			&& (ex.Message.Contains("does not exist") || ex.ErrorType == "NotFoundError" && ex.Message.StartsWith("Collection", StringComparison.Ordinal));
 
 	/// <summary>
 	/// The same client, reading metadata values another way: same <c>HttpClient</c> and options, and what it learned about the
@@ -434,13 +439,13 @@ public class ChromaClient : IDisposable
 			{
 				// Not canceled with the call: the answer arrived, so the collection is created, and it must go. A call canceled before the
 				// answer leaves nothing to tell whether the collection was created, so nothing is deleted then.
-				await DeleteCollection(collection.Name, tenant, database, deleteRecordsFirst: false, CancellationToken.None);
+				await DatabaseOperation("delete_collection", collection.Name, tenant, database, () => DeleteCollectionCore(collection.Name, tenant, database, deleteRecordsFirst: false, CancellationToken.None));
 				throw new ChromaException("The server creates the collection without its schema: Chroma 1.3.0 and later apply it. The collection was deleted.");
 			}
 			// Chroma 1.3.0 creates the collection with the space of the schema ignored: l2.
 			if (SettingsIgnored(definition, collection) is { } ignored)
 			{
-				await DeleteCollection(collection.Name, tenant, database, deleteRecordsFirst: false, CancellationToken.None);
+				await DatabaseOperation("delete_collection", collection.Name, tenant, database, () => DeleteCollectionCore(collection.Name, tenant, database, deleteRecordsFirst: false, CancellationToken.None));
 				throw new ChromaException($"{ignored} The collection was deleted.");
 			}
 			return collection;
@@ -512,24 +517,46 @@ public class ChromaClient : IDisposable
 	/// <param name="database">The database, or null for the one of the options.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task DeleteCollectionAsync(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
-		=> DeleteCollection(name, tenant, database, deleteRecordsFirst: true, cancellationToken);
+		=> DatabaseOperation("delete_collection", name, tenant, database, () => DeleteCollectionCore(name, tenant, database, deleteRecordsFirst: true, cancellationToken));
 
-	// A collection just created has no records to delete first.
-	private Task DeleteCollection(string name, string? tenant, string? database, bool deleteRecordsFirst, CancellationToken cancellationToken)
+	/// <summary>
+	/// Deletes the collection with the given name when it exists, as <c>DeleteCollectionAsync</c> does, and tells whether it did. A missing
+	/// collection is not an error: every server tells it in its own way, which the client recognizes as <c>CollectionExistsAsync</c> does.
+	/// </summary>
+	/// <param name="name">The name of the collection.</param>
+	/// <param name="tenant">The tenant, or null for the one of the options.</param>
+	/// <param name="database">The database, or null for the one of the options.</param>
+	/// <param name="cancellationToken">The token that cancels the operation.</param>
+	/// <returns>Whether the collection existed and was deleted.</returns>
+	public virtual Task<bool> DeleteCollectionIfExistsAsync(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("delete_collection", name, tenant, database, async () =>
 		{
-			tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
-			database = database is not null and not [] ? database : _currentDatabase.Name;
-			var requestParams = new RequestQueryParams()
-				.Insert("{collectionName}", name)
-				.Insert("{tenant}", tenant)
-				.Insert("{database}", database);
-			if (deleteRecordsFirst && await KeepsTheListsOfDeletedRecords(cancellationToken))
+			try
 			{
-				await new ChromaCollectionClient(await GetCollectionCore(name, tenant, database, cancellationToken), _options, _httpClient).DeleteAllRecords(cancellationToken);
+				await DeleteCollectionCore(name, tenant, database, deleteRecordsFirst: true, cancellationToken);
+				return true;
 			}
-			await _httpClient.Delete(_httpClient.Routes.CollectionByName, requestParams, cancellationToken);
+			catch (ChromaException ex) when (IsMissingCollection(ex))
+			{
+				return false;
+			}
 		});
+
+	// Without a span of its own. A collection just created has no records to delete first.
+	private async Task DeleteCollectionCore(string name, string? tenant, string? database, bool deleteRecordsFirst, CancellationToken cancellationToken)
+	{
+		tenant = tenant is not null and not [] ? tenant : _currentTenant.Name;
+		database = database is not null and not [] ? database : _currentDatabase.Name;
+		var requestParams = new RequestQueryParams()
+			.Insert("{collectionName}", name)
+			.Insert("{tenant}", tenant)
+			.Insert("{database}", database);
+		if (deleteRecordsFirst && await KeepsTheListsOfDeletedRecords(cancellationToken))
+		{
+			await new ChromaCollectionClient(await GetCollectionCore(name, tenant, database, cancellationToken), _options, _httpClient).DeleteAllRecords(cancellationToken);
+		}
+		await _httpClient.Delete(_httpClient.Routes.CollectionByName, requestParams, cancellationToken);
+	}
 
 	// Chroma 1.5 keeps the lists in the metadata of the records of a collection or a database it deletes, and gives them to the next
 	// records it stores, in any collection and database; deleting the records first deletes their lists. Every Chroma 1.x sends the
