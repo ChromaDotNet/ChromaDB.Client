@@ -33,7 +33,7 @@ public class SearchRequestsTests
 			"rank":{"$knn":{"query":[1.0,0.0],"key":"#embedding","limit":16}},
 			"group_by":{"keys":["category"],"aggregate":{"$min_k":{"keys":["#score"],"k":1}}},
 			"limit":{"offset":1,"limit":3},"select":{"keys":["#document","#score","category"]}}],"read_level":"index_only"}
-			""".Replace("\n", "").Replace("\t", "")));
+			""".Replace("\r", "").Replace("\n", "").Replace("\t", "")));
 	}
 
 	// Like the Python client: no filter and no rank are null, no grouping is {}, the offset is always sent.
@@ -74,7 +74,7 @@ public class SearchRequestsTests
 			{"$mul":[{"$val":-1.0},{"$sum":[
 			{"$div":{"left":{"$val":1.0},"right":{"$sum":[{"$val":60.0},{"$knn":{"query":[1.0,0.0],"key":"#embedding","limit":16,"return_rank":true}}]}}},
 			{"$div":{"left":{"$val":1.0},"right":{"$sum":[{"$val":60.0},{"$knn":{"query":[0.0,1.0],"key":"#embedding","limit":16,"return_rank":true}}]}}}]}]}
-			""".Replace("\n", "").Replace("\t", "")));
+			""".Replace("\r", "").Replace("\n", "").Replace("\t", "")));
 	}
 
 	// Only the records with a term of the text get points from it: 1 above a dot product of one millionth, 0 at the score 1 of the others.

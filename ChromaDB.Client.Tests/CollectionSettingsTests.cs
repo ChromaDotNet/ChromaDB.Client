@@ -33,7 +33,7 @@ public class CollectionSettingsTests
 		Assert.That(body.GetProperty("metadata").GetRawText(), Is.EqualTo("""
 			{"topic":"x","hnsw:space":"cosine","hnsw:construction_ef":150,"hnsw:search_ef":120,"hnsw:M":20,"hnsw:resize_factor":1.5,
 			"hnsw:sync_threshold":2000,"hnsw:batch_size":200,"hnsw:num_threads":2}
-			""".Replace("\n", "").Replace("\t", "")));
+			""".Replace("\r", "").Replace("\n", "").Replace("\t", "")));
 		Assert.That(body.TryGetProperty("configuration", out _), Is.False);
 		Assert.That(body.TryGetProperty("schema", out _), Is.False);
 	}
@@ -118,7 +118,7 @@ public class CollectionSettingsTests
 		Assert.That(body.GetProperty("configuration").GetRawText(), Is.EqualTo("""
 			{"spann":{"search_nprobe":32,"write_nprobe":16,"ef_construction":150,"ef_search":120,"max_neighbors":20,"split_threshold":100,
 			"merge_threshold":30,"reassign_neighbor_count":32,"space":"cosine"}}
-			""".Replace("\n", "").Replace("\t", "")));
+			""".Replace("\r", "").Replace("\n", "").Replace("\t", "")));
 		Assert.That(body.GetProperty("metadata").ValueKind, Is.EqualTo(JsonValueKind.Null));
 	}
 
@@ -169,7 +169,7 @@ public class CollectionSettingsTests
 		Assert.That(config.GetRawText(), Is.EqualTo("""
 			{"space":"cosine","spann":{"search_nprobe":32,"search_rng_epsilon":8.0,"write_rng_epsilon":6.0,"nreplica_count":4,"num_samples_kmeans":500,
 			"num_centers_to_merge_to":6,"center_drift_threshold":0.25}}
-			""".Replace("\n", "").Replace("\t", "")));
+			""".Replace("\r", "").Replace("\n", "").Replace("\t", "")));
 	}
 
 	// Chroma rejects the two indexes together ("Multiple vector index configurations provided"): nothing is sent.
@@ -315,7 +315,7 @@ public class CollectionSettingsTests
 			"bool":{"bool_inverted_index":{"enabled":false,"config":{}}}},
 			"keys":{"#document":{"string":{"fts_index":{"enabled":true,"config":{}}}},
 			"title":{"string":{"string_inverted_index":{"enabled":false,"config":{}}},"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"bm25":true,"algorithm":"max_score"}}}}}}
-			""".Replace("\n", "").Replace("\t", "")));
+			""".Replace("\r", "").Replace("\n", "").Replace("\t", "")));
 	}
 
 	// As the Python client: the full-text search index is on #document only.

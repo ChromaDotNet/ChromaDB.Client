@@ -129,7 +129,7 @@ public class SparseVectorsAndSchemaTests
 			{"defaults":{"float_list":{"vector_index":{"enabled":false,"config":{"space":"cosine"}}}},
 			"keys":{"doc_bm25":{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":{"type":"known","name":"chroma_bm25","config":{"k":1.2,"b":0.75,"avg_doc_length":256.0,"token_max_length":40,"include_tokens":false}},"source_key":"#document","bm25":true}}}},
 			"#embedding":{"float_list":{"vector_index":{"enabled":true,"config":{"space":"cosine"}}}}}}
-			""".Replace("\n", "").Replace("\t", "")));
+			""".Replace("\r", "").Replace("\n", "").Replace("\t", "")));
 	}
 
 	// Chroma 1.3.0 creates the collection with the space of the schema ignored, l2: CreateCollection deletes it and throws,
@@ -307,7 +307,7 @@ public class SparseVectorsAndSchemaTests
 			{"doc_bm25":{{given}}},
 			null,
 			{"title":5,"doc_bm25":{{bm25.Embed("cherry tart")}}}]
-			""".Replace("\n", "").Replace("\t", "")));
+			""".Replace("\r", "").Replace("\n", "").Replace("\t", "")));
 		Assert.That(metadatas[0].Keys, Is.EqualTo(new[] { "title" }));
 		Assert.That(records.Metadatas, Is.SameAs(metadatas));
 	}
