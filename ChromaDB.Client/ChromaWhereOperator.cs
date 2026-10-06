@@ -46,8 +46,8 @@ public abstract class ChromaWhereOperator
 	/// The records that the filter does not match, as Chroma can tell them: Chroma has no <c>$not</c>, so the negation goes into the
 	/// operators, <c>$eq</c> to <c>$ne</c>, <c>$gt</c> to <c>$lte</c>, <c>$in</c> to <c>$nin</c>, <c>$contains</c> to <c>$not_contains</c>,
 	/// and <c>$and</c> to <c>$or</c> of the negations. <c>$ne</c>, <c>$nin</c> and <c>$not_contains</c> match the records without the key,
-	/// but a comparison like <c>$lte</c> does not: <c>Not(GreaterThan(key, 5))</c> leaves out the records without the key, as
-	/// <c>GreaterThan(key, 5)</c> does.
+	/// <c>$ne</c> and <c>$nin</c> from Chroma 0.5.15, but a comparison like <c>$lte</c> does not: <c>Not(GreaterThan(key, 5))</c> leaves out
+	/// the records without the key, as <c>GreaterThan(key, 5)</c> does.
 	/// </summary>
 	/// <param name="filter">The filter to negate.</param>
 	/// <returns>The negated filter.</returns>
@@ -67,7 +67,8 @@ public abstract class ChromaWhereOperator
 		=> values is { Length: > 0 } ? new ChromaWhereValueOperator(key, "$in", "$nin", values) : None;
 
 	/// <summary>
-	/// The records whose value for the key is not one of the values, with <c>$nin</c>, which matches the records without the key too.
+	/// The records whose value for the key is not one of the values, with <c>$nin</c>, which matches the records without the key too from
+	/// Chroma 0.5.15.
 	/// Without values it is <c>All</c>: every tested Chroma rejects <c>$nin</c> without values.
 	/// </summary>
 	/// <param name="key">The metadata key.</param>

@@ -3,8 +3,8 @@ using NUnit.Framework;
 
 namespace ChromaDB.Client.Tests;
 
-// A collection client made by name reads the collection before its first request, and again, once, when the server no longer finds
-// the id it has: the operation then runs again on the collection of that name.
+// A collection client made by name reads the collection before its first request, and again when a request fails on the id it read
+// before: when the name has another id now, the operation runs again, once, on that collection.
 [TestFixture]
 public class CollectionClientByNameTests
 {
@@ -39,27 +39,44 @@ public class CollectionClientByNameTests
 		Assert.That(collection.Collection.Id, Is.EqualTo(Guid.Parse(Second)));
 	}
 
-	// An id just read is not read again, and the operation runs again only once.
+	// An id just read is not read again, and an id that stays the same keeps the failure.
 	[Test]
-	public async Task OnlyOnce()
+	public async Task TheSameIdKeepsTheFailure()
 	{
 		var server = new FakeServer(First) { MissingId = First };
 		var collection = Client(server).GetCollectionClient("c");
 		await Assert.ThatAsync(() => collection.CountAsync(), Throws.InstanceOf<ChromaException>().With.Message.Contains("does not exist"));
 		Assert.That(server.Requests, Is.EqualTo(new[] { "GET collections/c", $"GET collections/{First}/count" }));
-		await Assert.ThatAsync(() => collection.CountAsync(), Throws.InstanceOf<ChromaException>());
-		Assert.That(server.Requests.Skip(2), Is.EqualTo(new[] { $"GET collections/{First}/count", "GET collections/c", $"GET collections/{First}/count" }));
+		await Assert.ThatAsync(() => collection.CountAsync(), Throws.InstanceOf<ChromaException>().With.Message.Contains("does not exist"));
+		Assert.That(server.Requests.Skip(2), Is.EqualTo(new[] { $"GET collections/{First}/count", "GET collections/c" }));
 	}
 
+	// Any failure counts, as the servers tell a collection gone in their own ways: Chroma 0.4 answers 500 with "coroutine raised StopIteration".
 	[Test]
-	public async Task OtherErrorsAreThrown()
+	public async Task AnyFailureReadsTheCollectionAgain()
 	{
 		var server = new FakeServer(First);
 		var collection = Client(server).GetCollectionClient("c");
 		await collection.CountAsync();
-		server.Error = (HttpStatusCode.InternalServerError, """{"error":"InternalError","message":"boom"}""");
-		await Assert.ThatAsync(() => collection.CountAsync(), Throws.InstanceOf<ChromaException>().With.Message.EqualTo("boom"));
-		Assert.That(server.Requests.Count(x => x == "GET collections/c"), Is.EqualTo(1));
+		server.MissingId = First;
+		server.MissingAnswer = (HttpStatusCode.InternalServerError, """{"error":"RuntimeError('coroutine raised StopIteration')"}""");
+		await Assert.ThatAsync(() => collection.CountAsync(), Throws.InstanceOf<ChromaException>().With.Message.EqualTo("coroutine raised StopIteration"));
+		server.Id = Second;
+		Assert.That(await collection.CountAsync(), Is.EqualTo(3));
+		Assert.That(server.Requests.Skip(2), Is.EqualTo(new[] { $"GET collections/{First}/count", "GET collections/c", $"GET collections/{First}/count", "GET collections/c", $"GET collections/{Second}/count" }));
+	}
+
+	// When the name has no collection either, the failure of the operation stands.
+	[Test]
+	public async Task NoCollectionOfTheNameKeepsTheFailure()
+	{
+		var server = new FakeServer(First);
+		var collection = Client(server).GetCollectionClient("c");
+		await collection.CountAsync();
+		server.MissingId = First;
+		server.NameMissing = true;
+		await Assert.ThatAsync(() => collection.CountAsync(), Throws.InstanceOf<ChromaException>().With.Message.Contains(First));
+		Assert.That(server.Requests.Skip(2), Is.EqualTo(new[] { $"GET collections/{First}/count", "GET collections/c" }));
 	}
 
 	// Also an operation without a result, like an upsert, runs again on the collection of the name.
@@ -91,22 +108,23 @@ public class CollectionClientByNameTests
 	static ChromaClient Client(HttpMessageHandler handler)
 		=> new(new ChromaConfigurationOptions("http://localhost:8000").WithBatchSplitting(false), new HttpClient(handler));
 
-	// Answers the collection c with Id, a missing collection for the requests on MissingId, Error when it is set, and 3 for a count;
+	// Answers the collection c with Id, or as missing with NameMissing, MissingAnswer to the requests on MissingId, and 3 for a count;
 	// records the requests, without the prefix of the database.
 	sealed class FakeServer(string id) : HttpMessageHandler
 	{
 		public string Id { get; set; } = id;
 		public string? MissingId { get; set; }
-		public (HttpStatusCode Status, string Body)? Error { get; set; }
+		public (HttpStatusCode Status, string Body) MissingAnswer { get; set; } = (HttpStatusCode.NotFound, Missing);
+		public bool NameMissing { get; set; }
 		public List<string> Requests { get; } = [];
 
 		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
 		{
 			var path = request.RequestUri!.AbsolutePath.Replace("/api/v2/tenants/default_tenant/databases/default_database/", "");
 			Requests.Add($"{request.Method} {path}");
-			var (status, body) = path == "collections/c" ? (HttpStatusCode.OK, $$"""{"id":"{{Id}}","name":"c"}""")
-				: MissingId is { } missing && path.Contains(missing) ? (HttpStatusCode.NotFound, Missing)
-				: Error is { } error ? error
+			var (status, body) = path == "collections/c" && NameMissing ? (HttpStatusCode.NotFound, """{"error":"NotFoundError","message":"Collection [c] does not exist"}""")
+				: path == "collections/c" ? (HttpStatusCode.OK, $$"""{"id":"{{Id}}","name":"c"}""")
+				: MissingId is { } missing && path.Contains(missing) ? MissingAnswer
 				: path.EndsWith("/count") ? (HttpStatusCode.OK, "3")
 				: (HttpStatusCode.OK, "{}");
 			return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body) });

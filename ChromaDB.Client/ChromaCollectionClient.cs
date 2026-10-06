@@ -11,7 +11,7 @@ namespace ChromaDB.Client;
 /// </summary>
 public class ChromaCollectionClient
 {
-	// For a client made by name, the collection read last, which changes when the server no longer finds its id.
+	// For a client made by name, the collection read last, which changes when the name has another id.
 	private volatile ChromaCollection _collection;
 	private readonly ChromaHttpClient _httpClient;
 	private readonly bool _byName;
@@ -86,8 +86,10 @@ public class ChromaCollectionClient
 	private Task Operation(string name, CancellationToken cancellationToken, Func<Task> body)
 		=> ChromaInstrumentation.Run(name, _collection.Name, $"{_tenant}|{_database}", _server, _byName ? () => ByName(async () => { await body(); return true; }, cancellationToken) : body);
 
-	// A client made by name reads the collection before its first request, and again, once, when the server no longer finds the id it
-	// has, as when the collection was deleted and created again elsewhere: the operation then runs again on the collection of that name.
+	// A client made by name reads the collection before its first request. When a request fails on the id it read before, it reads the
+	// collection again: if the name has another id now, as when the collection was deleted and created again elsewhere, the operation
+	// runs again, once, on that collection; otherwise the failure stands. The servers tell a collection gone in their own ways, like
+	// Chroma 0.4 with "coroutine raised StopIteration", so the client compares the ids instead.
 	private async Task<T> ByName<T>(Func<Task<T>> body, CancellationToken cancellationToken)
 	{
 		var resolved = _resolved;
@@ -99,10 +101,28 @@ public class ChromaCollectionClient
 		{
 			return await body();
 		}
-		catch (ChromaException ex) when (resolved && ex.IsMissingCollection)
+		catch (ChromaException) when (resolved)
+		{
+			var id = _collection.Id;
+			if (!await TryResolve(cancellationToken) || _collection.Id == id)
+			{
+				throw;
+			}
+		}
+		return await body();
+	}
+
+	// Reads the collection again; when the name has no collection either, the failure of the operation stands.
+	private async Task<bool> TryResolve(CancellationToken cancellationToken)
+	{
+		try
 		{
 			await Resolve(cancellationToken);
-			return await body();
+			return true;
+		}
+		catch (ChromaException)
+		{
+			return false;
 		}
 	}
 
@@ -124,7 +144,7 @@ public class ChromaCollectionClient
 
 	/// <summary>
 	/// The collection the client works on, as <c>Collection</c>. A client made by name reads it on the first call or request, and
-	/// again when the server no longer finds its id; the other clients send no request.
+	/// again when a request fails on the id it read before; the other clients send no request.
 	/// </summary>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>The collection.</returns>

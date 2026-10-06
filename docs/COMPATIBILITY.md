@@ -63,7 +63,7 @@ A collection created with `ChromaCollectionConfiguration.Space` uses that space 
 
 The `max_batch_size` of `pre-flight-checks` is 41666 on Chroma 0.4.12 – 0.6.3 and 5461 on 1.x. A single request beyond it fails up to Chroma 1.0.13 (`400` or `500`); Chroma 1.0.15 – 1.5.9 accept it. With `WithBatchSplitting` the client sends batches within the limit, and writes beyond it work on all the servers that have `pre-flight-checks`: Chroma 0.4.10 has none, so its records go in one request.
 
-All the servers on this page reject `$in` and `$nin` without values (`400` or `500`), so `ChromaWhereOperator.In` without values is `None`, which sends no request, and `NotIn` without values is `All`, which sends no `where`. On the v2 API of 0.6.3, 1.0.0 and 1.5.9, `$ne` and `$nin` match the records without the key, and `$lte` does not, as `ChromaWhereOperator.Not` describes.
+All the servers on this page reject `$in` and `$nin` without values (`400` or `500`), so `ChromaWhereOperator.In` without values is `None`, which sends no request, and `NotIn` without values is `All`, which sends no `where`. `$ne` and `$nin` match the records without the key on 0.5.15, and on the v2 API of 0.6.3, 1.0.0 and 1.5.9; 0.4.10 to 0.4.23 leave them out. `$lte` leaves them out on all of them, as `ChromaWhereOperator.Not` describes. A request on the id of a deleted collection gets `500` "coroutine raised StopIteration" from Chroma 0.4.23, without "does not exist", so a collection client made by name compares the ids to find a collection created again.
 
 The v1 API of Chroma 0.6.3 fails on most requests, and Chroma 1.5.9 answers it with `410 Gone`: use the v2 API there.
 

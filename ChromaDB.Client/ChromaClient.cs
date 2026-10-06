@@ -314,9 +314,9 @@ public class ChromaClient : IDisposable
 
 	/// <summary>
 	/// A client for the records of the collection with the name, in the tenant and database of the options, whichever collection has
-	/// that name: it reads the collection before its first request, and again, once, when the server no longer finds the id it has, as
-	/// when the collection was deleted and created again elsewhere, and then runs the operation again on the collection of that name.
-	/// No request is sent now.
+	/// that name: it reads the collection before its first request, and again when a request fails on the id it read before. When the
+	/// name has another id then, as when the collection was deleted and created again elsewhere, the operation runs again, once, on that
+	/// collection; otherwise the failure stands. No request is sent now.
 	/// </summary>
 	/// <param name="name">The name of the collection.</param>
 	/// <returns>The client of the records of the collection with the name.</returns>
