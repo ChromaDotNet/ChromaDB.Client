@@ -252,7 +252,8 @@ public class ChromaCollectionClient
 		if (!_httpClient.BatchSplitting || await BatchSize(cancellationToken) is not { } size
 			|| ids is { } few && few.Count <= size || ids is null && limit <= size)
 		{
-			return await GetPage(ids, where, whereDocument, limit, offset, include, cancellationToken);
+			// With ids, no more records than the ids: a limit beyond them, like 1000, goes over the quota of 300 of Chroma Cloud.
+			return await GetPage(ids, where, whereDocument, ids is { Count: > 0 } && limit > ids.Count ? ids.Count : limit, offset, include, cancellationToken);
 		}
 		var entries = new List<ChromaCollectionEntry>();
 		if (ids is not null)

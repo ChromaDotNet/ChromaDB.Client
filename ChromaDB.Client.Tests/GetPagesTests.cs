@@ -71,6 +71,16 @@ public class GetPagesTests
 		Assert.That(server.Pages, Is.EqualTo(new (int?, int?, int?)[] { (null, 3, 2), (3, null, null) }));
 	}
 
+	// With ids, the limit is never beyond them.
+	[Test]
+	public async Task LimitBeyondTheIds()
+	{
+		var server = new Server(records: 7, cap: 3);
+		var entries = await Client(server, 3).GetAsync(Ids(0, 2), limit: 1000);
+		Assert.That(entries.Select(x => x.Id), Is.EqualTo(Ids(0, 2)));
+		Assert.That(server.Pages, Is.EqualTo(new (int?, int?, int?)[] { (2, 2, null) }));
+	}
+
 	static List<string> Ids(int start, int count) => Enumerable.Range(start, count).Select(i => $"r{i}").ToList();
 
 	static ChromaCollectionClient Client(HttpMessageHandler handler, int maxBatchSize)

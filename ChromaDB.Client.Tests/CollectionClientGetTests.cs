@@ -464,6 +464,15 @@ public class CollectionClientGetTests : ChromaTestsBase
 		}
 	}
 
+	// A limit beyond the ids goes as the number of the ids: a limit of 1000 is over the quota of 300 of Chroma Cloud, which rejects it.
+	[Test]
+	public async Task GetIdsWithLimitBeyondTheQuota()
+	{
+		var client = await Init();
+		var result = await client.GetAsync([Id1, Id2], limit: 1000);
+		Assert.That(result.Select(x => x.Id), Is.EquivalentTo(new[] { Id1, Id2 }));
+	}
+
 	async Task<ChromaCollectionClient> Init()
 	{
 		var name = $"collection{Random.Shared.Next()}";

@@ -443,6 +443,8 @@ var status = await collectionClient.GetIndexingStatusAsync();
 
 On every server, `CountAsync(ChromaReadLevel.IndexOnly)` counts only the records already indexed. Chroma Cloud indexes them later, so right after a write the count can be lower, even 0, while `CountAsync()` already sees them. A single server indexes them at once and gives the same count.
 
+A query with more than 300 results gets the quota error of Chroma Cloud, "'Number of results' exceeded quota limit", unless the quota is raised.
+
 ```csharp
 await collectionClient.AddAsync(ids, embeddings: embeddings);                  // 6 records
 var all = await collectionClient.CountAsync();                                 // 6
