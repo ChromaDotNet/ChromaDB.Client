@@ -6,7 +6,7 @@ namespace ChromaDB.Client;
 public enum ChromaMetadataValues
 {
 	/// <summary>
-	/// A string that looks like a date becomes a <c>DateTime</c>, and a list stays a <c>JsonElement</c>, as in the versions before 2.8.0.
+	/// A string that looks like a date becomes a <c>DateTime</c>, and a list stays a <c>JsonElement</c>.
 	/// </summary>
 	Inferred,
 	/// <summary>
