@@ -159,11 +159,11 @@ await collectionClient.AddAsync(new ChromaRecords(["a"]) { Embeddings = [new([1f
 var tagged = await collectionClient.GetAsync(where: ChromaWhereOperator.Contains("tags", "red"));
 ```
 
-In `UpdateAsync` and `UpsertAsync`, a null value or an empty list deletes the key on every tested Chroma, with the sparse vectors the client computes from its text. The type does not allow null, so write `null!`. The client sends a deletion only to a record that has the key, so it reads those records first: Chroma Cloud counts a null against its quota of keys, and a new record has nothing to delete. The keys the metadata does not have stay, as in Chroma. A null document keeps the stored one, as in Chroma; with `NullDocumentsDelete = true` in `ChromaRecords` it deletes it, which Chroma cannot do, so the client writes an empty document, read back as an empty string, or as null with a document copy key. `AddAsync` throws an `ArgumentException` for a null value or an empty list: Chroma 0.x would drop the key, and 1.x rejects the request. A record without metadata keys comes back with `Metadata` null.
+In `UpdateAsync` and `UpsertAsync`, a null value or an empty list deletes the key on every tested Chroma, with the sparse vectors the client computes from its text. The type does not allow null, so write `null!`. The client sends a deletion only to a record that has the key, so it reads those records first: Chroma Cloud counts a null against its quota of keys, and a new record has nothing to delete. The keys the metadata does not have stay, as in Chroma. A null document keeps the stored one, as in Chroma; with `NullDocumentsDelete = true` in `ChromaRecords` it deletes it, which Chroma cannot do, so the client writes an empty document, read back as an empty string, or as null with a document copy key. `AddAsync` throws an `ArgumentException` for a null value or an empty list: Chroma 0.x would drop the key, and 1.x rejects the request. A record without metadata keys comes back with `Metadata` null. In `ChromaRecords` a record can have null metadata or a null document, and a list of metadata that are all null goes as no metadata.
 
 `WithDocumentCopyKey(key)` of a collection client returns a client of the same collection that copies each document into the metadata key, so that a `where` filter can compare the whole text, which `where_document` cannot. A document deleted with `NullDocumentsDelete` loses its copy, so the client reads an empty document without its copy as null: a document comes back as it was written, empty or null. For that it reads the metadata with the documents, and leaves it out of the results that do not ask for it. On Chroma Cloud, which takes a metadata value of at most 8,182 bytes, a longer document goes without its copy, and an update or an upsert deletes the copy it had; on a single server every document has its copy.
 
-`ChromaMetadataConvert` converts .NET values to metadata values and back, always in the same form: `ToMetadataValue` writes a `DateTimeOffset` as round-trip text in UTC, so that equal instants are equal text, a `DateTime` as round-trip text with its `Kind`, a `DateOnly` as `yyyy-MM-dd`, and a sequence as a list; null and an empty sequence give null, no value. `FromMetadataValue(value, type)` reads a value of `ChromaMetadataValues.Exact` as the type, also arrays and lists, and throws an `InvalidCastException` for a value that does not convert. A filter with a converted value finds the values converted the same way. The client does not convert the values of a metadata dictionary by itself.
+`ChromaMetadataConvert` converts .NET values to metadata values and back, always in the same form: `ToMetadataValue` writes a `DateTimeOffset` as round-trip text in UTC, so that equal instants are equal text, a `DateTime` as round-trip text with its `Kind`, a `DateOnly` as `yyyy-MM-dd`, and a sequence as a list; null and an empty sequence give null, no value. `FromMetadataValue(value, type)` reads a value of `ChromaMetadataValues.Exact` as the type, also arrays and lists, and throws an `InvalidCastException` for a value that does not convert. A filter with a converted value finds the values converted the same way. `ToMetadata(values)` builds the metadata of a record from keys and .NET values, each converted with `ToMetadataValue`; a value that converts to null stays as null, which deletes the key in `UpdateAsync` and `UpsertAsync`. The client does not convert the values of a metadata dictionary by itself.
 
 Chroma 1.5.0 and later store lists in metadata and filter them with `Contains` and `NotContains`. Chroma 1.0.0 to 1.4.1 reject them. Chroma 0.x accepts them but drops them without an error, so `AddAsync`, `UpdateAsync` and `UpsertAsync` throw a `ChromaException` before sending them. The client asks the server for its version once, and only when a record has a list.
 
@@ -175,6 +175,8 @@ An existing `ChromaClient`, for example one from dependency injection, gives a c
 var inferred = client.WithMetadataValues(ChromaMetadataValues.Inferred);
 Console.WriteLine(inferred.Options.MetadataValues); // Inferred
 ```
+
+`WithMetadataValues` of a collection client does the same for one collection.
 
 ## Errors
 
@@ -479,7 +481,7 @@ foreach (var result in results)
 }
 ```
 
-`ChromaSearch` holds the filters, which combine with `$and`, the ids, the ranking, the page and the fields to return. Without `Select`, a search returns only the ids. The records with the lowest score come first.
+`ChromaSearch` holds the filters, which combine with `$and`, the ids, the ranking, the page and the fields to return. Without `Select`, a search returns only the ids. The records with the lowest score come first, but with `ChromaRank.HybridRrf`, whose results come with the fused score, positive, highest first.
 
 `ChromaRank` builds the ranking:
 
@@ -526,6 +528,7 @@ var results = await collectionClient.SearchAsync(new ChromaSearch { Rank = Chrom
   - With `bm25`, the server applies the inverse document frequency of BM25. A source key needs an embedding function, because Chroma Cloud rejects one without the other.
   - `ChromaEmbeddingFunctionReference.ChromaBm25()` declares the BM25 function of Chroma with the settings of its Python client, so the clients that know it compute the vectors.
   - `ChromaCollection.SparseVectorIndexes` and `ChromaCollection.SchemaJson` read it back. `EmbeddingFunctionConfig` of an index holds the settings of its function, and `Bm25Function` the `ChromaBm25` with those settings. `FindBm25Index(sourceKey)` returns the BM25 index on the text of a key, like `#document`, or null.
+  - `WithBm25Index(sourceKey)` declares a BM25 index with `chroma_bm25` on the text of a metadata key or of the documents, on the key named after the source, like `title_bm25` or `document_bm25`. With `ifSupported: true` the client creates the collection without it on a server other than Chroma Cloud, which rejects it. A write that gives that key a value other than a sparse vector throws an `ArgumentException`. `FindBm25IndexAsync(sourceKey)` of a collection client finds the index, and for the document copy key also the one on the documents.
   - `ToString()` returns the JSON the client sends.
 - **The indexes of the values**, like `create_index` and `delete_index` of the Python client. `WithIndex` and `WithoutIndex` turn on or off:
   - the index of the string, integer, floating-point or Boolean values (`ChromaSchemaIndex.StringInverted`, `IntInverted`, `FloatInverted`, `BoolInverted`) of a metadata key, or of every key without a setting of its own;
@@ -544,7 +547,7 @@ var results = await collectionClient.SearchAsync(new ChromaSearch { Rank = Chrom
 - **The space with a schema:** `Configuration = new() { Space = ... }` goes in the schema, on `#embedding`, as `create_index(VectorIndexConfig(space=...))` of the Python client writes it, and not in the `hnsw:space` metadata. Chroma rejects the two together: "Cannot set both collection config and schema simultaneously".
 - **Where the schema works:**
   - Chroma 1.3.0 and later apply it;
-  - a single server rejects a sparse vector index;
+  - a single server rejects a sparse vector index, and does not get the ones added with `ifSupported`;
   - Chroma 1.0.0 to 1.2.2 and 0.6.3 create the collection without the schema. Then `CreateCollectionAsync` deletes it and throws a `ChromaException`, and `GetOrCreateCollectionAsync` throws and keeps it, since it may have existed before;
   - Chroma 1.3.0 ignores the space in the schema, which 1.3.2 and later apply, so the client does the same when the collection has another space.
 
