@@ -247,6 +247,23 @@ public class SparseVectorsAndSchemaTests
 		Assert.That(Index("""{"type":"known","name":"chroma_bm25","config":{"token_max_length":12.7}}""").Bm25Function!.TokenMaxLength, Is.EqualTo(12));
 	}
 
+	// The index whose vectors come from BM25 on the text of the key; not one with another function, nor one without a source key.
+	[Test]
+	public void FindBm25Index()
+	{
+		const string Bm25 = """{"type":"known","name":"chroma_bm25","config":{}}""";
+		const string Splade = """{"type":"known","name":"splade","config":{}}""";
+		static string Key(string name, string function, string? source)
+			=> "\"" + name + "\":" + """{"sparse_vector":{"sparse_vector_index":{"enabled":true,"config":{"embedding_function":""" + function
+				+ (source is null ? "" : ",\"source_key\":\"" + source + "\"") + "}}}}";
+		var keys = string.Join(",", Key("a", Bm25, "#document"), Key("b", Splade, "title"), Key("c", Bm25, "title"), Key("d", Bm25, null));
+		var collection = new ChromaCollection("c") { SchemaJson = JsonDocument.Parse("""{"defaults":{},"keys":{""" + keys + "}}").RootElement };
+		Assert.That(collection.FindBm25Index("#document")?.Key, Is.EqualTo("a"));
+		Assert.That(collection.FindBm25Index("title")?.Key, Is.EqualTo("c"));
+		Assert.That(collection.FindBm25Index("body"), Is.Null);
+		Assert.That(new ChromaCollection("c").FindBm25Index("#document"), Is.Null);
+	}
+
 	// Where the Python client keeps no function: another function, no config, or a setting of the wrong type.
 	[TestCase("""{"type":"known","name":"splade","config":{}}""")]
 	[TestCase("""{"type":"known","name":"chroma_bm25"}""")]

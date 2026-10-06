@@ -106,6 +106,16 @@ public class ChromaCollection
 		}
 	}
 
+	/// <summary>
+	/// The sparse vector index of the schema whose vectors the client computes with BM25 (<c>chroma_bm25</c>) from the text of the source
+	/// key, like <c>#document</c> or a metadata key: the one a text query of <c>ChromaRank.SparseKnn</c> on that text uses. Null when the
+	/// schema has none.
+	/// </summary>
+	/// <param name="sourceKey">The key of the text: <c>#document</c>, or a metadata key.</param>
+	/// <returns>The index, or null.</returns>
+	public ChromaSparseVectorIndex? FindBm25Index(string sourceKey)
+		=> SparseVectorIndexes.FirstOrDefault(index => index.SourceKey == sourceKey && index.Bm25Function is not null);
+
 	private static string? StringProperty(JsonElement element, string name)
 		=> element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 

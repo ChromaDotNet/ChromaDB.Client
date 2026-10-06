@@ -516,7 +516,7 @@ var results = await collectionClient.SearchAsync(new ChromaSearch { Rank = Chrom
 - **`ChromaCollectionSchema`** declares the indexes of a new collection:
   - With `bm25`, the server applies the inverse document frequency of BM25. A source key needs an embedding function, because Chroma Cloud rejects one without the other.
   - `ChromaEmbeddingFunctionReference.ChromaBm25()` declares the BM25 function of Chroma with the settings of its Python client, so the clients that know it compute the vectors.
-  - `ChromaCollection.SparseVectorIndexes` and `ChromaCollection.SchemaJson` read it back. `EmbeddingFunctionConfig` of an index holds the settings of its function, and `Bm25Function` the `ChromaBm25` with those settings.
+  - `ChromaCollection.SparseVectorIndexes` and `ChromaCollection.SchemaJson` read it back. `EmbeddingFunctionConfig` of an index holds the settings of its function, and `Bm25Function` the `ChromaBm25` with those settings. `FindBm25Index(sourceKey)` returns the BM25 index on the text of a key, like `#document`, or null.
   - `ToString()` returns the JSON the client sends.
 - **The indexes of the values**, like `create_index` and `delete_index` of the Python client. `WithIndex` and `WithoutIndex` turn on or off:
   - the index of the string, integer, floating-point or Boolean values (`ChromaSchemaIndex.StringInverted`, `IntInverted`, `FloatInverted`, `BoolInverted`) of a metadata key, or of every key without a setting of its own;

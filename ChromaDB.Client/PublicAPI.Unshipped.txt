@@ -13,3 +13,4 @@ const ChromaDB.Client.ChromaCloudQuotas.MaxUriBytes = 256 -> int
 const ChromaDB.Client.ChromaCloudQuotas.MaxWherePredicates = 8 -> int
 ChromaDB.Client.Models.ChromaQuery.Offset.get -> int
 ChromaDB.Client.Models.ChromaQuery.Offset.init -> void
+ChromaDB.Client.Models.ChromaCollection.FindBm25Index(string! sourceKey) -> ChromaDB.Client.Models.ChromaSparseVectorIndex?
