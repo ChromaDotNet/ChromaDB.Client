@@ -276,15 +276,32 @@ internal static class ChromaNumbers
 	private static readonly BigInteger Two52 = BigInteger.One << 52;
 	private static readonly BigInteger Two53 = BigInteger.One << 53;
 
+	// Chroma 1.x sends null for a float it cannot write, NaN or infinite, like an embedding beyond the range of a float in a cosine
+	// collection: it reads as NaN, so that one record does not cost the whole answer. A number beyond the range of a float, like a
+	// distance that Chroma 0.6.3 computes as a double, reads as an infinity, as a cast from the double does.
 	public static float ReadSingle(ref Utf8JsonReader reader)
 	{
-		var value = reader.GetSingle();
+		if (reader.TokenType == JsonTokenType.Null)
+		{
+			return float.NaN;
+		}
+		if (!reader.TryGetSingle(out var value))
+		{
+			return (float)ReadDouble(ref reader);
+		}
 		return value == 0 && StartsWithMinus(ref reader) ? -0f : value;
 	}
 
 	public static float ReadSingle(JsonElement element)
 	{
-		var value = element.GetSingle();
+		if (element.ValueKind == JsonValueKind.Null)
+		{
+			return float.NaN;
+		}
+		if (!element.TryGetSingle(out var value))
+		{
+			return (float)element.GetDouble();
+		}
 		return value == 0 && element.GetRawText().StartsWith("-", StringComparison.Ordinal) ? -0f : value;
 	}
 

@@ -26,6 +26,8 @@ public class ChromaSearchEntry
 
 	/// <summary>
 	/// The embedding, when selected.
+	/// A value is <c>NaN</c> where Chroma sent <c>null</c>: Chroma 1.x does for a float it cannot write, like an embedding beyond
+	/// the range of a float in a collection with the <c>cosine</c> space.
 	/// </summary>
 	public ReadOnlyMemory<float>? Embedding { get; init; }
 

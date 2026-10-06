@@ -81,6 +81,8 @@ Reproduced with plain HTTP, without the client, on 5 October 2026. The client ca
 | A float compared with int metadata is truncated: `GreaterThanOrEqual("a", 2.25)` also finds `a = 2`, and `GreaterThan("a", -1.5)` leaves out `a = -1` | 1.0.0 – 1.5.9; right on 0.4.24 – 0.6.3 |
 | Some doubles are read with an error in the last digit: `-95.41757424465169`, the shortest text of the double, comes back `-95.41757424465168`, and `1e-28` comes back `9.999999999999999e-29`; `Equal("x", 1e-30)` does not find the record stored with `1e-30`. The client sends the shortest text that reads back as the same double | 1.0.0 – 1.5.9; right on 0.4.24 – 0.6.3 |
 | The embeddings of a collection with the `cosine` space come back different in the last bit: `0.91782147` as `0.9178214`, `-0.4` as `-0.39999998` | 1.0.0 – 1.5.9; identical on 0.4.24 – 0.6.3, and with the other spaces |
+| In a collection with the `cosine` space, an embedding beyond the range of a float, like `[float.MaxValue, float.MaxValue]`, comes back as `null`, which the client reads as `NaN`, and one near zero, like `[1e-30, 1e-30]`, comes back as `[0, 0]`, at a distance of `-0.4` from `[3, 4]`. In an `l2` collection the distance to the first comes back as `null`, which the client reads as `NaN` | 1.0.0 and 1.5.9; 0.6.3 sends the values as they are, and the `l2` distance as a number beyond the range of a float, which the client reads as an infinity |
+| `-0.0` in metadata comes back as `0.0`; in embeddings it keeps its sign | 0.6.3 and 1.5.9 |
 
 The query of the second and third rows returned 3 records in every run on Chroma 0.5.20, 1.0.0 and 1.5.9, 10 runs each on a server just started.
 

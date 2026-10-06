@@ -444,6 +444,24 @@ public class CollectionClientQueryTests : ChromaTestsBase
 			Throws.InstanceOf<ChromaException>().With.Message.Contains(IdsInQuerySupported ? "Error finding id" : "outside the ids"));
 	}
 
+	// Chroma 1.x sends null for an embedding beyond the range of a float in a cosine collection, and for the distance to it in an l2
+	// collection: the client reads them, and the other records come back as they are.
+	[Test]
+	public async Task FloatsBeyondTheRange()
+	{
+		var chroma = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		foreach (var space in new[] { ChromaSpace.Cosine, ChromaSpace.L2 })
+		{
+			var collection = chroma.GetCollectionClient(await chroma.CreateCollectionAsync(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}") { Configuration = new() { Space = space } }));
+			await collection.AddAsync(["ok", "big"], embeddings: [new([3f, 4f]), new([float.MaxValue, float.MaxValue])]);
+			var records = (await collection.GetAsync(include: ChromaGetInclude.Embeddings)).ToDictionary(x => x.Id, x => x.Embedding!.Value.ToArray());
+			Assert.That(records["ok"], Is.EqualTo(new[] { 3f, 4f }), space.ToString());
+			var found = (await collection.QueryAsync([new([3f, 4f])], include: ChromaQueryInclude.Distances | ChromaQueryInclude.Embeddings)).Single();
+			Assert.That((found[0].Id, found[0].Distance), Is.EqualTo(("ok", 0f)), space.ToString());
+			Assert.That(found.Select(x => x.Id), Is.EquivalentTo(new[] { "ok", "big" }), space.ToString());
+		}
+	}
+
 	static readonly string Id1 = "id1";
 	static readonly string Id2 = "id2";
 	static readonly string Id3 = "id3";

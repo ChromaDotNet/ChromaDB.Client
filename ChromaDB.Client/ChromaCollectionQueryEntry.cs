@@ -11,7 +11,8 @@ public class ChromaCollectionQueryEntry
 	public string Id { get; }
 	/// <summary>
 	/// The distance of the record from the query embedding. Null when the query did not include
-	/// <c>ChromaQueryInclude.Distances</c>.
+	/// <c>ChromaQueryInclude.Distances</c>. <c>NaN</c> where Chroma sent <c>null</c>, like the distance to an embedding beyond the
+	/// range of a float in an <c>l2</c> collection on Chroma 1.x, and infinite where it sent a number beyond that range.
 	/// </summary>
 	public float? Distance { get; init; }
 	/// <summary>
@@ -21,6 +22,8 @@ public class ChromaCollectionQueryEntry
 	public IReadOnlyDictionary<string, object>? Metadata { get; init; }
 	/// <summary>
 	/// The embedding of the record, when the query included the embeddings.
+	/// A value is <c>NaN</c> where Chroma sent <c>null</c>: Chroma 1.x does for a float it cannot write, like an embedding beyond
+	/// the range of a float in a collection with the <c>cosine</c> space.
 	/// </summary>
 	public ReadOnlyMemory<float>? Embedding { get; init; }
 	/// <summary>
