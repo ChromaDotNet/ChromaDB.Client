@@ -12,7 +12,7 @@ public class ChromaCollectionQueryEntry
 	/// <summary>
 	/// The distance of the record from the query embedding. Null when the query did not include
 	/// <c>ChromaQueryInclude.Distances</c>. <c>NaN</c> where Chroma sent <c>null</c>, like the distance to an embedding beyond the
-	/// range of a float in an <c>l2</c> collection on Chroma 1.x, and infinite where it sent a number beyond that range.
+	/// range of a float in an <c>l2</c> or <c>ip</c> collection on Chroma 1.x, and infinite where it sent a number beyond that range.
 	/// </summary>
 	public float? Distance { get; init; }
 	/// <summary>

@@ -201,10 +201,10 @@ public class NumbersTests
 		var entries = await new ChromaCollectionClient(Guid.NewGuid(), "c", options, getHttp).GetAsync(include: ChromaGetInclude.Embeddings);
 		Assert.That(entries.Select(x => x.Embedding!.Value.ToArray()), Is.EqualTo(new[] { new[] { 3f, 4f }, new[] { float.NaN, float.NaN } }));
 
-		const string query = """{"ids":[["ok","tiny","big","far"]],"embeddings":[[[3.0,4.0],[0.0,0.0],[null,null],[1.0,1.0]]],"metadatas":null,"documents":null,"uris":null,"distances":[[0.0,25.0,null,2.3158415086764783e77]],"include":["embeddings","distances"]}""";
+		const string query = """{"ids":[["ok","tiny","big","far","ip"]],"embeddings":[[[3.0,4.0],[0.0,0.0],[null,null],[1.0,1.0],[2.0,2.0]]],"metadatas":null,"documents":null,"uris":null,"distances":[[0.0,25.0,null,2.3158415086764783e77,-2.381976426469702e39]],"include":["embeddings","distances"]}""";
 		using var queryHttp = new HttpClient(new Answer(query));
 		var results = (await new ChromaCollectionClient(Guid.NewGuid(), "c", options, queryHttp).QueryAsync([new([3f, 4f])], include: ChromaQueryInclude.Embeddings | ChromaQueryInclude.Distances)).Single();
-		Assert.That(results.Select(x => x.Distance), Is.EqualTo(new float?[] { 0f, 25f, float.NaN, float.PositiveInfinity }));
+		Assert.That(results.Select(x => x.Distance), Is.EqualTo(new float?[] { 0f, 25f, float.NaN, float.PositiveInfinity, float.NegativeInfinity }));
 		Assert.That(results[2].Embedding!.Value.ToArray(), Is.EqualTo(new[] { float.NaN, float.NaN }));
 	}
 
