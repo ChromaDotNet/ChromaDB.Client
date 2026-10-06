@@ -7,7 +7,7 @@
 		<IsPackable>true</IsPackable>
 		<!-- The analyzers of trimming and NativeAOT run on the target that has them. -->
 		<IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">true</IsAotCompatible>
-		<VersionPrefix>2.10.1</VersionPrefix>
+		<VersionPrefix>2.10.2</VersionPrefix>
 		<PackageId>ChromaDB.Client</PackageId>
 		<!-- -p:PackageIdPrefix=Name publishes the package as Name.Client. -->
 		<PackageId Condition="'$(PackageIdPrefix)' != ''">$(PackageIdPrefix).Client</PackageId>
@@ -29,7 +29,7 @@
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<NoWarn>$(NoWarn);RS0026;RS0027</NoWarn>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
-		<PackageReleaseNotes>2.10.1: GetAsync with ids sends a limit of at most the number of the ids: a larger one, like 1000, went over the quota of 300 of Chroma Cloud, which rejected the request also for a few ids. All the releases: $(PackageProjectUrl)/releases. Tested versions: $(PackageProjectUrl)/blob/main/docs/COMPATIBILITY.md. Migration from 1.x: $(PackageProjectUrl)#migrating-from-chromadbclient-1x</PackageReleaseNotes>
+		<PackageReleaseNotes>2.10.2: the same code as 2.10.1, released with ChromaDotNet.Client.DependencyInjection 2.10.2. 2.10.1: GetAsync with ids sends a limit of at most the number of the ids: a larger one, like 1000, went over the quota of 300 of Chroma Cloud, which rejected the request also for a few ids. All the releases: $(PackageProjectUrl)/releases. Tested versions: $(PackageProjectUrl)/blob/main/docs/COMPATIBILITY.md. Migration from 1.x: $(PackageProjectUrl)#migrating-from-chromadbclient-1x</PackageReleaseNotes>
 	</PropertyGroup>
 	<ItemGroup>
 		<!-- The public API, checked at build: PublicAPI.Shipped.txt is the API of the last release, PublicAPI.Unshipped.txt what was
