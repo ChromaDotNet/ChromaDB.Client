@@ -113,6 +113,10 @@ public class ChromaCollectionClient
 
 	private async Task<List<ChromaCollectionEntry>> GetEntries(IReadOnlyList<string>? ids, ChromaWhereOperator? where, ChromaWhereDocumentOperator? whereDocument, int? limit, int? offset, ChromaGetInclude? include, CancellationToken cancellationToken)
 	{
+		if (where == ChromaWhereOperator.None)
+		{
+			return [];
+		}
 		// With batch splitting, on by default, more records than the batch size come in pages: Chroma Cloud answers at most 300 records, without
 		// an error. The ids go in batches, each read whole, and the limit and the offset apply to all of them together; without ids
 		// beyond the batch size, pages of the batch size follow the offset until the limit or a page that is not full.
@@ -176,7 +180,7 @@ public class ChromaCollectionClient
 		var request = new CollectionGetRequest()
 		{
 			Ids = ids,
-			Where = where?.ToRequestWhere(),
+			Where = ChromaWhereOperator.ToRequestWhere(where),
 			WhereDocument = whereDocument?.ToRequestWhereDocument(),
 			Limit = limit,
 			Offset = offset,
@@ -238,11 +242,15 @@ public class ChromaCollectionClient
 				{
 					QueryEmbeddings = query.QueryEmbeddings,
 					NResults = query.NResults + query.Offset,
-					Where = query.Where?.ToRequestWhere(),
+					Where = ChromaWhereOperator.ToRequestWhere(query.Where),
 					WhereDocument = query.WhereDocument?.ToRequestWhereDocument(),
 					Include = (query.Include ?? ChromaQueryInclude.Metadatas | ChromaQueryInclude.Documents | ChromaQueryInclude.Distances).ToInclude(),
 					Ids = ids,
 				}, requestParams, cancellationToken);
+			if (query.Where == ChromaWhereOperator.None)
+			{
+				return query.QueryEmbeddings.Select(_ => (IReadOnlyList<ChromaCollectionQueryEntry>)[]).ToList();
+			}
 			CollectionEntriesQueryResponse response;
 			try
 			{
@@ -552,6 +560,10 @@ public class ChromaCollectionClient
 	public virtual Task DeleteAsync(IReadOnlyList<string> ids, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, CancellationToken cancellationToken = default)
 		=> Operation("delete", async () =>
 		{
+			if (where == ChromaWhereOperator.None)
+			{
+				return;
+			}
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
@@ -561,7 +573,7 @@ public class ChromaCollectionClient
 				var request = new CollectionDeleteRequest()
 				{
 					Ids = batch.Ids,
-					Where = where?.ToRequestWhere(),
+					Where = ChromaWhereOperator.ToRequestWhere(where),
 					WhereDocument = whereDocument?.ToRequestWhereDocument(),
 				};
 				await _httpClient.Post(_httpClient.Routes.Collection + "/delete", request, requestParams, cancellationToken);
@@ -578,8 +590,9 @@ public class ChromaCollectionClient
 	public virtual Task<int?> DeleteAsync(ChromaDelete delete, CancellationToken cancellationToken = default)
 		=> Operation("delete", async () =>
 		{
-			// The rules of Chroma and of its Python client, checked before any request.
-			if (delete.Ids is null && delete.Where is null && delete.WhereDocument is null)
+			// The rules of Chroma and of its Python client, checked before any request. All is no filter.
+			var where = delete.Where == ChromaWhereOperator.All ? null : delete.Where;
+			if (delete.Ids is null && where is null && delete.WhereDocument is null)
 			{
 				throw new ArgumentException("A delete needs ids, a where filter or a where document filter: without them it would select every record.", nameof(delete));
 			}
@@ -591,9 +604,13 @@ public class ChromaCollectionClient
 			{
 				throw new ArgumentOutOfRangeException(nameof(delete), "The limit of a delete cannot be negative.");
 			}
-			if (delete.Limit is not null && delete.Where is null && delete.WhereDocument is null)
+			if (delete.Limit is not null && where is null && delete.WhereDocument is null)
 			{
 				throw new ArgumentException("The limit of a delete needs a where or where document filter: Chroma rejects it with the ids alone.", nameof(delete));
+			}
+			if (where == ChromaWhereOperator.None)
+			{
+				return 0;
 			}
 			if (delete.Limit is not null && !await _httpClient.SupportsDeleteLimit(cancellationToken))
 			{
@@ -617,7 +634,7 @@ public class ChromaCollectionClient
 				var request = new CollectionDeleteRequest()
 				{
 					Ids = ids,
-					Where = delete.Where?.ToRequestWhere(),
+					Where = ChromaWhereOperator.ToRequestWhere(where),
 					WhereDocument = delete.WhereDocument?.ToRequestWhereDocument(),
 					Limit = remaining,
 				};
@@ -711,13 +728,19 @@ public class ChromaCollectionClient
 					throw new ArgumentException("The ids of a search cannot be empty: leave them null to search all the records.", nameof(searches));
 				}
 			}
+			// A search with None finds nothing and is not sent; without any other, no request goes.
+			var sent = searches.Where(search => search.Where != ChromaWhereOperator.None).ToList();
+			if (sent.Count == 0)
+			{
+				return searches.Select(_ => (IReadOnlyList<ChromaSearchEntry>)[]).ToList();
+			}
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
 			var request = new CollectionSearchRequest()
 			{
-				Searches = searches.Select(search => new CollectionSearchPayload()
+				Searches = sent.Select(search => new CollectionSearchPayload()
 				{
 					Filter = SearchFilter(search),
 					Rank = search.Rank?.ToRank(EmbedText),
@@ -728,8 +751,8 @@ public class ChromaCollectionClient
 				ReadLevel = readLevel is { } level ? ReadLevelName(level) : null,
 			};
 			var response = await _httpClient.Post<CollectionSearchRequest, CollectionSearchResponse>(_httpClient.Routes.Collection + "/search", request, requestParams, cancellationToken);
-			return response.Ids
-				.Select((ids, i) => ids
+			var results = response.Ids
+				.Select((ids, i) => (IReadOnlyList<ChromaSearchEntry>)ids
 					.Select((id, j) => new ChromaSearchEntry(id)
 					{
 						Document = response.Documents?[i]?[j],
@@ -739,15 +762,21 @@ public class ChromaCollectionClient
 					})
 					.ToList())
 				.ToList();
+			if (sent.Count == searches.Count)
+			{
+				return results;
+			}
+			var next = 0;
+			return searches.Select(search => search.Where == ChromaWhereOperator.None ? [] : results[next++]).ToList();
 		});
 
 	// The where clause of the Search API holds the metadata, the documents (#document) and the ids (#id); several filters go in $and.
 	private static Dictionary<string, object>? SearchFilter(ChromaSearch search)
 	{
 		var filters = new List<Dictionary<string, object>>();
-		if (search.Where is { } where)
+		if (ChromaWhereOperator.ToRequestWhere(search.Where) is { } where)
 		{
-			filters.Add(where.ToRequestWhere());
+			filters.Add(where);
 		}
 		if (search.WhereDocument is { } whereDocument)
 		{

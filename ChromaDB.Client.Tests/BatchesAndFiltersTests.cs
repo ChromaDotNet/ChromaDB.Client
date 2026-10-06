@@ -187,12 +187,10 @@ public class BatchesAndFiltersTests
 	static int[] Leaves(string filter)
 		=> [.. System.Text.RegularExpressions.Regex.Matches(filter, """\{"i":\{"\$eq":(\d+)\}\}""").Select(x => int.Parse(x.Groups[1].Value))];
 
-	// Every tested Chroma rejects $in and $nin without values.
+	// Every tested Chroma rejects $in and $nin without values: they are None and All, which FilterConstantsTests tests.
 	[Test]
-	public void InAndNotInNeedValues()
+	public void InAndNotIn()
 	{
-		Assert.Throws<ArgumentException>(() => ChromaWhereOperator.In("k"));
-		Assert.Throws<ArgumentException>(() => ChromaWhereOperator.NotIn("k", []));
 		Assert.That(ChromaWhereOperator.In("k", 1).ToString(), Is.EqualTo("""{"k":{"$in":[1]}}"""));
 		Assert.That(ChromaWhereOperator.NotIn("k", "a").ToString(), Is.EqualTo("""{"k":{"$nin":["a"]}}"""));
 	}

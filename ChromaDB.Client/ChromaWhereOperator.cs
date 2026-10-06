@@ -25,28 +25,60 @@ public abstract class ChromaWhereOperator
 	// The filter as it goes to the server, with the long lists split as the server takes them.
 	internal Dictionary<string, object> ToRequestWhere() => Common.ChromaFilterLists.Shape(ToWhere());
 
+	// The where clause of a request: none for All, which matches every record. A request with None is not sent.
+	internal static Dictionary<string, object>? ToRequestWhere(ChromaWhereOperator? where)
+		=> where is null || where == All ? null : where.ToRequestWhere();
+
 	/// <summary>
-	/// The records whose value for the key is one of the values, with <c>$in</c>.
-	/// Every tested Chroma rejects <c>$in</c> and <c>$nin</c> without values, so the client rejects them before the request, with an <c>ArgumentException</c>.
+	/// The filter that matches every record: the client sends no <c>where</c>, which Chroma has no value for. It is a single instance,
+	/// which <c>&amp;</c>, <c>|</c> and <c>Not</c> return when the filter they make matches every record.
+	/// </summary>
+	public static ChromaWhereOperator All { get; } = new ChromaWhereConstantOperator(matchesAll: true);
+
+	/// <summary>
+	/// The filter that matches no record: a read with it returns nothing and a delete deletes nothing, without a request, as Chroma has
+	/// no value for it. It is a single instance, which <c>&amp;</c>, <c>|</c>, <c>Not</c> and <c>In</c> without values return when the
+	/// filter they make matches no record.
+	/// </summary>
+	public static ChromaWhereOperator None { get; } = new ChromaWhereConstantOperator(matchesAll: false);
+
+	/// <summary>
+	/// The records that the filter does not match, as Chroma can tell them: Chroma has no <c>$not</c>, so the negation goes into the
+	/// operators, <c>$eq</c> to <c>$ne</c>, <c>$gt</c> to <c>$lte</c>, <c>$in</c> to <c>$nin</c>, <c>$contains</c> to <c>$not_contains</c>,
+	/// and <c>$and</c> to <c>$or</c> of the negations. <c>$ne</c>, <c>$nin</c> and <c>$not_contains</c> match the records without the key,
+	/// but a comparison like <c>$lte</c> does not: <c>Not(GreaterThan(key, 5))</c> leaves out the records without the key, as
+	/// <c>GreaterThan(key, 5)</c> does.
+	/// </summary>
+	/// <param name="filter">The filter to negate.</param>
+	/// <returns>The negated filter.</returns>
+	public static ChromaWhereOperator Not(ChromaWhereOperator filter)
+		=> filter.Negate();
+
+	internal abstract ChromaWhereOperator Negate();
+
+	/// <summary>
+	/// The records whose value for the key is one of the values, with <c>$in</c>. Without values it is <c>None</c>: every tested Chroma
+	/// rejects <c>$in</c> without values.
 	/// </summary>
 	/// <param name="key">The metadata key.</param>
 	/// <param name="values">The values, one of which the key has.</param>
 	/// <returns>The filter.</returns>
 	public static ChromaWhereOperator In(string key, params object[] values)
-		=> values is { Length: > 0 } ? new ChromaWhereValueOperator(key, "$in", values) : throw new ArgumentException("In needs at least one value: Chroma rejects $in without values.", nameof(values));
+		=> values is { Length: > 0 } ? new ChromaWhereValueOperator(key, "$in", "$nin", values) : None;
 
 	/// <summary>
-	/// The records whose value for the key is not one of the values, with <c>$nin</c>.
-	/// Without values it throws an <c>ArgumentException</c>: every tested Chroma rejects <c>$nin</c> without values.
+	/// The records whose value for the key is not one of the values, with <c>$nin</c>, which matches the records without the key too.
+	/// Without values it is <c>All</c>: every tested Chroma rejects <c>$nin</c> without values.
 	/// </summary>
 	/// <param name="key">The metadata key.</param>
 	/// <param name="values">The values, none of which the key has.</param>
 	/// <returns>The filter.</returns>
 	public static ChromaWhereOperator NotIn(string key, params object[] values)
-		=> values is { Length: > 0 } ? new ChromaWhereValueOperator(key, "$nin", values) : throw new ArgumentException("NotIn needs at least one value: Chroma rejects $nin without values.", nameof(values));
+		=> values is { Length: > 0 } ? new ChromaWhereValueOperator(key, "$nin", "$in", values) : All;
 
 	/// <summary>
-	/// The JSON of the filter, as the client sends it in <c>where</c>.
+	/// The JSON of the filter, as the client sends it in <c>where</c>; <c>true</c> for <c>All</c> and <c>false</c> for <c>None</c>,
+	/// which the client sends no <c>where</c> for.
 	/// </summary>
 	/// <returns>The JSON.</returns>
 	public override string ToString()
@@ -59,7 +91,7 @@ public abstract class ChromaWhereOperator
 	/// <param name="value">The value to compare with.</param>
 	/// <returns>The filter.</returns>
 	public static ChromaWhereOperator GreaterThan(string key, object value)
-		=> new ChromaWhereValueOperator(key, "$gt", value);
+		=> new ChromaWhereValueOperator(key, "$gt", "$lte", value);
 
 	/// <summary>
 	/// The records whose value for the key is greater than or equal to the value, with <c>$gte</c>.
@@ -68,7 +100,7 @@ public abstract class ChromaWhereOperator
 	/// <param name="value">The value to compare with.</param>
 	/// <returns>The filter.</returns>
 	public static ChromaWhereOperator GreaterThanOrEqual(string key, object value)
-		=> new ChromaWhereValueOperator(key, "$gte", value);
+		=> new ChromaWhereValueOperator(key, "$gte", "$lt", value);
 
 	/// <summary>
 	/// The records whose value for the key is less than the value, with <c>$lt</c>.
@@ -77,7 +109,7 @@ public abstract class ChromaWhereOperator
 	/// <param name="value">The value to compare with.</param>
 	/// <returns>The filter.</returns>
 	public static ChromaWhereOperator LessThan(string key, object value)
-		=> new ChromaWhereValueOperator(key, "$lt", value);
+		=> new ChromaWhereValueOperator(key, "$lt", "$gte", value);
 
 	/// <summary>
 	/// The records whose value for the key is less than or equal to the value, with <c>$lte</c>.
@@ -86,7 +118,7 @@ public abstract class ChromaWhereOperator
 	/// <param name="value">The value to compare with.</param>
 	/// <returns>The filter.</returns>
 	public static ChromaWhereOperator LessThanOrEqual(string key, object value)
-		=> new ChromaWhereValueOperator(key, "$lte", value);
+		=> new ChromaWhereValueOperator(key, "$lte", "$gt", value);
 
 	/// <summary>
 	/// The records whose value for the key equals the value, with <c>$eq</c>.
@@ -95,7 +127,7 @@ public abstract class ChromaWhereOperator
 	/// <param name="value">The value to compare with.</param>
 	/// <returns>The filter.</returns>
 	public static ChromaWhereOperator Equal(string key, object value)
-		=> new ChromaWhereValueOperator(key, "$eq", value);
+		=> new ChromaWhereValueOperator(key, "$eq", "$ne", value);
 
 	/// <summary>
 	/// The records whose value for the key does not equal the value, with <c>$ne</c>.
@@ -104,7 +136,7 @@ public abstract class ChromaWhereOperator
 	/// <param name="value">The value to compare with.</param>
 	/// <returns>The filter.</returns>
 	public static ChromaWhereOperator NotEqual(string key, object value)
-		=> new ChromaWhereValueOperator(key, "$ne", value);
+		=> new ChromaWhereValueOperator(key, "$ne", "$eq", value);
 
 	/// <summary>
 	/// The records whose list in the metadata contains the value, with <c>$contains</c>: Chroma 1.5.0 and later.
@@ -113,7 +145,7 @@ public abstract class ChromaWhereOperator
 	/// <param name="value">The value the list of the key holds.</param>
 	/// <returns>The filter.</returns>
 	public static ChromaWhereOperator Contains(string key, object value)
-		=> new ChromaWhereValueOperator(key, "$contains", value);
+		=> new ChromaWhereValueOperator(key, "$contains", "$not_contains", value);
 
 	/// <summary>
 	/// The records whose list in the metadata does not contain the value, with <c>$not_contains</c>: Chroma 1.5.0 and later.
@@ -122,7 +154,7 @@ public abstract class ChromaWhereOperator
 	/// <param name="value">The value the list of the key does not hold.</param>
 	/// <returns>The filter.</returns>
 	public static ChromaWhereOperator NotContains(string key, object value)
-		=> new ChromaWhereValueOperator(key, "$not_contains", value);
+		=> new ChromaWhereValueOperator(key, "$not_contains", "$contains", value);
 
 	/// <summary>
 	/// Always <c>false</c>, so that <c>||</c> combines two filters with <c>$or</c>, like <c>|</c>.
@@ -140,22 +172,39 @@ public abstract class ChromaWhereOperator
 		=> false;
 
 	/// <summary>
-	/// The records that match both filters, with <c>$and</c>.
+	/// The records that match both filters, with <c>$and</c>. With <c>None</c> it is <c>None</c>, and with <c>All</c> the other filter.
 	/// </summary>
 	/// <param name="lhs">The first filter.</param>
 	/// <param name="rhs">The second filter.</param>
 	/// <returns>The filter that both filters pass, with <c>$and</c>.</returns>
 	public static ChromaWhereOperator operator &(ChromaWhereOperator lhs, ChromaWhereOperator rhs)
-		=> new ChromaWhereLogicalOperator("$and", lhs, rhs);
+		=> lhs == None || rhs == None ? None
+			: lhs == All ? rhs
+			: rhs == All ? lhs
+			: new ChromaWhereLogicalOperator("$and", lhs, rhs);
 
 	/// <summary>
-	/// The records that match either filter, with <c>$or</c>.
+	/// The records that match either filter, with <c>$or</c>. With <c>All</c> it is <c>All</c>, and with <c>None</c> the other filter.
 	/// </summary>
 	/// <param name="lhs">The first filter.</param>
 	/// <param name="rhs">The second filter.</param>
 	/// <returns>The filter that either filter passes, with <c>$or</c>.</returns>
 	public static ChromaWhereOperator operator |(ChromaWhereOperator lhs, ChromaWhereOperator rhs)
-		=> new ChromaWhereLogicalOperator("$or", lhs, rhs);
+		=> lhs == All || rhs == All ? All
+			: lhs == None ? rhs
+			: rhs == None ? lhs
+			: new ChromaWhereLogicalOperator("$or", lhs, rhs);
+}
+
+// All and None: Chroma has no where clause for either, so the client sends none for All and no request for None.
+internal sealed class ChromaWhereConstantOperator(bool matchesAll) : ChromaWhereOperator(matchesAll ? "true" : "false")
+{
+	internal override Dictionary<string, object> ToWhere()
+		=> throw new InvalidOperationException($"The client sends no where clause for {(matchesAll ? "All" : "None")}.");
+
+	internal override ChromaWhereOperator Negate() => matchesAll ? None : All;
+
+	public override string ToString() => Operator;
 }
 
 internal class ChromaWhereLogicalOperator : ChromaWhereOperator
@@ -177,6 +226,10 @@ internal class ChromaWhereLogicalOperator : ChromaWhereOperator
 		{
 			{ Operator, Operands().Select(x => (object)x.ToWhere()).ToArray() }
 		};
+
+	// !(a & b) is !a | !b, and !(a | b) is !a & !b.
+	internal override ChromaWhereOperator Negate()
+		=> Operands().Select(x => x.Negate()).Aggregate((left, right) => Operator == "$and" ? left | right : left & right);
 
 	// The filters of a chain of the same operator, in their order, without recursion for a long chain.
 	private List<ChromaWhereOperator> Operands()
@@ -204,11 +257,14 @@ internal class ChromaWhereValueOperator : ChromaWhereOperator
 {
 	protected string Key { get; }
 	protected object Value { get; }
+	// The operator of the negation, like $ne for $eq: Chroma has no $not.
+	protected string NegatedOperator { get; }
 
-	internal ChromaWhereValueOperator(string key, string @operator, object value)
+	internal ChromaWhereValueOperator(string key, string @operator, string negatedOperator, object value)
 		: base(@operator)
 	{
 		Key = key;
+		NegatedOperator = negatedOperator;
 		Value = value;
 	}
 
@@ -217,4 +273,7 @@ internal class ChromaWhereValueOperator : ChromaWhereOperator
 		{
 			{ Key, new Dictionary<string, object> { { Operator, Value } } }
 		};
+
+	internal override ChromaWhereOperator Negate()
+		=> new ChromaWhereValueOperator(Key, NegatedOperator, Operator, Value);
 }

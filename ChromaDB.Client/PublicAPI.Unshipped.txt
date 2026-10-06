@@ -15,3 +15,7 @@ ChromaDB.Client.Models.ChromaQuery.Offset.get -> int
 ChromaDB.Client.Models.ChromaQuery.Offset.init -> void
 ChromaDB.Client.Models.ChromaCollection.FindBm25Index(string! sourceKey) -> ChromaDB.Client.Models.ChromaSparseVectorIndex?
 static ChromaDB.Client.ChromaRank.HybridRrf(System.ReadOnlyMemory<float> embedding, string! text, string! sparseKey, int limit, double k = 60, string! embeddingKey = "#embedding") -> ChromaDB.Client.ChromaRank!
+static ChromaDB.Client.ChromaWhereDocumentOperator.Not(ChromaDB.Client.ChromaWhereDocumentOperator! filter) -> ChromaDB.Client.ChromaWhereDocumentOperator!
+static ChromaDB.Client.ChromaWhereOperator.All.get -> ChromaDB.Client.ChromaWhereOperator!
+static ChromaDB.Client.ChromaWhereOperator.None.get -> ChromaDB.Client.ChromaWhereOperator!
+static ChromaDB.Client.ChromaWhereOperator.Not(ChromaDB.Client.ChromaWhereOperator! filter) -> ChromaDB.Client.ChromaWhereOperator!

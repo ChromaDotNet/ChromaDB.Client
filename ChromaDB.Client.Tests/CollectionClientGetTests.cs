@@ -395,6 +395,27 @@ public class CollectionClientGetTests : ChromaTestsBase
 	static readonly string Doc1 = "Doc1";
 	static readonly string Doc2 = "Doc2";
 
+	// Not pushes the negation into the operators: $ne and $nin match the records without the key, $lte does not. All matches every
+	// record, and None none.
+	[Test]
+	public async Task NotAllAndNone()
+	{
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var collection = new ChromaCollectionClient(await client.CreateCollectionAsync($"collection{Random.Shared.Next()}"), BaseConfigurationOptions, HttpClient);
+		await collection.AddAsync(["a", "b", "c", "d"],
+			embeddings: [new([1f, 0f]), new([0f, 1f]), new([1f, 1f]), new([0.5f, 0.5f])],
+			metadatas: [new Dictionary<string, object> { ["k"] = 1 }, new Dictionary<string, object> { ["k"] = 5 }, new Dictionary<string, object> { ["other"] = 1 }, new Dictionary<string, object> { ["k"] = 3 }]);
+		async Task<IEnumerable<string>> Ids(ChromaWhereOperator where) => (await collection.GetAsync(where: where, include: ChromaGetInclude.None)).Select(x => x.Id).Order();
+		Assert.That(await Ids(ChromaWhereOperator.Not(ChromaWhereOperator.Equal("k", 1))), Is.EqualTo(new[] { "b", "c", "d" }));
+		Assert.That(await Ids(ChromaWhereOperator.Not(ChromaWhereOperator.In("k", 1, 5))), Is.EqualTo(new[] { "c", "d" }));
+		Assert.That(await Ids(ChromaWhereOperator.Not(ChromaWhereOperator.GreaterThan("k", 2))), Is.EqualTo(new[] { "a" }));
+		Assert.That(await Ids(ChromaWhereOperator.Not(ChromaWhereOperator.Equal("k", 1) | ChromaWhereOperator.Equal("k", 5))), Is.EqualTo(new[] { "c", "d" }));
+		Assert.That(await Ids(ChromaWhereOperator.All), Is.EqualTo(new[] { "a", "b", "c", "d" }));
+		Assert.That(await Ids(ChromaWhereOperator.None), Is.Empty);
+		Assert.That(await Ids(ChromaWhereOperator.In("k")), Is.Empty);
+		Assert.That(await Ids(ChromaWhereOperator.NotIn("k") & ChromaWhereOperator.Equal("k", 3)), Is.EqualTo(new[] { "d" }));
+	}
+
 	// A chain of 50 filters goes as one $or or $and list, which Chroma takes: nested, 32 were too deep for System.Text.Json.
 	[Test]
 	public async Task ChainsOfManyFilters()
