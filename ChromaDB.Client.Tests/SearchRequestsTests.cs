@@ -77,6 +77,24 @@ public class SearchRequestsTests
 			""".Replace("\n", "").Replace("\t", "")));
 	}
 
+	// Only the records with a term of the text get points from it: 1 above a dot product of one millionth, 0 at the score 1 of the others.
+	[Test]
+	public void HybridRrf()
+	{
+		var rrf = ChromaRank.HybridRrf(new([1f, 0f]), "apples", "doc_bm25", limit: 4);
+		Assert.That(rrf.ToString(), Is.EqualTo("""
+			{"$mul":[{"$val":-1.0},{"$sum":[
+			{"$div":{"left":{"$val":1.0},"right":{"$sum":[{"$val":60.0},{"$knn":{"query":[1.0,0.0],"key":"#embedding","limit":4,"default":4.0,"return_rank":true}}]}}},
+			{"$div":{"left":{"$min":[{"$val":1.0},{"$mul":[{"$sub":{"left":{"$val":1.0},"right":{"$knn":{"query":"apples","key":"doc_bm25","limit":4,"default":1.0}}}},{"$val":1000000.0}]}]},
+			"right":{"$sum":[{"$val":60.0},{"$knn":{"query":"apples","key":"doc_bm25","limit":4,"default":4.0,"return_rank":true}}]}}}]}]}
+			""".Replace("\r", "").Replace("\n", "").Replace("\t", "")));
+	}
+
+	[TestCase(0, 60)]
+	[TestCase(4, 0)]
+	public void HybridRrfWithoutAPositiveLimitOrK(int limit, double k)
+		=> Assert.That(() => ChromaRank.HybridRrf(new([1f, 0f]), "apples", "doc_bm25", limit, k), Throws.InstanceOf<ArgumentOutOfRangeException>());
+
 	[Test]
 	public void RrfOfOneRankWithWeights()
 	{

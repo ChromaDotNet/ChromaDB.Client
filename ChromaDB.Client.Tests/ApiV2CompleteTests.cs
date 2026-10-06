@@ -247,6 +247,28 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		Assert.That(hybrid.Single().Id, Is.EqualTo("b"));
 	}
 
+	// With HybridRrf the records without the terms of the text get no points from it: they keep the order of the dense search.
+	[Test]
+	public async Task HybridRrfOnChromaCloud()
+	{
+		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has sparse vector indexes.");
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var collection = client.GetCollectionClient(await client.CreateCollectionAsync(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}")
+		{
+			Configuration = new() { Space = ChromaSpace.Cosine },
+			Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSearchKeys.Document, bm25: true, new ChromaBm25().Reference),
+		}));
+		await collection.AddAsync(new ChromaRecords(["a", "b", "c", "d"])
+		{
+			Embeddings = [new([1f, 0f]), new([0f, 1f]), new([0.6f, 0.8f]), new([0.8f, 0.6f])],
+			Documents = ["apple pie", "banana split", "cherry tart", "date cake"],
+		});
+		var bm25Key = collection.Collection.FindBm25Index(ChromaSearchKeys.Document)!.Key;
+		var results = await collection.SearchAsync(new ChromaSearch { Rank = ChromaRank.HybridRrf(new([0f, 1f]), "banana", bm25Key, limit: 4), Limit = 4, Select = [ChromaSearchKeys.Score] });
+		Assert.That(results.Select(x => x.Id), Is.EqualTo(new[] { "b", "c", "d", "a" }));
+		Assert.That(-results[1].Score!.Value, Is.EqualTo(1 / 61.0).Within(1e-6));
+	}
+
 	async Task<ChromaCollectionClient> Init()
 	{
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);

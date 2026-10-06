@@ -179,6 +179,38 @@ public abstract class ChromaRank
 	}
 
 	/// <summary>
+	/// Reciprocal rank fusion of the records nearest to the embedding and of a BM25 search of the text, as <c>Rrf</c> builds it, where
+	/// only the records with a term of the text get points from the text. A sparse search of Chroma ranks every record, at the score 1,
+	/// one minus the dot product, for a record without any term: here a record counts for the text only with a dot product above one
+	/// millionth. Each search ranks its first <c>limit</c> records, and gives the others the rank <c>limit</c>. The score is the
+	/// opposite of the fused score, as Chroma ranks the lowest first.
+	/// </summary>
+	/// <param name="embedding">The query embedding.</param>
+	/// <param name="text">The text whose terms the BM25 search looks for; the client computes its vector with the function of the index.</param>
+	/// <param name="sparseKey">The key of the BM25 index, like the one that <c>ChromaCollection.FindBm25Index</c> returns.</param>
+	/// <param name="limit">How many records each search ranks: at least the results and the records the search skips.</param>
+	/// <param name="k">The constant added to each rank; positive.</param>
+	/// <param name="embeddingKey">The key of the embeddings.</param>
+	/// <returns>The expression.</returns>
+	public static ChromaRank HybridRrf(ReadOnlyMemory<float> embedding, string text, string sparseKey, int limit, double k = 60, string embeddingKey = ChromaSearchKeys.Embedding)
+	{
+		if (limit <= 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(limit), "The limit of a hybrid search must be positive.");
+		}
+		if (k <= 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(k), "The k of RRF must be positive.");
+		}
+		var embeddingRank = Knn(embedding, embeddingKey, limit, defaultScore: limit, returnRank: true);
+		var textRank = SparseKnn(text, sparseKey, limit, defaultScore: limit, returnRank: true);
+		var textScore = SparseKnn(text, sparseKey, limit, defaultScore: 1);
+		// 1 for a record with a term of the text, whose dot product is positive, and 0 for the others.
+		var hasTerm = Min(1, (1 - textScore) * 1_000_000);
+		return -(1 / (k + embeddingRank) + hasTerm / (k + textRank));
+	}
+
+	/// <summary>
 	/// The sum, with <c>$sum</c>; sums are flattened into one, as in the Python client of Chroma.
 	/// </summary>
 	/// <param name="left">The left expression.</param>

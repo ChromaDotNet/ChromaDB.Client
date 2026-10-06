@@ -564,7 +564,7 @@ var results = await collectionClient.SearchAsync(new ChromaSearch
   - The schema comes with the collection, from `CreateCollectionAsync` or `GetCollectionAsync`. A collection client created from an id alone has no schema, so a text query throws a `ChromaException`. So does a function other than `chroma_bm25`, unless the metadata has the vectors.
 - **By hand:** `new ChromaBm25()` with the same settings, or `Bm25Function` of the index, gives the vectors to put in the metadata or in `SparseKnn`. `Embed(text)` returns the vector of a text, and `Reference` declares the function in the schema.
 - **Other functions:** `ChromaEmbeddingFunctionReference.Known(name, config)` declares another function that the clients of Chroma know. The client only declares it.
-- **Records without the terms of the query:** Chroma Cloud ranks them too, among the `limit` of `SparseKnn`, with the score 1, one minus the dot product. With `returnRank` they take the next positions, so in `Rrf` they get points from the sparse part as well.
+- **Records without the terms of the query:** Chroma Cloud ranks them too, among the `limit` of `SparseKnn`, with the score 1, one minus the dot product. With `returnRank` they take the next positions, so in `Rrf` they get points from the sparse part as well. `ChromaRank.HybridRrf(embedding, text, key, limit)` fuses the dense search and the BM25 search of the text so that only the records with a term of the text get points from it; the others keep the order of the dense search.
 - **License:** the license of the stemmer is in [THIRD-PARTY-NOTICES.md](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/THIRD-PARTY-NOTICES.md).
 
 ## Authentication
