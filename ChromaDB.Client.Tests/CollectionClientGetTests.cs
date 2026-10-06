@@ -421,6 +421,7 @@ public class CollectionClientGetTests : ChromaTestsBase
 	[Test]
 	public async Task ChainsOfManyFilters()
 	{
+		Assume.That(ChromaCloud, Is.False, "Chroma Cloud takes at most 8 predicates in a filter, its default quota.");
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
 		var collection = new ChromaCollectionClient(await client.CreateCollectionAsync($"collection{Random.Shared.Next()}"), BaseConfigurationOptions, HttpClient);
 		var ids = Enumerable.Range(0, 100).Select(i => $"r{i}").ToList();
