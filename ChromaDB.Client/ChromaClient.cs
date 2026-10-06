@@ -128,18 +128,29 @@ public class ChromaClient : IDisposable
 	private Task DatabaseOperation(string name, string? collection, string? tenant, string? database, Func<Task> body)
 		=> ChromaInstrumentation.Run(name, collection, $"{TenantName(tenant)}|{DatabaseName(database)}", _options.Uri, body);
 
-	// The message when the server ignored settings of the definition, which it tells in the collection it answers with: another space
-	// than the one the schema gave it, or an index other than the one the settings are for. Chroma 1.0.5 and earlier send no
-	// configuration to tell it by.
+	// Chroma Cloud creates a collection with a key of the schema beyond its quota of bytes for a metadata key, and then rejects every
+	// write with the key.
+	private void CheckKeysOnChromaCloud(ChromaCollectionDefinition definition)
+	{
+		if (_httpClient.IsChromaCloud && definition.Schema?.Keys.FirstOrDefault(key => System.Text.Encoding.UTF8.GetByteCount(key) > ChromaCloudQuotas.MaxMetadataKeyBytes) is { } key)
+		{
+			throw new ArgumentException($"The key \"{key}\" of the schema has more than {ChromaCloudQuotas.MaxMetadataKeyBytes} bytes: Chroma Cloud creates the collection, but then rejects every write with the key.", nameof(definition));
+		}
+	}
+
+	// The message when the collection the server answers with does not have the settings of the definition: another space, as a
+	// collection that exists keeps its own and Chroma before 1.3.2 ignores the one of a schema, or an index other than the one the
+	// settings are for. Chroma 1.0.5 and earlier send no configuration to tell it by.
 	private static string? SettingsIgnored(ChromaCollectionDefinition definition, ChromaCollection collection)
 	{
 		if (definition.Configuration is not { } settings)
 		{
 			return null;
 		}
-		if (definition.SettingsInSchema && settings.Space is { } space && collection.Space is { } actual && actual != space)
+		if (settings.Space is { } space && collection.Space is { } actual && actual != space)
 		{
-			return $"The collection has the space {ChromaSpaceNames.ToName(actual)}, not {ChromaSpaceNames.ToName(space)}: Chroma 1.3.2 and later apply the space with a schema.";
+			return $"The collection has the space {ChromaSpaceNames.ToName(actual)}, not {ChromaSpaceNames.ToName(space)}: a collection that exists keeps its space"
+				+ (definition.SettingsInSchema ? ", and only Chroma 1.3.2 and later apply the space with a schema." : ".");
 		}
 		if (collection.ConfigurationJson is not { ValueKind: System.Text.Json.JsonValueKind.Object } configuration)
 		{
@@ -229,6 +240,19 @@ public class ChromaClient : IDisposable
 	public virtual Task<ChromaCollection> GetCollectionAsync(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
 		=> DatabaseOperation("get_collection", name, tenant, database, () => GetCollectionCore(name, tenant, database, cancellationToken));
 
+	// The collection, or null when it does not exist.
+	private async Task<ChromaCollection?> TryGetCollection(string name, string? tenant, string? database, CancellationToken cancellationToken)
+	{
+		try
+		{
+			return await GetCollectionCore(name, tenant, database, cancellationToken);
+		}
+		catch (ChromaException ex) when (ex.IsMissingCollection)
+		{
+			return null;
+		}
+	}
+
 	// Without a span of its own: CollectionExists has one, where a missing collection is not an error.
 	private async Task<ChromaCollection> GetCollectionCore(string name, string? tenant, string? database, CancellationToken cancellationToken)
 	{
@@ -252,18 +276,7 @@ public class ChromaClient : IDisposable
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>Whether the collection exists.</returns>
 	public virtual Task<bool> CollectionExistsAsync(string name, string? tenant = null, string? database = null, CancellationToken cancellationToken = default)
-		=> DatabaseOperation("collection_exists", name, tenant, database, async () =>
-		{
-			try
-			{
-				await GetCollectionCore(name, tenant, database, cancellationToken);
-				return true;
-			}
-			catch (ChromaException ex) when (ex.IsMissingCollection)
-			{
-				return false;
-			}
-		});
+		=> DatabaseOperation("collection_exists", name, tenant, database, async () => await TryGetCollection(name, tenant, database, cancellationToken) is not null);
 
 	/// <summary>
 	/// The same client, reading metadata values another way: same <c>HttpClient</c> and options, and what it learned about the
@@ -426,6 +439,7 @@ public class ChromaClient : IDisposable
 				.Insert("{tenant}", tenant)
 				.Insert("{database}", database);
 			definition.Validate();
+			CheckKeysOnChromaCloud(definition);
 			// Chroma 0.5.4 to 0.6.3 fail on the configuration of the request, and 0.4.10 to 0.5.3 ignore it.
 			if (definition.SettingsInConfiguration && await _httpClient.IsChroma0(cancellationToken))
 			{
@@ -487,10 +501,20 @@ public class ChromaClient : IDisposable
 				.Insert("{tenant}", tenant)
 				.Insert("{database}", database);
 			definition.Validate();
+			CheckKeysOnChromaCloud(definition);
 			// Chroma 0.5.4 to 0.6.3 fail on the configuration of the request, and 0.4.10 to 0.5.3 ignore it.
 			if (definition.SettingsInConfiguration && await _httpClient.IsChroma0(cancellationToken))
 			{
 				throw new ChromaException("The SPANN settings and the embedding function of a new collection need Chroma 1.0.0 or later: Chroma 0.x does not apply them.");
+			}
+			// Chroma 0.4 writes the space of the definition into the metadata of a collection that exists, whose index keeps its own
+			// space, so that the collection then reports a space it does not use: on the 0.x servers the client reads the collection
+			// first, and throws before the request when it has another space.
+			if (definition.Configuration?.Space is not null && await _httpClient.IsChroma0(cancellationToken)
+				&& await TryGetCollection(definition.Name, tenant, database, cancellationToken) is { } existing
+				&& SettingsIgnored(definition, existing) is { } overwritten)
+			{
+				throw new ChromaException(overwritten);
 			}
 			var request = new GetOrCreateCollectionRequest()
 			{

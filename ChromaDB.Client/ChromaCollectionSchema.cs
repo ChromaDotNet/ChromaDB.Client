@@ -176,8 +176,12 @@ public sealed class ChromaCollectionSchema
 	private static Dictionary<string, Dictionary<string, object>> Copy(Dictionary<string, Dictionary<string, object>> types)
 		=> types.ToDictionary(x => x.Key, x => new Dictionary<string, object>(x.Value));
 
+	// The metadata keys the schema names.
+	internal IEnumerable<string> Keys => _keys.Keys;
+
 	// The settings of the vector index go as create_index(VectorIndexConfig(...)) of the Python client writes them: in the defaults
 	// and on #embedding. Chroma rejects a configuration, like the hnsw:space metadata, together with a schema.
+
 	internal Dictionary<string, object> ToSchema(ChromaCollectionConfiguration? configuration)
 	{
 		var defaults = Copy(_defaults);

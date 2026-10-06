@@ -161,6 +161,8 @@ var tagged = await collectionClient.GetAsync(where: ChromaWhereOperator.Contains
 
 In `UpdateAsync` and `UpsertAsync`, a null value or an empty list deletes the key on every tested Chroma, with the sparse vectors the client computes from its text. The type does not allow null, so write `null!`. The client sends a deletion only to a record that has the key, so it reads those records first: Chroma Cloud counts a null against its quota of keys, and a new record has nothing to delete. The keys the metadata does not have stay, as in Chroma. A null document keeps the stored one, as in Chroma; with `NullDocumentsDelete = true` in `ChromaRecords` it deletes it, which Chroma cannot do, so the client writes an empty document, read back as an empty string. `AddAsync` throws an `ArgumentException` for a null value or an empty list: Chroma 0.x would drop the key, and 1.x rejects the request. A record without metadata keys comes back with `Metadata` null.
 
+`DocumentCopyKey` in `ChromaRecords` names a metadata key where the client copies each document, so that a `where` filter can compare the whole text, which `where_document` cannot. On Chroma Cloud, which takes a metadata value of at most 8,182 bytes, a longer document goes without its copy, and an update or an upsert deletes the copy it had; on a single server every document has its copy.
+
 `ChromaMetadataConvert` converts .NET values to metadata values and back, always in the same form: `ToMetadataValue` writes a `DateTimeOffset` as round-trip text in UTC, so that equal instants are equal text, a `DateTime` as round-trip text with its `Kind`, a `DateOnly` as `yyyy-MM-dd`, and a sequence as a list; null and an empty sequence give null, no value. `FromMetadataValue(value, type)` reads a value of `ChromaMetadataValues.Exact` as the type, also arrays and lists, and throws an `InvalidCastException` for a value that does not convert. A filter with a converted value finds the values converted the same way. The client does not convert the values of a metadata dictionary by itself.
 
 Chroma 1.5.0 and later store lists in metadata and filter them with `Contains` and `NotContains`. Chroma 1.0.0 to 1.4.1 reject them. Chroma 0.x accepts them but drops them without an error, so `AddAsync`, `UpdateAsync` and `UpsertAsync` throw a `ChromaException` before sending them. The client asks the server for its version once, and only when a record has a list.
@@ -247,7 +249,7 @@ var options = new ChromaConfigurationOptions(uri: "https://api.trychroma.com").W
 	.WithBatchSplitting(maxBatchSize: 1000); // a quota raised to 1000 records
 ```
 
-`ChromaCloudQuotas` holds the default quotas of a Chroma Cloud tenant, as its documentation lists them: 300 records per request, 8,182 bytes per metadata value, 16,384 per document, 32 metadata keys of at most 36 bytes, 8 predicates per filter. A single Chroma server has none of them.
+`ChromaCloudQuotas` holds the default quotas of a Chroma Cloud tenant, as its documentation lists them: 300 records per request, 8,182 bytes per metadata value, 16,384 per document, 32 metadata keys of at most 36 bytes, 8 predicates per filter. A single Chroma server has none of them. Chroma Cloud creates a collection whose schema names a key beyond 36 bytes, and then rejects every write with that key, so on Chroma Cloud `CreateCollectionAsync` and `GetOrCreateCollectionAsync` throw an `ArgumentException` before the request.
 
 ## Deleting records
 
@@ -316,7 +318,7 @@ var collection = await client.CreateCollectionAsync(new ChromaCollectionDefiniti
 Console.WriteLine(collection.Space);
 ```
 
-`ChromaSpace` is `L2` (Chroma's default), `Cosine` or `InnerProduct`. The client sends it as the `hnsw:space` metadata, which every tested Chroma applies. `GetOrCreateCollectionAsync` takes a `ChromaCollectionDefinition` too.
+`ChromaSpace` is `L2` (Chroma's default), `Cosine` or `InnerProduct`. The client sends it as the `hnsw:space` metadata, which every tested Chroma applies. `GetOrCreateCollectionAsync` takes a `ChromaCollectionDefinition` too. A collection that exists keeps its space, so `GetOrCreateCollectionAsync` throws a `ChromaException` when it has another space than the definition asks for. Chroma 0.4.23 would write the asked space into the metadata of that collection, whose index keeps its own, so on the 0.x servers the client reads the collection first and throws before the request.
 
 `ChromaCollection.Space` reads the space back from that metadata, or from the configuration that Chroma 1.0.6 and later and Chroma Cloud send. It is null for a collection created without a space on the older servers, which do not report it reliably. `ChromaCollection.ConfigurationJson` holds the configuration as the server sends it.
 

@@ -113,7 +113,8 @@ public class SparseVectorsAndSchemaTests
 	[TestCase("get_or_create")]
 	public async Task SpaceInTheSchema(string operation)
 	{
-		var server = new FakeServer(_ => (HttpStatusCode.OK, $$$"""{"id":"11111111-2222-3333-4444-555555555555","name":"c","configuration_json":{"hnsw":null,"spann":{"space":"cosine"}},"schema":{{{Bm25Schema}}}}"""));
+		var server = new FakeServer(r => r.Path.EndsWith("/version") ? (HttpStatusCode.OK, "\"1.0.0\"")
+			: (HttpStatusCode.OK, $$$"""{"id":"11111111-2222-3333-4444-555555555555","name":"c","configuration_json":{"hnsw":null,"spann":{"space":"cosine"}},"schema":{{{Bm25Schema}}}}"""));
 		var definition = new ChromaCollectionDefinition("c")
 		{
 			Metadata = new Dictionary<string, object> { ["x"] = 1 },
@@ -122,7 +123,7 @@ public class SparseVectorsAndSchemaTests
 		};
 		var collection = operation == "create" ? await Client(server).CreateCollectionAsync(definition) : await Client(server).GetOrCreateCollectionAsync(definition);
 		Assert.That(collection.Space, Is.EqualTo(ChromaSpace.Cosine));
-		var body = server.Requests.Single().Body;
+		var body = server.Requests.Single(x => x.Method == "POST").Body;
 		Assert.That(body.GetProperty("metadata").GetRawText(), Is.EqualTo("""{"x":1}"""));
 		Assert.That(body.GetProperty("schema").GetRawText(), Is.EqualTo("""
 			{"defaults":{"float_list":{"vector_index":{"enabled":false,"config":{"space":"cosine"}}}},
@@ -138,6 +139,7 @@ public class SparseVectorsAndSchemaTests
 	public async Task SpaceIgnoredByTheServer(string operation, bool deleted)
 	{
 		var server = new FakeServer(r => r.Method == "DELETE" ? (HttpStatusCode.OK, "{}")
+			: r.Path.EndsWith("/version") ? (HttpStatusCode.OK, "\"1.0.0\"")
 			: (HttpStatusCode.OK, """{"id":"11111111-2222-3333-4444-555555555555","name":"c","configuration_json":{"hnsw":{"space":"l2"}},"schema":{"defaults":{},"keys":{}}}"""));
 		var definition = new ChromaCollectionDefinition("c") { Configuration = new() { Space = ChromaSpace.Cosine }, Schema = new ChromaCollectionSchema() };
 		await Assert.ThatAsync(() => operation == "create" ? Client(server).CreateCollectionAsync(definition) : Client(server).GetOrCreateCollectionAsync(definition),

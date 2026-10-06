@@ -384,7 +384,7 @@ public class ChromaCollectionClient
 		{
 			ChromaRequestChecks.NoNullValues(records.Metadatas, nameof(records));
 			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
-			var prepared = WithSparseVectors(records);
+			var prepared = WithSparseVectors(WithDocumentCopies(records, update: false));
 			await CheckListsInMetadata(prepared, cancellationToken);
 			var base64 = prepared.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
 			var requestParams = new RequestQueryParams()
@@ -431,7 +431,7 @@ public class ChromaCollectionClient
 		=> Operation("update", cancellationToken, async () =>
 		{
 			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
-			var prepared = WithSparseVectors(await WithDeletions(records, cancellationToken));
+			var prepared = WithSparseVectors(await WithDeletions(WithDocumentCopies(records, update: true), cancellationToken));
 			await CheckListsInMetadata(prepared, cancellationToken);
 			var base64 = prepared.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
 			var requestParams = new RequestQueryParams()
@@ -480,7 +480,7 @@ public class ChromaCollectionClient
 		=> Operation("upsert", cancellationToken, async () =>
 		{
 			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
-			var prepared = WithSparseVectors(await WithDeletions(records, cancellationToken));
+			var prepared = WithSparseVectors(await WithDeletions(WithDocumentCopies(records, update: true), cancellationToken));
 			await CheckListsInMetadata(prepared, cancellationToken);
 			var base64 = prepared.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
 			var requestParams = new RequestQueryParams()
@@ -500,6 +500,40 @@ public class ChromaCollectionClient
 				await _httpClient.Post(_httpClient.Routes.Collection + "/upsert", request, requestParams, cancellationToken);
 			}, cancellationToken);
 		});
+
+	// The copy of each document in DocumentCopyKey, when the server takes it: Chroma Cloud takes a metadata value of at most 8,182 bytes.
+	// In an update or an upsert, a document without its copy, as one too long or one deleted, deletes the stored copy with a null,
+	// which WithDeletions sends only to the records that have it; a null document that stays keeps its copy.
+	private ChromaRecords WithDocumentCopies(ChromaRecords records, bool update)
+	{
+		if (records.DocumentCopyKey is not { } key || records.Documents is not { } documents)
+		{
+			return records;
+		}
+		var metadatas = new List<IReadOnlyDictionary<string, object>>(records.Ids.Count);
+		for (var i = 0; i < records.Ids.Count; i++)
+		{
+			var given = records.Metadatas?[i];
+			var document = documents[i];
+			var fits = document is not null && (!_httpClient.IsChromaCloud || System.Text.Encoding.UTF8.GetByteCount(document) <= ChromaCloudQuotas.MaxMetadataValueBytes);
+			if (!fits && !(update && (document is not null || records.NullDocumentsDelete)))
+			{
+				metadatas.Add(given!);
+				continue;
+			}
+			var metadata = given?.ToDictionary(pair => pair.Key, pair => pair.Value) ?? [];
+			metadata[key] = fits ? document! : null!;
+			metadatas.Add(metadata);
+		}
+		return new ChromaRecords(records.Ids)
+		{
+			Embeddings = records.Embeddings,
+			Metadatas = metadatas.Any(metadata => metadata is not null) ? metadatas : null,
+			Documents = records.Documents,
+			Uris = records.Uris,
+			NullDocumentsDelete = records.NullDocumentsDelete,
+		};
+	}
 
 	// In UpdateAsync and UpsertAsync: a null value or an empty list deletes the key, a null document deletes the document with
 	// NullDocumentsDelete, and a text that goes takes the sparse vectors computed from it along. Chroma has no deletion of a document:

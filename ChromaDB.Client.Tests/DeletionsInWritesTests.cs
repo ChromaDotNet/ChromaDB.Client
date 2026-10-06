@@ -112,9 +112,61 @@ public class DeletionsInWritesTests
 		Assert.That(server.Bodies.Last().GetProperty("metadatas").ValueKind, Is.EqualTo(JsonValueKind.Null));
 	}
 
-	static ChromaCollectionClient Client(HttpMessageHandler handler, string? schema = null)
+	// The copy of each document in DocumentCopyKey replaces what the metadata has there; a document too long for Chroma Cloud goes
+	// without it, and only there.
+	[TestCase("http://localhost:8000", true)]
+	[TestCase("https://api.trychroma.com", false)]
+	public async Task DocumentCopyInAnAdd(string uri, bool longCopied)
+	{
+		var server = new FakeServer("""{"ids":[]}""");
+		var longText = new string('a', ChromaCloudQuotas.MaxMetadataValueBytes + 1);
+		await Client(server, uri: uri).AddAsync(new ChromaRecords(["a", "b", "c"])
+		{
+			Embeddings = [Embedding, Embedding, Embedding],
+			Metadatas = [new Dictionary<string, object> { ["text"] = "old", ["k"] = 1 }, null!, null!],
+			Documents = ["short", longText, null!],
+			DocumentCopyKey = "text",
+		});
+		var metadatas = server.Bodies[server.Paths.IndexOf("add")].GetProperty("metadatas");
+		Assert.That(metadatas[0].GetRawText(), Is.EqualTo("""{"text":"short","k":1}"""));
+		Assert.That(metadatas[1].ValueKind == JsonValueKind.Object && metadatas[1].TryGetProperty("text", out _), Is.EqualTo(longCopied));
+		Assert.That(metadatas[2].ValueKind, Is.EqualTo(JsonValueKind.Null));
+	}
+
+	// In an upsert a document without its copy deletes the stored one: one too long for Chroma Cloud, and one deleted; a null document that
+	// stays keeps its copy.
+	[TestCase(true)]
+	[TestCase(false)]
+	public async Task DocumentCopyInAnUpsert(bool nullDocumentsDelete)
+	{
+		var server = new FakeServer("""{"ids":["a","b"],"metadatas":[{"text":"old a"},{"text":"old b"}],"documents":["old a","old b"]}""");
+		var longText = new string('a', ChromaCloudQuotas.MaxMetadataValueBytes + 1);
+		await Client(server, uri: "https://api.trychroma.com").UpsertAsync(new ChromaRecords(["a", "b", "c"])
+		{
+			Embeddings = [Embedding, Embedding, Embedding],
+			Documents = [longText, null!, "new c"],
+			DocumentCopyKey = "text",
+			NullDocumentsDelete = nullDocumentsDelete,
+		});
+		var upsert = server.Bodies[server.Paths.IndexOf("upsert")];
+		var metadatas = upsert.GetProperty("metadatas");
+		Assert.That(metadatas[0].GetRawText(), Is.EqualTo("""{"text":null}"""));
+		Assert.That(nullDocumentsDelete ? metadatas[1].GetRawText() : metadatas[1].ValueKind.ToString(), Is.EqualTo(nullDocumentsDelete ? """{"text":null}""" : "Null"));
+		Assert.That(metadatas[2].GetRawText(), Is.EqualTo("""{"text":"new c"}"""));
+	}
+
+	[Test]
+	public async Task NoDocumentsNoCopy()
+	{
+		var server = new FakeServer("""{"ids":[]}""");
+		await Client(server).UpsertAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], DocumentCopyKey = "text" });
+		Assert.That(server.Paths, Is.EqualTo(new[] { "pre-flight-checks", "upsert" }));
+		Assert.That(server.Bodies[1].GetProperty("metadatas").ValueKind, Is.EqualTo(JsonValueKind.Null));
+	}
+
+	static ChromaCollectionClient Client(HttpMessageHandler handler, string? schema = null, string uri = "http://localhost:8000")
 		=> new(new ChromaCollection("c") { Id = Guid.NewGuid(), SchemaJson = schema is null ? null : JsonDocument.Parse(schema).RootElement },
-			new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
+			new ChromaConfigurationOptions(uri), new HttpClient(handler));
 
 	// Answers pre-flight-checks with a batch size, the reads with the stored records, and the writes with nothing; records the requests.
 	sealed class FakeServer(string stored) : HttpMessageHandler

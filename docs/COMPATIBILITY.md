@@ -59,6 +59,8 @@ A collection created with `ChromaCollectionConfiguration.Space` uses that space 
 
 `pre-flight-checks` declares `supports_base64_encoding` from Chroma 1.0.13: there `AddAsync`, `UpdateAsync` and `UpsertAsync` take the embeddings as base64 strings and store the same float32 values, and the client sends them so; queries take only numbers. Chroma 1.0.12 and earlier do not declare it, reject base64 embeddings with `422`, and get numbers.
 
+Chroma 0.4.23 writes the space of a `get_or_create` into the metadata of a collection that exists, whose index keeps its space: the collection then reports a space it does not use. On the 0.x servers `GetOrCreateCollectionAsync` reads the collection first and throws before the request when it has another space than the definition; on the others the answer tells it.
+
 `CollectionExistsAsync` recognizes a missing collection on all the servers on this page: Chroma 1.x answers `404`, Chroma 0.5.6 – 0.6.3 `400`, and Chroma 0.4.10 – 0.5.5 `500`, always with "does not exist" in the message.
 
 The `max_batch_size` of `pre-flight-checks` is 41666 on Chroma 0.4.12 – 0.6.3 and 5461 on 1.x. A single request beyond it fails up to Chroma 1.0.13 (`400` or `500`); Chroma 1.0.15 – 1.5.9 accept it. With `WithBatchSplitting` the client sends batches within the limit, and writes beyond it work on all the servers that have `pre-flight-checks`: Chroma 0.4.10 has none, so its records go in one request.
@@ -90,6 +92,8 @@ The query of the second and third rows returned 3 records in every run on Chroma
 ## Chroma Cloud
 
 Checked on 4 October 2026 against `api.trychroma.com`: the key goes in `X-Chroma-Token`, the default of `WithChromaToken`, since `Authorization: Bearer` gets `401`. `pre-flight-checks` declares a `max_batch_size` of 1000 and `supports_base64_encoding`, but a write of more than 300 records gets `422` with `Quota exceeded`, the default quota; `WithBatchSplitting(maxBatchSize: 300)` writes and deletes 301 records in two batches. Embeddings sent in base64 read back identical. A missing collection gets `404` with `NotFoundError`.
+
+A metadata value has at most 8,182 bytes, and a document 16,384: a value of 8,183 bytes gets `422` with `Quota exceeded`, and so does every write of a metadata key beyond 36 bytes, also when a collection whose schema names that key was created without an error (checked on 6 October 2026).
 
 A filter has at most 8 predicates, the default quota of a tenant: a `where` with 9, nested ones included, gets `422` with `Quota exceeded: 'Number of where clause predicates'`, and a link to ask for more; the values of an `In` do not count (checked on 5 October 2026).
 

@@ -150,6 +150,19 @@ public class ClientTests : ChromaTestsBase
 		Assert.That(existing.Space, Is.EqualTo(ChromaSpace.Cosine));
 	}
 
+	// A collection that exists keeps its space: GetOrCreateCollectionAsync throws when it has another one than the definition asks for,
+	// where the server reports it.
+	[Test]
+	public async Task GetOrCreateCollectionWithAnotherSpace()
+	{
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var name = $"collection{Random.Shared.Next()}";
+		var created = await client.CreateCollectionAsync(new ChromaCollectionDefinition(name) { Configuration = new() { Space = ChromaSpace.L2 } });
+		Assume.That(created.Space, Is.Not.Null, "The server does not report the space of the collection.");
+		await Assert.ThatAsync(() => client.GetOrCreateCollectionAsync(new ChromaCollectionDefinition(name) { Configuration = new() { Space = ChromaSpace.Cosine } }),
+			Throws.InstanceOf<ChromaException>().With.Message.Contains("not cosine"));
+	}
+
 	// Without a space Chroma uses l2; the servers before 1.0.6 do not report it reliably.
 	[Test]
 	public async Task SpaceOfACollectionWithoutOne()

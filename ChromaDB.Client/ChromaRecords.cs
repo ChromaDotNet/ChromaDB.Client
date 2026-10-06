@@ -32,6 +32,13 @@ public class ChromaRecords
 	/// </summary>
 	public bool NullDocumentsDelete { get; init; }
 	/// <summary>
+	/// The metadata key where the client copies the document of each record, so that a <c>where</c> filter can compare the whole
+	/// text, which <c>where_document</c> cannot. The copy replaces what the metadata has under the key. Chroma Cloud takes a metadata
+	/// value of at most 8,182 bytes: there a longer document goes without its copy, and in <c>UpdateAsync</c> and <c>UpsertAsync</c> its
+	/// stored copy is deleted, as for a document that <c>NullDocumentsDelete</c> deletes. Null for no copy.
+	/// </summary>
+	public string? DocumentCopyKey { get; init; }
+	/// <summary>
 	/// The URIs of the records, in the order of the ids. A record without a URI has null at its position.
 	/// </summary>
 	public IReadOnlyList<string?>? Uris { get; init; }
