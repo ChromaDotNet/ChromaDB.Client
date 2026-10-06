@@ -89,7 +89,7 @@ internal static class ChromaRequestChecks
 		};
 
 	// Only from a count: enumerating the list would consume one that can be read once, before it is sent.
-	private static bool IsEmpty(object? value)
+	public static bool IsEmpty(object? value)
 		=> value is JsonElement element ? element.GetArrayLength() == 0 : value is ICollection { Count: 0 };
 
 	// A lone half of a surrogate pair: UTF-8 has no form for it, and System.Text.Json would send U+FFFD in its place, so

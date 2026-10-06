@@ -22,3 +22,5 @@ static ChromaDB.Client.ChromaWhereOperator.Not(ChromaDB.Client.ChromaWhereOperat
 ChromaDB.Client.ChromaMetadataConvert
 static ChromaDB.Client.ChromaMetadataConvert.FromMetadataValue(object? value, System.Type! type) -> object?
 static ChromaDB.Client.ChromaMetadataConvert.ToMetadataValue(object? value) -> object?
+ChromaDB.Client.Models.ChromaRecords.NullDocumentsDelete.get -> bool
+ChromaDB.Client.Models.ChromaRecords.NullDocumentsDelete.init -> void

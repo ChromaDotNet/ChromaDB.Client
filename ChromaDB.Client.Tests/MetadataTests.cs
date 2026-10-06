@@ -150,6 +150,37 @@ public class MetadataTests : ChromaTestsBase
 		Assert.That(ex!.Message, Does.Contain("$contains"));
 	}
 
+	// A null deletes a key and a null document with NullDocumentsDelete the document, which comes back empty; a key the metadata
+	// does not have stays, and a new record gets none of the nulls.
+	[Test]
+	public async Task DeletionsInAnUpsert()
+	{
+		var client = await Init(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact));
+		var metadata = new Dictionary<string, object> { ["k"] = 1L, ["keep"] = 2L };
+		if (MetadataListsSupported)
+		{
+			metadata["tags"] = new[] { "x" };
+		}
+		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding1], Metadatas = [metadata], Documents = ["doc"] });
+		var upsert = new Dictionary<string, object> { ["k"] = null!, ["x"] = 3L };
+		if (MetadataListsSupported)
+		{
+			upsert["tags"] = Array.Empty<string>();
+		}
+		await client.UpsertAsync(new ChromaRecords(["a", "b"])
+		{
+			Embeddings = [Embedding1, Embedding2],
+			Metadatas = [upsert, new Dictionary<string, object> { ["k"] = null! }],
+			Documents = [null!, null!],
+			NullDocumentsDelete = true,
+		});
+		var records = (await client.GetAsync(["a", "b"], include: ChromaGetInclude.Metadatas | ChromaGetInclude.Documents)).ToDictionary(x => x.Id);
+		Assert.That(records["a"].Metadata, Is.EquivalentTo(new Dictionary<string, object> { ["keep"] = 2L, ["x"] = 3L }));
+		Assert.That(records["a"].Document, Is.EqualTo(""));
+		Assert.That(records["b"].Metadata, Is.Null);
+		Assert.That(records["b"].Document, Is.Null);
+	}
+
 	// The values of ChromaMetadataConvert come back as they were written, and a filter with a converted value finds the same instant
 	// at another offset.
 	[Test]
