@@ -58,6 +58,20 @@ public class Bm25IndexTests
 		Assert.That(server.Schemas, Is.EqualTo(new[] { alone, withAnotherIndex, addedAgain, withDefaults, withCmek, alone }));
 	}
 
+	// On Chroma Cloud an index added with ifSupported whose key is beyond 36 bytes is left out: Chroma Cloud would reject every write
+	// with the key. Without ifSupported the client throws.
+	[Test]
+	public async Task KeyBeyondTheQuotaOfChromaCloud()
+	{
+		var server = new FakeServer();
+		var client = new ChromaClient(new ChromaConfigurationOptions("https://api.trychroma.com"), new HttpClient(server));
+		var longKey = new string('k', 32);
+		await client.CreateCollectionAsync(new ChromaCollectionDefinition("c") { Schema = new ChromaCollectionSchema().WithBm25Index(longKey, ifSupported: true) });
+		await client.CreateCollectionAsync(new ChromaCollectionDefinition("c") { Schema = new ChromaCollectionSchema().WithBm25Index(longKey, ifSupported: true).WithBm25Index("title", ifSupported: true) });
+		Assert.That(server.Schemas, Is.EqualTo(new[] { null, "title_bm25" }));
+		Assert.That(() => client.CreateCollectionAsync(new ChromaCollectionDefinition("c") { Schema = new ChromaCollectionSchema().WithBm25Index(longKey) }), Throws.ArgumentException);
+	}
+
 	static ChromaCollectionClient Client(HttpMessageHandler handler, string indexes)
 		=> new(new ChromaCollection("c") { Id = Guid.NewGuid(), SchemaJson = JsonDocument.Parse("{\"keys\":{" + indexes + "}}").RootElement.Clone() },
 			new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));

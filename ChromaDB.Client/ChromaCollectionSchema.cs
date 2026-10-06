@@ -50,10 +50,11 @@ public sealed class ChromaCollectionSchema
 	/// the <c>chroma_bm25</c> function, whose vectors the client computes as it writes the records. The index is on the metadata key
 	/// named after the source, like <c>title_bm25</c>, or <c>document_bm25</c> for the documents; a write that gives that key another
 	/// value than a sparse vector throws an <c>ArgumentException</c>. Only Chroma Cloud has sparse vector indexes: with <c>ifSupported</c>
-	/// the client leaves the index out on the other servers, which reject it.
+	/// the client leaves the index out on the other servers, which reject it, and on Chroma Cloud when its key is longer than
+	/// <c>ChromaCloudQuotas.MaxMetadataKeyBytes</c>.
 	/// </summary>
 	/// <param name="sourceKey">The key of the text: a metadata key, or <c>ChromaSearchKeys.Document</c>.</param>
-	/// <param name="ifSupported">Whether the client leaves the index out on a server without sparse vector indexes.</param>
+	/// <param name="ifSupported">Whether the client leaves the index out where the server does not take it.</param>
 	/// <returns>The new schema; this one does not change.</returns>
 	public ChromaCollectionSchema WithBm25Index(string sourceKey, bool ifSupported = false)
 	{
@@ -200,15 +201,16 @@ public sealed class ChromaCollectionSchema
 	// The metadata keys the schema names.
 	internal IEnumerable<string> Keys => _keys.Keys;
 
-	// The schema without the indexes added with ifSupported, or null when nothing else is in it.
-	internal ChromaCollectionSchema? WithoutIndexesIfSupported()
+	// The schema without the indexes added with ifSupported whose keys are left out, or null when nothing else is in it.
+	internal ChromaCollectionSchema? WithoutIndexesIfSupported(Func<string, bool> leftOut)
 	{
-		if (_keysIfSupported.Count == 0)
+		var left = new HashSet<string>(_keysIfSupported.Where(leftOut));
+		if (left.Count == 0)
 		{
 			return this;
 		}
-		var keys = _keys.Where(x => !_keysIfSupported.Contains(x.Key)).ToDictionary(x => x.Key, x => Copy(x.Value));
-		return keys.Count == 0 && _defaults.Count == 0 && _gcpCmek is null ? null : new(keys, _defaults, _gcpCmek, []);
+		var keys = _keys.Where(x => !left.Contains(x.Key)).ToDictionary(x => x.Key, x => Copy(x.Value));
+		return keys.Count == 0 && _defaults.Count == 0 && _gcpCmek is null ? null : new(keys, _defaults, _gcpCmek, [.. _keysIfSupported.Except(left)]);
 	}
 
 	// The settings of the vector index go as create_index(VectorIndexConfig(...)) of the Python client writes them: in the defaults

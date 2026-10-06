@@ -63,9 +63,13 @@ public class ChromaCollectionDefinition
 		}
 	}
 
-	// The definition as the server gets it: without the indexes added with ifSupported, except on Chroma Cloud.
+	// The definition as the server gets it, without the indexes added with ifSupported that it does not take: all of them on a server
+	// other than Chroma Cloud, and on Chroma Cloud the ones whose key is beyond its quota of bytes.
 	internal ChromaCollectionDefinition ForServer(bool chromaCloud)
-		=> chromaCloud || Schema is null ? this : new(Name) { Metadata = Metadata, Configuration = Configuration, Schema = Schema.WithoutIndexesIfSupported() };
+	{
+		var schema = Schema?.WithoutIndexesIfSupported(key => !chromaCloud || System.Text.Encoding.UTF8.GetByteCount(key) > ChromaCloudQuotas.MaxMetadataKeyBytes);
+		return schema == Schema ? this : new(Name) { Metadata = Metadata, Configuration = Configuration, Schema = schema };
+	}
 
 	internal Dictionary<string, object>? ToRequestSchema()
 		=> SettingsInSchema ? (Schema ?? new ChromaCollectionSchema()).ToSchema(Configuration) : null;
