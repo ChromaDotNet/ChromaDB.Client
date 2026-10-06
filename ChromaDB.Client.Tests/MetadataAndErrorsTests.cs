@@ -19,7 +19,7 @@ public class MetadataAndErrorsTests
 		Assert.That(metadata["texts"], Is.EqualTo(new List<object> { "x", "y" }));
 	}
 
-	// As before 2.8.0.
+	// Dates as DateTime, lists as JsonElement.
 	[Test]
 	public async Task InferredMetadataValues()
 	{
