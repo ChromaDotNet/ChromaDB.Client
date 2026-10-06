@@ -76,6 +76,15 @@ public class DefinitionChecksTests
 		Assert.That(server.Requests, Is.EqualTo(new[] { "POST" }));
 	}
 
+	// A definition without a schema has no keys to check.
+	[Test]
+	public async Task NoSchemaOnChromaCloud()
+	{
+		var server = new FakeServer("""{"id":"11111111-2222-3333-4444-555555555555","name":"c"}""");
+		await Client(server, "https://api.trychroma.com").CreateCollectionAsync(new ChromaCollectionDefinition("c"));
+		Assert.That(server.Requests, Is.EqualTo(new[] { "POST" }));
+	}
+
 	// A key counts in bytes of UTF-8: 19 characters of two bytes each are 38 bytes.
 	[Test]
 	public void BytesNotCharacters()

@@ -164,6 +164,15 @@ public class DeletionsInWritesTests
 		Assert.That(server.Bodies[1].GetProperty("metadatas").ValueKind, Is.EqualTo(JsonValueKind.Null));
 	}
 
+	// Records without metadata whose documents get no copy send no metadata.
+	[Test]
+	public async Task NoCopyNoMetadata()
+	{
+		var server = new FakeServer("""{"ids":[]}""");
+		await Client(server).AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Documents = [null!], DocumentCopyKey = "text" });
+		Assert.That(server.Bodies[server.Paths.IndexOf("add")].GetProperty("metadatas").ValueKind, Is.EqualTo(JsonValueKind.Null));
+	}
+
 	static ChromaCollectionClient Client(HttpMessageHandler handler, string? schema = null, string uri = "http://localhost:8000")
 		=> new(new ChromaCollection("c") { Id = Guid.NewGuid(), SchemaJson = schema is null ? null : JsonDocument.Parse(schema).RootElement },
 			new ChromaConfigurationOptions(uri), new HttpClient(handler));
