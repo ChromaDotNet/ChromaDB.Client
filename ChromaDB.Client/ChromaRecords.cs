@@ -15,16 +15,17 @@ public class ChromaRecords
 	/// </summary>
 	public IReadOnlyList<ReadOnlyMemory<float>>? Embeddings { get; init; }
 	/// <summary>
-	/// The metadatas of the records, in the order of the ids. In <c>UpdateAsync</c> and <c>UpsertAsync</c> a null value, written
-	/// <c>null!</c> as the type does not allow it, or an empty list deletes the key, and the sparse vectors the client computes from its
-	/// text; the keys the metadata does not have stay. <c>AddAsync</c> rejects both.
+	/// The metadatas of the records, in the order of the ids; null for a record without metadata. In <c>UpdateAsync</c> and
+	/// <c>UpsertAsync</c> a null value, written <c>null!</c> as the type does not allow it, or an empty list deletes the key, and the
+	/// sparse vectors the client computes from its text; the keys the metadata does not have stay. <c>AddAsync</c> rejects both.
+	/// <c>ChromaMetadataConvert.ToMetadata</c> builds a metadata with null values from .NET values.
 	/// </summary>
-	public IReadOnlyList<IReadOnlyDictionary<string, object>>? Metadatas { get; init; }
+	public IReadOnlyList<IReadOnlyDictionary<string, object>?>? Metadatas { get; init; }
 	/// <summary>
-	/// The documents of the records, in the order of the ids. In <c>UpdateAsync</c> and <c>UpsertAsync</c> a null document, written
-	/// <c>null!</c>, keeps the stored one, as in Chroma, unless <c>NullDocumentsDelete</c>.
+	/// The documents of the records, in the order of the ids; null for a record without a document. In <c>UpdateAsync</c> and
+	/// <c>UpsertAsync</c> a null document keeps the stored one, as in Chroma, unless <c>NullDocumentsDelete</c>.
 	/// </summary>
-	public IReadOnlyList<string>? Documents { get; init; }
+	public IReadOnlyList<string?>? Documents { get; init; }
 	/// <summary>
 	/// Whether a null document deletes the stored document in <c>UpdateAsync</c> and <c>UpsertAsync</c>, and the sparse vectors the
 	/// client computes from it, instead of keeping it as Chroma does. Chroma has no deletion of a document: the client writes an empty

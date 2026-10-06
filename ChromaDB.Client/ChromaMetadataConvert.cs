@@ -34,6 +34,23 @@ public static class ChromaMetadataConvert
 			_ => ToScalar(value),
 		};
 
+	/// <summary>
+	/// The metadata of a record from .NET values, each converted with <c>ToMetadataValue</c>. A value that converts to null, as null and
+	/// an empty sequence do, stays in the metadata as null: in <c>UpdateAsync</c> and <c>UpsertAsync</c> it deletes the key.
+	/// </summary>
+	/// <param name="values">The keys and the .NET values.</param>
+	/// <returns>The metadata, or null without values.</returns>
+	/// <exception cref="ArgumentException">A value has a type that <c>ToMetadataValue</c> does not take, or a key comes twice.</exception>
+	public static IReadOnlyDictionary<string, object>? ToMetadata(IEnumerable<KeyValuePair<string, object?>> values)
+	{
+		Dictionary<string, object>? metadata = null;
+		foreach (var pair in values ?? throw new ArgumentNullException(nameof(values)))
+		{
+			(metadata ??= []).Add(pair.Key, ToMetadataValue(pair.Value)!);
+		}
+		return metadata;
+	}
+
 	// A list of Chroma holds values of one type: an int and a long are both integers, a float and a double both floating-point numbers.
 	private static List<object>? ToList(IEnumerable values)
 	{

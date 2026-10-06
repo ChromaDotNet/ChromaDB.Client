@@ -146,6 +146,16 @@ public class SearchRequestsTests
 		Assert.That((second.Document, second.Embedding, second.Metadata, second.Score), Is.EqualTo(((string?)null, (ReadOnlyMemory<float>?)null, (Dictionary<string, object>?)null, (float?)null)));
 	}
 
+	// A search ranked by HybridRrf comes back with the fused score, the highest first; another one with the score of Chroma.
+	[Test]
+	public async Task ScoresOfHybridRrf()
+	{
+		var server = new FakeServer(_ => (HttpStatusCode.OK, """{"ids":[["a"],["b"]],"scores":[[-0.032],[0.5]],"select":[["#score"],["#score"]]}"""));
+		var hybrid = new ChromaSearch { Rank = ChromaRank.HybridRrf(new([1f, 0f]), "apples", "doc_bm25", limit: 4), Select = [ChromaSearchKeys.Score] };
+		var results = await Client(server).SearchAsync([hybrid, new ChromaSearch { Rank = ChromaRank.Knn(new([1f, 0f])), Select = [ChromaSearchKeys.Score] }]);
+		Assert.That((results[0][0].Score, results[1][0].Score), Is.EqualTo(((float?)0.032f, (float?)0.5f)));
+	}
+
 	// What the Python client rejects, or what would ask the server for nothing: no request is sent.
 	[Test]
 	public async Task SearchThatIsRejected()

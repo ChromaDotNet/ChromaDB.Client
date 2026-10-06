@@ -55,11 +55,12 @@ public class ChromaCollectionClient
 		_byName = true;
 	}
 
-	// The same client with a document copy key; a client made by name starts from the collection read last, and reads it again by itself.
-	private ChromaCollectionClient(ChromaCollectionClient client, string documentCopyKey)
+	// The same client with another way of reading metadata values or a document copy key; a client made by name starts from the
+	// collection read last, and reads it again by itself.
+	private ChromaCollectionClient(ChromaCollectionClient client, ChromaHttpClient httpClient, string? documentCopyKey)
 	{
 		_collection = client._collection;
-		_httpClient = client._httpClient;
+		_httpClient = httpClient;
 		_byName = client._byName;
 		_resolved = client._resolved;
 		_tenant = client._tenant;
@@ -177,7 +178,29 @@ public class ChromaCollectionClient
 	/// <param name="documentCopyKey">The metadata key of the copies.</param>
 	/// <returns>The client of the same collection, with the copies.</returns>
 	public virtual ChromaCollectionClient WithDocumentCopyKey(string documentCopyKey)
-		=> new(this, documentCopyKey ?? throw new ArgumentNullException(nameof(documentCopyKey)));
+		=> new(this, _httpClient, documentCopyKey ?? throw new ArgumentNullException(nameof(documentCopyKey)));
+
+	/// <summary>
+	/// The BM25 index on the text of the source key, as <c>ChromaCollection.FindBm25Index</c> finds it in the schema of the collection;
+	/// for the document copy key, also the one on the documents, which hold the whole text. Null when the collection has none.
+	/// </summary>
+	/// <param name="sourceKey">The key of the text: a metadata key, or <c>ChromaSearchKeys.Document</c>.</param>
+	/// <param name="cancellationToken">The token that cancels the operation.</param>
+	/// <returns>The index, or null.</returns>
+	public virtual async Task<ChromaSparseVectorIndex?> FindBm25IndexAsync(string sourceKey, CancellationToken cancellationToken = default)
+	{
+		var collection = await GetCollectionAsync(cancellationToken);
+		return collection.FindBm25Index(sourceKey) ?? (sourceKey == _documentCopyKey ? collection.FindBm25Index(ChromaSearchKeys.Document) : null);
+	}
+
+	/// <summary>
+	/// A client of the same collection that reads metadata values the given way, whatever the client it comes from: same
+	/// <c>HttpClient</c> and options.
+	/// </summary>
+	/// <param name="metadataValues">How the client reads metadata values.</param>
+	/// <returns>The client of the same collection, reading metadata values that way.</returns>
+	public virtual ChromaCollectionClient WithMetadataValues(ChromaMetadataValues metadataValues)
+		=> new(this, _httpClient.WithMetadataValues(metadataValues), _documentCopyKey);
 
 	// With a document copy key, the documents are read with the metadata, which tells a deleted document from an empty one.
 	private DocumentCopyReader ReadsDocuments(bool documents, bool metadata)
@@ -443,7 +466,7 @@ public class ChromaCollectionClient
 				{
 					Ids = batch.Ids,
 					Embeddings = batch.Embeddings is { } embeddings ? new ChromaEmbeddings(embeddings, base64) : null,
-					Metadatas = batch.Metadatas,
+					Metadatas = MetadatasOrNone(batch.Metadatas),
 					Documents = batch.Documents,
 					Uris = batch.Uris,
 				};
@@ -490,7 +513,7 @@ public class ChromaCollectionClient
 				{
 					Ids = batch.Ids,
 					Embeddings = batch.Embeddings is { } embeddings ? new ChromaEmbeddings(embeddings, base64) : null,
-					Metadatas = batch.Metadatas,
+					Metadatas = MetadatasOrNone(batch.Metadatas),
 					Documents = batch.Documents,
 					Uris = batch.Uris,
 				};
@@ -539,7 +562,7 @@ public class ChromaCollectionClient
 				{
 					Ids = batch.Ids,
 					Embeddings = batch.Embeddings is { } embeddings ? new ChromaEmbeddings(embeddings, base64) : null,
-					Metadatas = batch.Metadatas,
+					Metadatas = MetadatasOrNone(batch.Metadatas),
 					Documents = batch.Documents,
 					Uris = batch.Uris,
 				};
@@ -556,7 +579,7 @@ public class ChromaCollectionClient
 		{
 			return records;
 		}
-		var metadatas = new List<IReadOnlyDictionary<string, object>>(records.Ids.Count);
+		var metadatas = new List<IReadOnlyDictionary<string, object>?>(records.Ids.Count);
 		for (var i = 0; i < records.Ids.Count; i++)
 		{
 			var given = records.Metadatas?[i];
@@ -564,7 +587,7 @@ public class ChromaCollectionClient
 			var fits = document is not null && (!_httpClient.IsChromaCloud || System.Text.Encoding.UTF8.GetByteCount(document) <= ChromaCloudQuotas.MaxMetadataValueBytes);
 			if (!fits && !(update && (document is not null || records.NullDocumentsDelete)))
 			{
-				metadatas.Add(given!);
+				metadatas.Add(given);
 				continue;
 			}
 			var metadata = given?.ToDictionary(pair => pair.Key, pair => pair.Value) ?? [];
@@ -620,7 +643,7 @@ public class ChromaCollectionClient
 		}
 		var include = ChromaGetInclude.Metadatas | (documentDeleted.Contains(true) ? ChromaGetInclude.Documents : ChromaGetInclude.None);
 		var stored = (await GetEntries(readIds, null, null, null, null, include, cancellationToken)).ToDictionary(entry => entry.Id);
-		var metadatas = new List<IReadOnlyDictionary<string, object>>(count);
+		var metadatas = new List<IReadOnlyDictionary<string, object>?>(count);
 		var documents = records.Documents?.ToList();
 		for (var i = 0; i < count; i++)
 		{
@@ -633,11 +656,11 @@ public class ChromaCollectionClient
 				{
 					metadata[key] = null!;
 				}
-				metadatas.Add(metadata.Count > 0 ? metadata : null!);
+				metadatas.Add(metadata.Count > 0 ? metadata : null);
 			}
 			else
 			{
-				metadatas.Add(given!);
+				metadatas.Add(given);
 			}
 			if (documentDeleted[i] && entry?.Document is { Length: > 0 })
 			{
@@ -668,15 +691,20 @@ public class ChromaCollectionClient
 		{
 			return records;
 		}
-		var metadatas = records.Metadatas?.ToList() ?? records.Ids.Select(_ => (IReadOnlyDictionary<string, object>)null!).ToList();
+		var metadatas = records.Metadatas?.ToList() ?? records.Ids.Select(_ => (IReadOnlyDictionary<string, object>?)null).ToList();
 		var copied = new bool[metadatas.Count];
 		foreach (var index in indexes)
 		{
 			for (var i = 0; i < metadatas.Count; i++)
 			{
 				var metadata = metadatas[i];
-				if (metadata?.ContainsKey(index.Key) == true)
+				if (metadata is not null && metadata.TryGetValue(index.Key, out var given))
 				{
+					// The key holds the vectors of the index: a record gives one, or deletes it with null, and nothing else.
+					if (given is not null && !IsSparseVector(given))
+					{
+						throw new ArgumentException($"The metadata key \"{index.Key}\" holds the vectors of the sparse vector index on \"{index.SourceKey}\": a record cannot give it another value.", nameof(records));
+					}
 					continue;
 				}
 				var text = index.SourceKey == ChromaSearchKeys.Document
@@ -702,6 +730,10 @@ public class ChromaCollectionClient
 			NullDocumentsDelete = records.NullDocumentsDelete,
 		};
 	}
+
+	// A list of metadata that are all null goes as no metadata.
+	private static IReadOnlyList<IReadOnlyDictionary<string, object>?>? MetadatasOrNone(IReadOnlyList<IReadOnlyDictionary<string, object>?>? metadatas)
+		=> metadatas?.Any(metadata => metadata is not null) == true ? metadatas : null;
 
 	// The vector of a text query of SparseKnn, with the function of the sparse vector index of the key, as the Python client of Chroma does.
 	private ChromaSparseVector EmbedText(string key, string text)
@@ -992,13 +1024,14 @@ public class ChromaCollectionClient
 				.Select((ids, i) =>
 				{
 					var copy = SearchReadsDocuments(sent[i]);
+					var opposite = sent[i].Rank is ChromaOppositeScoreRank;
 					return (IReadOnlyList<ChromaSearchEntry>)ids
 						.Select((id, j) => new ChromaSearchEntry(id)
 						{
 							Document = copy.Document(response.Documents?[i]?[j], response.Metadatas?[i]?[j]),
 							Embedding = response.Embeddings?[i]?[j],
 							Metadata = copy.Metadata(response.Metadatas?[i]?[j]),
-							Score = response.Scores?[i]?[j],
+							Score = opposite ? -response.Scores?[i]?[j] : response.Scores?[i]?[j],
 						})
 						.ToList();
 				})

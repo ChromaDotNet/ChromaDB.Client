@@ -439,6 +439,7 @@ public class ChromaClient : IDisposable
 				.Insert("{tenant}", tenant)
 				.Insert("{database}", database);
 			definition.Validate();
+			definition = definition.ForServer(_httpClient.IsChromaCloud);
 			CheckKeysOnChromaCloud(definition);
 			// Chroma 0.5.4 to 0.6.3 fail on the configuration of the request, and 0.4.10 to 0.5.3 ignore it.
 			if (definition.SettingsInConfiguration && await _httpClient.IsChroma0(cancellationToken))
@@ -501,6 +502,7 @@ public class ChromaClient : IDisposable
 				.Insert("{tenant}", tenant)
 				.Insert("{database}", database);
 			definition.Validate();
+			definition = definition.ForServer(_httpClient.IsChromaCloud);
 			CheckKeysOnChromaCloud(definition);
 			// Chroma 0.5.4 to 0.6.3 fail on the configuration of the request, and 0.4.10 to 0.5.3 ignore it.
 			if (definition.SettingsInConfiguration && await _httpClient.IsChroma0(cancellationToken))

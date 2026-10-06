@@ -162,6 +162,15 @@ public class DeletionsInWritesTests
 		Assert.That(server.Bodies[1].GetProperty("metadatas").ValueKind, Is.EqualTo(JsonValueKind.Null));
 	}
 
+	// A list of metadata that are all null goes as no metadata.
+	[Test]
+	public async Task AllMetadatasNull()
+	{
+		var server = new FakeServer("""{"ids":[]}""");
+		await Client(server).UpsertAsync(new ChromaRecords(["a", "b"]) { Embeddings = [Embedding, Embedding], Metadatas = [null, null] });
+		Assert.That(server.Bodies[server.Paths.IndexOf("upsert")].GetProperty("metadatas").ValueKind, Is.EqualTo(JsonValueKind.Null));
+	}
+
 	// Records without metadata whose documents get no copy send no metadata.
 	[Test]
 	public async Task NoCopyNoMetadata()

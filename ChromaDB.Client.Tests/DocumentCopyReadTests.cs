@@ -76,6 +76,22 @@ public class DocumentCopyReadTests
 		Assert.That(() => client.WithDocumentCopyKey(null!), Throws.ArgumentNullException);
 	}
 
+	// A collection client of a client that infers metadata values can read them exactly, and keeps its document copy key.
+	[Test]
+	public async Task MetadataValues()
+	{
+		var server = new FakeServer("""{"ids":["a"],"metadatas":[{"date":"2026-10-04"}],"documents":[""]}""");
+		using var httpClient = new HttpClient(server);
+		var inferred = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000").WithMetadataValues(ChromaMetadataValues.Inferred), httpClient)
+			.GetCollectionClient("c").WithDocumentCopyKey("text");
+
+		var exact = (await inferred.WithMetadataValues(ChromaMetadataValues.Exact).GetAsync()).Single();
+		var asIs = (await inferred.GetAsync()).Single();
+
+		Assert.That((exact.Metadata!["date"], exact.Document), Is.EqualTo(("2026-10-04", (string?)null)));
+		Assert.That(asIs.Metadata!["date"], Is.InstanceOf<DateTime>());
+	}
+
 	static ChromaCollectionClient Client(HttpMessageHandler handler)
 		=> new(new ChromaCollection("c") { Id = Guid.NewGuid() }, new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(handler));
 
