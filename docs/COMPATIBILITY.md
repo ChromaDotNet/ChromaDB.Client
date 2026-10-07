@@ -71,23 +71,58 @@ The v1 API of Chroma 0.6.3 fails on most requests, and Chroma 1.5.9 answers it w
 
 ## Known defects of the servers
 
-Reproduced with plain HTTP, without the client, on 5 October 2026. The client cannot work around them.
+Each defect has a number, KD-n, to refer to it. Reproduced with plain HTTP, without the client, from 3 to 7 October 2026. The first ones, up to KD-11, the client cannot work around; the column on the right says what it does for the others.
 
-| Defect | Versions |
-|---|---|
-| `$contains` and `$not_contains` on documents read `_` and `%` as SQL wildcards: `ChromaWhereDocumentOperator.Contains("a_b")` also finds `xacby` and `a b`, `Contains("50%")` also finds `sale 500 off`, and `NotContains("a_b")` leaves them out. On 1.0.0 – 1.0.12 a text with `%` between spaces, like `" 50% "`, finds nothing. The server puts the text in an SQLite `LIKE` without an escape character, so the client cannot escape them | all the tested versions from 0.4.10 to 1.0.12; right from 1.0.13 |
-| While 24 threads add, update and delete records of their own, a query with `n_results` 3 and a `where` filter on a thread's records returns 4 of them, on a server just started | 0.4.24, in 5 runs out of 10 |
-| The same query returns no record | 0.6.3, in 1 run out of 10 |
-| A list of `$and` or `$or` becomes an SQLite expression as deep as the list: from 988 filters in one list Chroma 1.5.9 answers `500`, and from about 4,400 it crashes. The client splits long lists, as the README says; beyond 8,167 filters Chroma 1.5.9 answers `500` with `too many SQL variables` | single servers 1.0.0 – 1.5.9; 0.6.3 answers `500` from about 490 filters however they go |
+| KD | Defect | Versions | The client |
+|---|---|---|---|
+| KD-1 | `$contains` and `$not_contains` on documents read `_` and `%` as SQL wildcards: `ChromaWhereDocumentOperator.Contains("a_b")` also finds `xacby` and `a b`, `Contains("50%")` also finds `sale 500 off`, and `NotContains("a_b")` leaves them out. On 1.0.0 – 1.0.12 a text with `%` between spaces, like `" 50% "`, finds nothing. The server puts the text in an SQLite `LIKE` without an escape character, so the client cannot escape them | all the tested versions from 0.4.10 to 1.0.12; right from 1.0.13 | — |
+| KD-2 | While 24 threads add, update and delete records of their own, a query with `n_results` 3 and a `where` filter on a thread's records returns 4 of them, on a server just started | 0.4.24, in 5 runs out of 10 | — |
+| KD-3 | The same query returns no record | 0.6.3, in 1 run out of 10 | — |
+| KD-4 | A list of `$and` or `$or` becomes an SQLite expression as deep as the list: from 988 filters in one list Chroma 1.5.9 answers `500`, and from about 4,400 it crashes. The client splits long lists, as the README says; beyond 8,167 filters Chroma 1.5.9 answers `500` with `too many SQL variables` | single servers 1.0.0 – 1.5.9; 0.6.3 answers `500` from about 490 filters however they go | — |
+| KD-5 | `$contains` and `$not_contains` on documents do not see the text after a NUL character (`\u0000`): `Contains("after")` does not find `"before\u0000after"`, which comes back whole | all the tested versions from 0.4.24 to 1.5.9 | — |
+| KD-6 | A float compared with int metadata is truncated: `GreaterThanOrEqual("a", 2.25)` also finds `a = 2`, and `GreaterThan("a", -1.5)` leaves out `a = -1` | 1.0.0 – 1.5.9; right on 0.4.24 – 0.6.3 | — |
+| KD-7 | Some doubles are read with an error in the last digit: `-95.41757424465169`, the shortest text of the double, comes back `-95.41757424465168`, and `1e-28` comes back `9.999999999999999e-29`; `Equal("x", 1e-30)` does not find the record stored with `1e-30`. The client sends the shortest text that reads back as the same double | 1.0.0 – 1.5.9; right on 0.4.24 – 0.6.3 | — |
+| KD-8 | The embeddings of a collection with the `cosine` space come back different in the last bit: `0.91782147` as `0.9178214`, `-0.4` as `-0.39999998` | 1.0.0 – 1.5.9; identical on 0.4.24 – 0.6.3, and with the other spaces | — |
+| KD-9, KD-10 | In a collection with the `cosine` space, an embedding beyond the range of a float, like `[float.MaxValue, float.MaxValue]`, comes back as `null`, which the client reads as `NaN`, and one near zero, like `[1e-30, 1e-30]`, comes back as `[0, 0]`, at a distance of `-0.4` from `[3, 4]`. In an `l2` or `ip` collection the distance to the first comes back as `null`, which the client reads as `NaN` | 1.0.0 and 1.5.9; 0.6.3 sends the values as they are, and the `l2` and `ip` distances as numbers beyond the range of a float, like `2.3e77` and `-2.38e39`, which the client reads as infinities | — |
+| KD-11 | `-0.0` in metadata comes back as `0.0`; in embeddings it keeps its sign | 0.6.3, 1.0.0 and 1.5.9 | — |
+| KD-12 | The lists in the metadata of the records of a deleted collection or database go to the records of the collections created after it: 6 records of 60 without the key came back with the lists of the deleted ones | 1.5.9 | with `deleteRecordsFirst: true` the deletions delete the records first, in batches |
+| KD-13 | A get with `limit: 0` returns every record, from the offset | 0.6.3; 1.0.21 and 1.5.9 return none | sends `limit: 0` as it is |
+| KD-14 | `/api/v2/version` answers `1.0.0`: the value is fixed in the server | every 1.x | tells 0.x from 1.x by the version, and the features of 1.x by `pre-flight-checks` and `openapi.json` |
+| KD-15 | A database with a name of 128 characters, the maximum, is created, but its deletion answers `500` "value too long for type character varying(128)" | Chroma Cloud | — |
+| KD-16 | A float in a filter never matches integer metadata: `$gte 2.25` and `$gte 2.0` find only the float `3.0`, not the integers `2` and `3` | Chroma Cloud; a single 1.x server truncates the float instead (KD-6) | sends the number as it is, as the Python client does |
+| KD-17 | A `$contains` text of 256 characters gets `422` "exceeds limit of 130", while the Quotas & Limits page says 256 | Chroma Cloud | reports the error of the server |
+| KD-18 | A list in the metadata of a record is accepted, with `201`, and dropped: the record comes back with null metadata | 0.6.3; 1.0.0 rejects it with `422`, 1.5.9 keeps it | throws a `ChromaException` before sending a list to 0.5.16 – 0.6.3 |
+| KD-19 | A tenant or a database with `/` in the name is created, and then a get of it, or of a collection in it, answers `404` | 0.6.3 | sends `%2F` in the path |
+| KD-20 | A list in the metadata of a collection makes the server panic and close the connection, without an answer | 1.5.9; 0.6.3 answers `400`, 1.0.0 and 1.3.7 `422`, Chroma Cloud `500` | throws an `ArgumentException` before the request |
+| KD-21 | `pre-flight-checks` declares a `max_batch_size` of 1000, but a write of 301 records gets `422` "Quota exceeded" | Chroma Cloud | batches of 300 by default, and of the quota the error names |
+| KD-22 | An empty list in the metadata of a record is accepted and dropped without an error | 1.5.9; Chroma Cloud keeps it | `AddAsync` throws an `ArgumentException`; in an update or an upsert an empty list deletes the key |
+| KD-23 | In a `cosine` collection of 1000 nearly parallel vectors, a query with `n_results: 1000` returns 998 records in 4 runs of 5, and pages of 10 repeat some records and miss others; `ef_search` 1000 or 2000 does not help, `l2` returns all | 1.5.9 | — |
+| KD-24 | A query whose ids include one without a record answers `500` "Error finding id" | 1.0.0 and 1.5.9; Chroma Cloud leaves the id out | asks again with the ids that have a record |
+| KD-25 | A change of the configuration with `hnsw` settings answers `500` "failed to merge config into schema" | Chroma Cloud, whose index is SPANN | throws a `ChromaException` before sending `Hnsw` settings to Chroma Cloud |
+| KD-26 | `GET /api/v2/collections/{crn}` answers `403` "Permission denied." with a key of the database and with one of the whole tenant, also for a malformed CRN | Chroma Cloud | reports the error of the server |
+| KD-27 | Attaching a function the tenant has not enabled answers `429` "Too many requests", also on the first call; detaching too | Chroma Cloud | reports the error of the server, without retrying |
+| KD-28 | In the image `chromadb/chroma:1.5.9`, `chroma --version` answers `chroma 1.4.4` | the image of 1.5.9, the same as `latest` | — |
+| KD-29 | The v1 API fails with "cannot unpack non-iterable coroutine object" | 0.6.x | use the v2 API there |
+| KD-30 | With `CHROMA_ALLOW_RESET=TRUE` the server stops at the start, "expected a boolean"; `ALLOW_RESET=TRUE` is ignored. Only `CHROMA_ALLOW_RESET=true` enables the reset | 1.5.9 | — |
+| KD-31 | Updates answer "Error in compaction" | 1.0.0; not 0.5.20, 0.6.3 and 1.5.9 | — |
+| KD-32 | Right after an add, the count is 0 and the peek empty, without an error | 1.0.0; not 0.5.20, 0.6.3 and 1.5.9 | — |
+| KD-33 | Embeddings of different dimensions in the same request are accepted | 0.5.16 – 0.5.18; rejected from 0.5.20 | — |
+| KD-34 | The Docker images do not start: they install NumPy 2.2.6, and the server exits with "np.float_ was removed in the NumPy 2.0 release" | images 0.4.16 – 0.4.22 | — |
+| KD-35 | The Docker image does not start: "Path 'log_config.yml' does not exist" | image 0.4.11 | — |
+| KD-36 | A query ignores its ids, without an error, and searches the whole collection | 0.5.16 – 0.6.3 on the v2 API, and every version on the v1 API; 1.0.0 – 1.5.9 apply them | throws a `ChromaException` when a result falls outside the ids |
+| KD-37 | `indexing_status` answers `500` "Method scout_logs is not implemented", while the other operations of Chroma Cloud only answer `501` | 1.5.9 single server | reports the error of the server |
+| KD-38 | An add to a collection of a tenant or database other than the default ones answers that the collection does not exist | 0.4.15 on the v1 API; right from 0.4.23 | — |
+| KD-39 | Collections come back without tenant and database | 0.4.15 on the v1 API; right from 0.4.23 | — |
+| KD-40 | The list of the collections ignores `limit` and `offset` and returns every collection | 0.4.10 and 0.4.12 – 0.4.15 on the v1 API; right from 0.4.23 | — |
+| KD-41 | A path that does not exist answers `404` with an empty body | 1.0.0 and 1.5.9; the 0.x servers answer with a message | writes the request in the message of the error |
+| KD-42 | A missing collection answers "Collection [missing] does not exists" | 1.0.0 | looks for "does not exist", which the text holds |
+| KD-43 | A missing collection answers `404` on 1.x, `400` on 0.5.6 – 0.6.3 and `500` on 0.4.10 – 0.5.5 | 0.4.10 – 1.5.9 | `CollectionExistsAsync` recognizes the three, by "does not exist" in the message |
+| KD-44 | `configuration.hnsw.space` at the creation is ignored on 0.4.10 – 0.5.3, answers `500` on 0.5.4 – 0.6.3, and is reported as `l2` on 1.0.0 – 1.0.5 | 0.4.10 – 1.0.5 | sends the space as the `hnsw:space` metadata, which every version applies |
+| KD-45 | The `max_batch_size` that `pre-flight-checks` declares is not enforced: a write of 5462 records goes | 1.0.15 – 1.5.9; up to 1.0.13 it fails | sends batches within the declared limit |
+| KD-46 | `$in` and `$nin` without values answer `500` | 0.4.10 – 0.5.16; `400` from 0.5.17 | sends no request for `In` without values, and no `where` for `NotIn` without values |
+| KD-47 | In the OpenAPI description the parameter of `GET` and `DELETE .../collections/{collection_id}` is named as an id, but the server reads a name: with an id it answers `404` (chroma-core/chroma#4456) | 0.5.16 – 1.5.9 | sends the name |
 
-| `$contains` and `$not_contains` on documents do not see the text after a NUL character (`\u0000`): `Contains("after")` does not find `"before\u0000after"`, which comes back whole | all the tested versions from 0.4.24 to 1.5.9 |
-| A float compared with int metadata is truncated: `GreaterThanOrEqual("a", 2.25)` also finds `a = 2`, and `GreaterThan("a", -1.5)` leaves out `a = -1` | 1.0.0 – 1.5.9; right on 0.4.24 – 0.6.3 |
-| Some doubles are read with an error in the last digit: `-95.41757424465169`, the shortest text of the double, comes back `-95.41757424465168`, and `1e-28` comes back `9.999999999999999e-29`; `Equal("x", 1e-30)` does not find the record stored with `1e-30`. The client sends the shortest text that reads back as the same double | 1.0.0 – 1.5.9; right on 0.4.24 – 0.6.3 |
-| The embeddings of a collection with the `cosine` space come back different in the last bit: `0.91782147` as `0.9178214`, `-0.4` as `-0.39999998` | 1.0.0 – 1.5.9; identical on 0.4.24 – 0.6.3, and with the other spaces |
-| In a collection with the `cosine` space, an embedding beyond the range of a float, like `[float.MaxValue, float.MaxValue]`, comes back as `null`, which the client reads as `NaN`, and one near zero, like `[1e-30, 1e-30]`, comes back as `[0, 0]`, at a distance of `-0.4` from `[3, 4]`. In an `l2` or `ip` collection the distance to the first comes back as `null`, which the client reads as `NaN` | 1.0.0 and 1.5.9; 0.6.3 sends the values as they are, and the `l2` and `ip` distances as numbers beyond the range of a float, like `2.3e77` and `-2.38e39`, which the client reads as infinities |
-| `-0.0` in metadata comes back as `0.0`; in embeddings it keeps its sign | 0.6.3, 1.0.0 and 1.5.9 |
-
-The query of the second and third rows returned 3 records in every run on Chroma 0.5.20, 1.0.0 and 1.5.9, 10 runs each on a server just started.
+The query of KD-2 and KD-3 returned 3 records in every run on Chroma 0.5.20, 1.0.0 and 1.5.9, 10 runs each on a server just started.
 
 ## Chroma Cloud
 

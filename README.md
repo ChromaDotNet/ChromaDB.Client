@@ -34,7 +34,7 @@ The [compatibility table](https://chromadotnet.org/compatibility/) shows every c
 
 Chroma 1.0.16 and later require embeddings in `AddAsync` and `UpsertAsync`. The client does not compute them, so pass them yourself.
 
-The package has three builds: .NET 8, .NET Framework 4.6.2 and .NET Standard 2.0. The tests run the .NET 8 build on every tested Chroma version, and the .NET Standard 2.0 build on Chroma 1.5.9. The .NET Framework 4.6.2 build has the same code as the .NET Standard 2.0 one. It is built against the assemblies that .NET Framework applications ship, so it runs next to OpenTelemetry without binding redirects.
+The package has three builds: .NET 8, .NET Framework 4.6.2 and .NET Standard 2.0. The tests run the .NET 8 build on every tested Chroma version, and the .NET Standard 2.0 build on Chroma 1.5.9. The .NET Framework 4.6.2 build has the code of the .NET Standard 2.0 one, and also advises the buckets of the histogram, as the .NET 8 build does. It is built against the assemblies that .NET Framework applications ship, so it runs next to OpenTelemetry without binding redirects.
 
 ## Installation
 
@@ -238,13 +238,13 @@ var apples = await collectionClient.GetAsync(whereDocument: ChromaWhereDocumentO
 
 ## Large writes
 
-By default, `AddAsync`, `UpdateAsync`, `UpsertAsync` and `DeleteAsync` send their records in batches of the server's `max_batch_size`, one request after the other. The client asks `pre-flight-checks` once. If a batch fails, the earlier ones stay written. Chroma 0.4.10 has no `pre-flight-checks`, so it gets the records in one request, and so does a server whose answer the client cannot read. `WithBatchSplitting(false)` sends them in one request, as earlier versions did. Up to Chroma 1.0.13 a request beyond the limit fails; later versions accept it.
+By default, `AddAsync`, `UpdateAsync`, `UpsertAsync` and `DeleteAsync` send their records in batches of the server's `max_batch_size`, one request after the other. The client asks `pre-flight-checks` once. Before the first batch, the client checks that the embeddings, metadatas, documents and URIs are as many as the ids, and that the embeddings hold finite numbers, and throws an `ArgumentException` otherwise. If a batch fails, the earlier ones stay written. Chroma 0.4.10 has no `pre-flight-checks`, so it gets the records in one request, and so does a server whose answer the client cannot read. `WithBatchSplitting(false)` sends them in one request, as earlier versions did. Up to Chroma 1.0.13 a request beyond the limit fails; later versions accept it.
 
 ```csharp
 var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithBatchSplitting(false);
 ```
 
-`GetAsync` reads more records than the batch size in pages: pages of the batch size from the offset, until the limit or the last record. Ids beyond the batch size go in batches, with the limit and the offset applied to all of them together. The pages are separate requests, so records written in between can be read twice or missed.
+`GetAsync` reads more records than the batch size in pages: pages of the batch size from the offset, until the limit or the last record. Ids beyond the batch size go in batches, each id once, with the limit and the offset applied to all of them together. The pages are separate requests, so records written in between can be read twice or missed.
 
 `WithBatchSplitting(maxBatchSize)` uses the smaller of that limit and the server's, or that limit alone where the server declares none.
 
@@ -327,7 +327,7 @@ Console.WriteLine(collection.Space);
 
 `ChromaSpace` is `L2` (Chroma's default), `Cosine` or `InnerProduct`. The client sends it as the `hnsw:space` metadata, which every tested Chroma applies. `GetOrCreateCollectionAsync` takes a `ChromaCollectionDefinition` too. A collection that exists keeps its space, so `GetOrCreateCollectionAsync` throws a `ChromaException` when it has another space than the definition asks for. Chroma 0.4.23 would write the asked space into the metadata of that collection, whose index keeps its own, so on the 0.x servers the client reads the collection first and throws before the request.
 
-`ChromaCollection.Space` reads the space back from that metadata, or from the configuration that Chroma 1.0.6 and later and Chroma Cloud send. It is null for a collection created without a space on the older servers, which do not report it reliably. `ChromaCollection.ConfigurationJson` holds the configuration as the server sends it.
+`ChromaCollection.Space` reads the space back from that metadata, or from the configuration that Chroma 1.0.6 and later and Chroma Cloud send. On Chroma 0.x, which keeps the space only in that metadata, a collection without it uses `l2`, the default of Chroma, and `Space` is `L2`: the client asks the version of the server for that. It is null for a collection created without a space on Chroma 1.0.0 to 1.0.5, which do not report it reliably. `ChromaCollection.ConfigurationJson` holds the configuration as the server sends it.
 
 The configuration of a new collection also takes the settings of its vector index and the embedding function it declares:
 
@@ -487,7 +487,7 @@ foreach (var result in results)
 }
 ```
 
-`ChromaSearch` holds the filters, which combine with `$and`, the ids, the ranking, the page and the fields to return. Without `Select`, a search returns only the ids. The records with the lowest score come first, but with `ChromaRank.HybridRrf`, whose results come with the fused score, positive, highest first.
+`ChromaSearch` holds the filters, which combine with `$and`, the ids, the ranking, the page and the fields to return. Without `Select`, a search returns only the ids. The records with the lowest score come first, but with `ChromaRank.HybridRrf` as the whole rank, whose results come with the fused score, positive, highest first. Inside an expression, like `HybridRrf(...) * 0.5`, the score comes as Chroma sends it, lowest first.
 
 `ChromaRank` builds the ranking:
 
