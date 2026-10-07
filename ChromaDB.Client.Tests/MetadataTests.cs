@@ -255,6 +255,46 @@ public class MetadataTests : ChromaTestsBase
 		await AssertNoListsInNewRecords();
 	}
 
+	// The records of every collection go first, also of the collections beyond a page of the list: 120 collections, each with a record.
+	[Test]
+	public async Task DeletedDatabaseDeletesTheRecordsOfEveryCollection()
+	{
+		Assume.That(IsChroma1, Is.True, "Chroma 0.x stores no lists, so the records are not deleted first.");
+		Assume.That(OtherTenantsAndDatabasesTested, Is.True, "A server already running may not let the tests create or look up other tenants and databases.");
+		var deletes = new DeletesByCollection { InnerHandler = new HttpClientHandler() };
+		using var httpClient = new HttpClient(deletes);
+		var chroma = new ChromaClient(BaseConfigurationOptions, httpClient);
+		var database = $"database{Random.Shared.Next()}";
+		await chroma.CreateDatabaseAsync(database);
+		for (var i = 0; i < 120; i++)
+		{
+			var collection = await chroma.CreateCollectionAsync($"collection{i:000}", database: database);
+			await new ChromaCollectionClient(collection, BaseConfigurationOptions.WithDatabase(database), httpClient).AddAsync(["a"], [Embedding1]);
+		}
+		deletes.Collections.Clear();
+		await chroma.DeleteDatabaseAsync(database, deleteRecordsFirst: true);
+		Assert.That(deletes.Collections, Has.Count.EqualTo(120));
+	}
+
+	// The collections whose records a request deletes.
+	sealed class DeletesByCollection : DelegatingHandler
+	{
+		public HashSet<string> Collections { get; } = [];
+
+		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+		{
+			var segments = request.RequestUri!.AbsolutePath.Split('/');
+			if (segments[^1] == "delete")
+			{
+				lock (Collections)
+				{
+					Collections.Add(segments[^2]);
+				}
+			}
+			return base.SendAsync(request, cancellationToken);
+		}
+	}
+
 	async Task<ChromaCollectionClient> AddRecordsWithLists(ChromaConfigurationOptions options)
 	{
 		var client = await Init(options);
