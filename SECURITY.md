@@ -27,8 +27,21 @@ Include the version of the package, the version of Chroma or Chroma Cloud, and t
 
 ## Verifying a package
 
-Each GitHub release has the packages published on nuget.org and their Sigstore signatures (`.sigstore.json`), made by the release workflow of this repository. With Cosign 3 or later:
+From 2.10.2 on, each GitHub release has the packages that the CI built from the version tag, with:
+
+- their Sigstore signatures (`.sigstore.json`), made by the release workflow of this repository;
+- their build provenance (`provenance-<tag>.intoto.jsonl`), attested by the CI.
+
+nuget.org serves the same packages with its repository signature (`.signature.p7s`) added: the release workflow checks that every other file is the same. Earlier releases have no build provenance.
+
+To verify a package downloaded from the release, with Cosign 3 or later:
 
 ```
-cosign verify-blob ChromaDotNet.Client.2.10.0.nupkg --bundle ChromaDotNet.Client.2.10.0.nupkg.sigstore.json --certificate-identity-regexp '^https://github.com/ChromaDotNet/ChromaDB.Client/\.github/workflows/release-assets\.yml@' --certificate-oidc-issuer https://token.actions.githubusercontent.com
+cosign verify-blob ChromaDotNet.Client.2.11.0.nupkg --bundle ChromaDotNet.Client.2.11.0.nupkg.sigstore.json --certificate-identity-regexp '^https://github.com/ChromaDotNet/ChromaDB.Client/\.github/workflows/release-assets\.yml@' --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+With the GitHub CLI:
+
+```
+gh attestation verify ChromaDotNet.Client.2.11.0.nupkg --bundle provenance-v2.11.0.intoto.jsonl --repo ChromaDotNet/ChromaDB.Client --signer-workflow ChromaDotNet/ChromaDB.Client/.github/workflows/ci.yml --source-ref refs/tags/v2.11.0
 ```
