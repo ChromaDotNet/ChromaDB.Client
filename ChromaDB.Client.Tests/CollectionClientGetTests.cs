@@ -473,6 +473,19 @@ public class CollectionClientGetTests : ChromaTestsBase
 		Assert.That(result.Select(x => x.Id), Is.EquivalentTo(new[] { Id1, Id2 }));
 	}
 
+	// A date in a filter finds the record that stores the same date: the client sends both as System.Text.Json writes them.
+	[Test]
+	public async Task GetWhereDate()
+	{
+		var client = await Init();
+		var date = new DateTime(2026, 10, 7, 10, 0, 0);
+		var offset = new DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.FromHours(2));
+		await client.UpdateAsync([Id1], metadatas: [new Dictionary<string, object> { ["date"] = date, ["offset"] = offset }]);
+		Assert.That((await client.GetAsync(where: ChromaWhereOperator.Equal("date", date))).Select(x => x.Id), Is.EqualTo(new[] { Id1 }));
+		Assert.That((await client.GetAsync(where: ChromaWhereOperator.In("offset", offset))).Select(x => x.Id), Is.EqualTo(new[] { Id1 }));
+		Assert.That((await client.GetAsync(where: ChromaWhereOperator.NotEqual("date", date))).Select(x => x.Id), Is.EqualTo(new[] { Id2 }).Or.Empty);
+	}
+
 	async Task<ChromaCollectionClient> Init()
 	{
 		var name = $"collection{Random.Shared.Next()}";

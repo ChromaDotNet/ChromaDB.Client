@@ -77,6 +77,26 @@ internal sealed class ChromaHttpClient
 
 	public Uri CreateUri(string endpoint) => new(_baseUri, endpoint);
 
+	// Chroma 0.x keeps the space of a collection only in its metadata, and a collection without it uses l2: the client asks the
+	// version only for a collection that reports no space, and not on Chroma Cloud, which always reports it.
+	public async Task<ChromaCollection> WithSpace(ChromaCollection collection, CancellationToken cancellationToken)
+	{
+		if (collection.Space is null && !IsChromaCloud && await IsChroma0(cancellationToken))
+		{
+			collection.DefaultSpace = ChromaSpace.L2;
+		}
+		return collection;
+	}
+
+	public async Task<IReadOnlyList<ChromaCollection>> WithSpaces(List<ChromaCollection> collections, CancellationToken cancellationToken)
+	{
+		foreach (var collection in collections)
+		{
+			await WithSpace(collection, cancellationToken);
+		}
+		return collections;
+	}
+
 	// Asked when a request needs it, once for concurrent calls, and again after ServerFacts.Lifetime, in case the server changed;
 	// a failed or canceled request is not kept, so the next call asks again.
 	// The 0.x servers send their own version; every Chroma 1.x answers "1.0.0", so the version tells only 0.x from 1.x apart.

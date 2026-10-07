@@ -402,8 +402,17 @@ public class SparseVectorsAndSchemaTests
 			var text = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
 			var recorded = new Request(request.Method.Method, request.RequestUri!.AbsolutePath, $"{request.Method.Method} {request.RequestUri.PathAndQuery}",
 				text is { Length: > 0 } ? JsonDocument.Parse(text).RootElement.Clone() : default);
-			Requests.Add(recorded);
 			var (status, response) = answer(recorded);
+			// The version, which the client also asks for a collection without a space: 1.0.0 unless the answer is a version, and
+			// then not recorded, as the tests that do not answer it do not look for it.
+			if (recorded.Path.EndsWith("/version") && !response.StartsWith("\""))
+			{
+				(status, response) = (HttpStatusCode.OK, "\"1.0.0\"");
+			}
+			else
+			{
+				Requests.Add(recorded);
+			}
 			return new HttpResponseMessage(status) { Content = new StringContent(response) };
 		}
 	}

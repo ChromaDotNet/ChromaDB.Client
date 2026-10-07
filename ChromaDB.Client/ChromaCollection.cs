@@ -123,14 +123,19 @@ public class ChromaCollection
 	/// The distance function of the collection.
 	/// From the <c>hnsw:space</c> metadata, which every tested Chroma sends back, or from <c>hnsw.space</c> of the configuration,
 	/// which Chroma 1.0.6 and later send, or from <c>spann.space</c>, which Chroma Cloud sends with <c>hnsw</c> null.
-	/// Null when none is there: Chroma 0.5.4 to 1.0.5 send <c>hnsw_configuration.space</c>,
+	/// On Chroma 0.x, which keeps the space only in that metadata, a collection without it uses <c>l2</c>, the default of Chroma:
+	/// a collection the client reads from a 0.x server has then <c>L2</c>.
+	/// Null when none is there on the other servers: Chroma 0.5.4 to 1.0.5 send <c>hnsw_configuration.space</c>,
 	/// which says <c>l2</c> also for the collections that use another space.
 	/// </summary>
 	[JsonIgnore]
 	public ChromaSpace? Space
 		=> Metadata is not null && Metadata.TryGetValue(ChromaSpaceNames.MetadataKey, out var space) && space is string name
 			? ChromaSpaceNames.FromName(name)
-			: ConfigurationSpace("hnsw") ?? ConfigurationSpace("spann");
+			: ConfigurationSpace("hnsw") ?? ConfigurationSpace("spann") ?? DefaultSpace;
+
+	// The space of the server for a collection that does not report one: l2 on Chroma 0.x.
+	internal ChromaSpace? DefaultSpace { get; set; }
 
 	private ChromaSpace? ConfigurationSpace(string index)
 		=> ConfigurationJson is { ValueKind: JsonValueKind.Object } configuration

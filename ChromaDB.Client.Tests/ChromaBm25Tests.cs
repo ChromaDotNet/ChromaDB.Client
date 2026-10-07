@@ -80,6 +80,11 @@ public class ChromaBm25Tests
 
 		protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
 		{
+			// The version, which the client asks for a collection without a space: a 1.x server.
+			if (request.RequestUri!.AbsolutePath.EndsWith("/version"))
+			{
+				return new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent("\"1.0.0\"") };
+			}
 			Body = await request.Content!.ReadAsStringAsync(cancellationToken);
 			return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
 			{

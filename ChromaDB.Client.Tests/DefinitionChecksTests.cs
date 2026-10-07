@@ -28,6 +28,18 @@ public class DefinitionChecksTests
 		Assert.That((await Client(server).GetOrCreateCollectionAsync(Cosine)).Space, Is.Null);
 	}
 
+	// Chroma 0.x keeps the space only in the metadata, and a collection created without it uses l2: the client reads it as L2 there,
+	// and as unknown on Chroma 1.x, whose configuration may hold another space that 1.0.0 to 1.0.5 do not report.
+	[Test]
+	public async Task ACollectionWithoutASpaceOnChroma0IsL2()
+	{
+		var server = new VersionedServer("0.6.3", """{"id":"11111111-2222-3333-4444-555555555555","name":"c"}""");
+		Assert.That((await Client(server).GetCollectionAsync("c")).Space, Is.EqualTo(ChromaSpace.L2));
+		await Assert.ThatAsync(() => Client(server).GetOrCreateCollectionAsync(Cosine), Throws.InstanceOf<ChromaException>().With.Message.Contains("space l2, not cosine"));
+		server = new VersionedServer("1.0.0", """{"id":"11111111-2222-3333-4444-555555555555","name":"c"}""");
+		Assert.That((await Client(server).GetCollectionAsync("c")).Space, Is.Null);
+	}
+
 	// Chroma 0.4 writes the space of the definition into the metadata of a collection that exists, whose index keeps its own: on the
 	// 0.x servers the client reads the collection first, and sends no get or create when it has another space.
 	[Test]
@@ -119,6 +131,11 @@ public class DefinitionChecksTests
 
 		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
 		{
+			// The version, which the client asks for a collection without a space: a 1.x server, not recorded.
+			if (request.RequestUri!.AbsolutePath.EndsWith("/version"))
+			{
+				return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("\"1.0.0\"") });
+			}
 			Requests.Add(request.Method.Method);
 			return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(collection) });
 		}

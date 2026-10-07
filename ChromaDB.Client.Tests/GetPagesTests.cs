@@ -81,6 +81,15 @@ public class GetPagesTests
 		Assert.That(server.Pages, Is.EqualTo(new (int?, int?, int?)[] { (2, 2, null) }));
 	}
 
+	// An id given twice comes back once, as in one request, also when the ids go in batches.
+	[Test]
+	public async Task RepeatedIdsInBatches()
+	{
+		var server = new Server(records: 7, cap: 3);
+		var entries = await Client(server, 3).GetAsync(["r0", "r1", "r2", "r3", "r0"]);
+		Assert.That(entries.Select(x => x.Id), Is.EqualTo(Ids(0, 4)));
+	}
+
 	static List<string> Ids(int start, int count) => Enumerable.Range(start, count).Select(i => $"r{i}").ToList();
 
 	static ChromaCollectionClient Client(HttpMessageHandler handler, int maxBatchSize)

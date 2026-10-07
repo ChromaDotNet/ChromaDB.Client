@@ -130,7 +130,7 @@ public class CollectionClientByNameTests
 	static ChromaClient Client(HttpMessageHandler handler)
 		=> new(new ChromaConfigurationOptions("http://localhost:8000").WithBatchSplitting(false), new HttpClient(handler));
 
-	// Answers the collection c with Id, or as missing with NameMissing, MissingAnswer to the requests on MissingId, and 3 for a count;
+	// Answers the collection c with Id and the space l2, as Chroma 1.5.9 reports it, or as missing with NameMissing, MissingAnswer to the requests on MissingId, and 3 for a count;
 	// records the requests, without the prefix of the database.
 	sealed class FakeServer(string id) : HttpMessageHandler
 	{
@@ -151,7 +151,7 @@ public class CollectionClientByNameTests
 				Bodies.Add((path, JsonDocument.Parse(await request.Content.ReadAsStringAsync(cancellationToken)).RootElement.Clone()));
 			}
 			var (status, body) = path == "collections/c" && NameMissing ? (HttpStatusCode.NotFound, """{"error":"NotFoundError","message":"Collection [c] does not exist"}""")
-				: path == "collections/c" ? (HttpStatusCode.OK, $$"""{"id":"{{Id}}","name":"c","schema":{{Schema ?? "null"}}}""")
+				: path == "collections/c" ? (HttpStatusCode.OK, $$$"""{"id":"{{{Id}}}","name":"c","configuration_json":{"hnsw":{"space":"l2"}},"schema":{{{Schema ?? "null"}}}}""")
 				: MissingId is { } missing && path.Contains(missing) ? MissingAnswer
 				: path.EndsWith("/count") ? (HttpStatusCode.OK, "3")
 				: path.EndsWith("/version") ? (HttpStatusCode.OK, "\"1.5.9\"")

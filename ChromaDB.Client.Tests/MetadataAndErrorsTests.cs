@@ -263,7 +263,9 @@ public class MetadataAndErrorsTests
 			{
 				Bodies.Add(JsonDocument.Parse(await request.Content.ReadAsStringAsync(cancellationToken)).RootElement.Clone());
 			}
-			return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(response) };
+			// The version, which the client also asks for a collection without a space: 1.0.0 unless the answer is a version.
+			var version = request.RequestUri.AbsolutePath.EndsWith("/version") && !response.StartsWith("\"") ? "\"1.0.0\"" : response;
+			return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(version) };
 		}
 	}
 
@@ -288,8 +290,11 @@ public class MetadataAndErrorsTests
 
 	sealed class FixedHandler(HttpStatusCode statusCode, string body) : HttpMessageHandler
 	{
+		// The version, which the client also asks for a collection without a space: 1.0.0.
 		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-			=> Task.FromResult(new HttpResponseMessage(statusCode) { Content = new StringContent(body) });
+			=> Task.FromResult(request.RequestUri!.AbsolutePath.EndsWith("/version") && statusCode == HttpStatusCode.OK && !body.StartsWith("\"")
+				? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("\"1.0.0\"") }
+				: new HttpResponseMessage(statusCode) { Content = new StringContent(body) });
 	}
 
 	sealed class PendingHandler : HttpMessageHandler

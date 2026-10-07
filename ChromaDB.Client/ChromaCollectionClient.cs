@@ -147,7 +147,7 @@ public class ChromaCollectionClient
 			.Insert("{collectionName}", _collection.Name)
 			.Insert("{tenant}", _tenant)
 			.Insert("{database}", _database);
-		_collection = await _httpClient.Get<ChromaCollection>(_httpClient.Routes.CollectionByName, requestParams, cancellationToken);
+		_collection = await _httpClient.WithSpace(await _httpClient.Get<ChromaCollection>(_httpClient.Routes.CollectionByName, requestParams, cancellationToken), cancellationToken);
 		_resolved = true;
 	}
 
@@ -258,9 +258,11 @@ public class ChromaCollectionClient
 		var entries = new List<ChromaCollectionEntry>();
 		if (ids is not null)
 		{
-			for (var i = 0; i < ids.Count; i += size)
+			// An id given twice would come back twice, from two batches: one request gives it once.
+			var unique = ids.Distinct().ToList();
+			for (var i = 0; i < unique.Count; i += size)
 			{
-				entries.AddRange(await GetPage(ids.Skip(i).Take(size).ToList(), where, whereDocument, null, null, include, cancellationToken));
+				entries.AddRange(await GetPage(unique.Skip(i).Take(size).ToList(), where, whereDocument, null, null, include, cancellationToken));
 			}
 			return entries.Skip(offset ?? 0).Take(limit ?? int.MaxValue).ToList();
 		}
@@ -452,6 +454,7 @@ public class ChromaCollectionClient
 	public virtual Task AddAsync(ChromaRecords records, CancellationToken cancellationToken = default)
 		=> Operation("add", cancellationToken, async () =>
 		{
+			ChromaRequestChecks.SameLengths(records, nameof(records));
 			ChromaRequestChecks.NoNullValues(records.Metadatas, nameof(records));
 			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
 			var prepared = WithSparseVectors(WithDocumentCopies(records, update: false));
@@ -500,6 +503,7 @@ public class ChromaCollectionClient
 	public virtual Task UpdateAsync(ChromaRecords records, CancellationToken cancellationToken = default)
 		=> Operation("update", cancellationToken, async () =>
 		{
+			ChromaRequestChecks.SameLengths(records, nameof(records));
 			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
 			var prepared = WithSparseVectors(await WithDeletions(WithDocumentCopies(records, update: true), cancellationToken));
 			await CheckListsInMetadata(prepared, cancellationToken);
@@ -549,6 +553,7 @@ public class ChromaCollectionClient
 	public virtual Task UpsertAsync(ChromaRecords records, CancellationToken cancellationToken = default)
 		=> Operation("upsert", cancellationToken, async () =>
 		{
+			ChromaRequestChecks.SameLengths(records, nameof(records));
 			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
 			var prepared = WithSparseVectors(await WithDeletions(WithDocumentCopies(records, update: true), cancellationToken));
 			await CheckListsInMetadata(prepared, cancellationToken);
@@ -828,6 +833,11 @@ public class ChromaCollectionClient
 	public virtual Task DeleteAsync(IReadOnlyList<string> ids, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, CancellationToken cancellationToken = default)
 		=> Operation("delete", cancellationToken, async () =>
 		{
+			// As in DeleteAsync(ChromaDelete): every tested Chroma rejects a delete without ids and filters.
+			if (ids is [] && where is null && whereDocument is null)
+			{
+				throw new ArgumentException("The ids of a delete without filters cannot be empty: there is nothing to delete.", nameof(ids));
+			}
 			var split = ChromaWhereOperator.Split(where, whereDocument, ids);
 			if (split.Where == ChromaWhereOperator.None)
 			{
@@ -944,10 +954,10 @@ public class ChromaCollectionClient
 		});
 
 	/// <summary>
-	/// The count at a read level: on Chroma Cloud, <c>ChromaReadLevel.IndexOnly</c> leaves out the records not indexed
-	/// yet.
+	/// The count at a read level: <c>ChromaReadLevel.IndexOnly</c> leaves out the records not indexed yet. Chroma Cloud indexes them
+	/// later, so right after a write the count can be lower; a single server indexes them at once.
 	/// </summary>
-	/// <param name="readLevel">Which records are read: <c>ChromaReadLevel.IndexOnly</c> leaves out the ones not indexed yet; null for the default of the server.</param>
+	/// <param name="readLevel">Which records are read: <c>ChromaReadLevel.IndexOnly</c> leaves out the ones not indexed yet.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>The number of records.</returns>
 	public virtual Task<int> CountAsync(ChromaReadLevel readLevel, CancellationToken cancellationToken = default)

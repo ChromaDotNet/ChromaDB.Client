@@ -1,4 +1,4 @@
-using ChromaDB.Client.Models;
+﻿using ChromaDB.Client.Models;
 using NUnit.Framework;
 
 namespace ChromaDB.Client.Tests;
@@ -98,6 +98,33 @@ public class RequestValuesTests
 		Assert.That(() => client.CreateCollectionAsync("c", new Dictionary<string, object> { ["b"] = new byte[] { 1 } }), Throws.InvalidOperationException.With.Message.Contains("/collections"));
 	}
 
+	// A delete with an empty list of ids and no filter would go with no condition: rejected, as DeleteAsync(ChromaDelete) does.
+	[Test]
+	public void DeleteWithoutIds()
+	{
+		Assert.That(() => Collection(new NoRequests()).DeleteAsync(new List<string>()), Throws.ArgumentException);
+	}
+
+	// Lists of another length than the ids would be cut differently in each batch: rejected before any request.
+	[Test]
+	public void ListsOfAnotherLength()
+	{
+		var collection = Collection(new NoRequests());
+		Assert.That(() => collection.AddAsync(["a", "b"], [Embedding]), Throws.ArgumentException.With.Message.Contains("embeddings"));
+		Assert.That(() => collection.UpdateAsync(["a"], documents: ["x", "y"]), Throws.ArgumentException.With.Message.Contains("documents"));
+		Assert.That(() => collection.UpsertAsync(["a", "b"], [Embedding, Embedding], [new Dictionary<string, object> { ["k"] = 1L }]), Throws.ArgumentException.With.Message.Contains("metadatas"));
+		Assert.That(() => collection.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Uris = [] }), Throws.ArgumentException.With.Message.Contains("uris"));
+	}
+
+	// NaN and infinity: JSON numbers cannot carry them, and base64 embeddings get the same check.
+	[Test]
+	public void NonFiniteEmbeddingsInBase64()
+	{
+		var collection = Collection(new PreFlightOnly(base64: true));
+		Assert.That(() => collection.AddAsync(["a"], [new ReadOnlyMemory<float>([1f, float.NaN])]), Throws.ArgumentException);
+		Assert.That(() => collection.UpsertAsync(["a"], [new ReadOnlyMemory<float>([float.PositiveInfinity, 0f])]), Throws.ArgumentException);
+	}
+
 	sealed class ReadOnce(IEnumerable<string> items) : IEnumerable<string>
 	{
 		public int Reads { get; private set; }
@@ -121,14 +148,14 @@ public class RequestValuesTests
 	}
 
 	// Answers the questions about the server, so that a write gets as far as its request.
-	sealed class PreFlightOnly : HttpMessageHandler
+	sealed class PreFlightOnly(bool base64 = false) : HttpMessageHandler
 	{
 		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
 		{
 			var path = request.RequestUri!.AbsolutePath;
 			if (path.EndsWith("/pre-flight-checks", StringComparison.Ordinal))
 			{
-				return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent("{\"max_batch_size\":100,\"supports_base64_encoding\":false}") });
+				return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent("{\"max_batch_size\":100,\"supports_base64_encoding\":" + (base64 ? "true" : "false") + "}") });
 			}
 			if (path.EndsWith("/version", StringComparison.Ordinal))
 			{

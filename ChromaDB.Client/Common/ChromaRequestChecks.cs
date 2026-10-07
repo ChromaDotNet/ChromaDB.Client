@@ -92,6 +92,35 @@ internal static class ChromaRequestChecks
 	public static bool IsEmpty(object? value)
 		=> value is JsonElement element ? element.GetArrayLength() == 0 : value is ICollection { Count: 0 };
 
+	// Lists of another length than the ids would be cut differently in each batch, so that part of a write would go before the error;
+	// and the numbers of an embedding must be finite, which JSON numbers and the base64 embeddings of the server need.
+	public static void SameLengths(ChromaDB.Client.Models.ChromaRecords records, string paramName)
+	{
+		var count = records.Ids.Count;
+		Check(records.Embeddings?.Count, "embeddings");
+		Check(records.Metadatas?.Count, "metadatas");
+		Check(records.Documents?.Count, "documents");
+		Check(records.Uris?.Count, "uris");
+		foreach (var embedding in records.Embeddings ?? [])
+		{
+			foreach (var number in embedding.Span)
+			{
+				if (float.IsNaN(number) || float.IsInfinity(number))
+				{
+					throw new ArgumentException($"An embedding has {number.ToString(System.Globalization.CultureInfo.InvariantCulture)}: Chroma takes finite numbers only.", paramName);
+				}
+			}
+		}
+
+		void Check(int? length, string name)
+		{
+			if (length is { } given && given != count)
+			{
+				throw new ArgumentException($"The {name} are {given} and the ids {count}: each record needs one, null for none.", paramName);
+			}
+		}
+	}
+
 	// A lone half of a surrogate pair: UTF-8 has no form for it, and System.Text.Json would send U+FFFD in its place, so
 	// an id or a document would come back changed.
 	public static void NoLoneSurrogates(string value, string what)

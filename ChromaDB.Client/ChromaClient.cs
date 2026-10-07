@@ -202,7 +202,7 @@ public class ChromaClient : IDisposable
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", tenant)
 				.Insert("{database}", database);
-			return await _httpClient.Get<List<ChromaCollection>>(_httpClient.Routes.Collections, requestParams, cancellationToken);
+			return await _httpClient.WithSpaces(await _httpClient.Get<List<ChromaCollection>>(_httpClient.Routes.Collections, requestParams, cancellationToken), cancellationToken);
 		});
 
 	/// <summary>
@@ -226,7 +226,7 @@ public class ChromaClient : IDisposable
 				.Insert("{offset}", offset.ToString(CultureInfo.InvariantCulture));
 			var route = _httpClient.Routes.Collections;
 			route += (route.Contains("?") ? "&" : "?") + "limit={limit}&offset={offset}";
-			return await _httpClient.Get<List<ChromaCollection>>(route, requestParams, cancellationToken);
+			return await _httpClient.WithSpaces(await _httpClient.Get<List<ChromaCollection>>(route, requestParams, cancellationToken), cancellationToken);
 		});
 
 	/// <summary>
@@ -262,7 +262,7 @@ public class ChromaClient : IDisposable
 			.Insert("{collectionName}", name)
 			.Insert("{tenant}", tenant)
 			.Insert("{database}", database);
-		return await _httpClient.Get<ChromaCollection>(_httpClient.Routes.CollectionByName, requestParams, cancellationToken);
+		return await _httpClient.WithSpace(await _httpClient.Get<ChromaCollection>(_httpClient.Routes.CollectionByName, requestParams, cancellationToken), cancellationToken);
 	}
 
 	/// <summary>
@@ -364,7 +364,7 @@ public class ChromaClient : IDisposable
 				.Insert("{collection_id}", id.ToString())
 				.Insert("{tenant}", tenant)
 				.Insert("{database}", database);
-			return await _httpClient.Get<ChromaCollection>(_httpClient.Routes.CollectionById, requestParams, cancellationToken);
+			return await _httpClient.WithSpace(await _httpClient.Get<ChromaCollection>(_httpClient.Routes.CollectionById, requestParams, cancellationToken), cancellationToken);
 		});
 
 	/// <summary>
@@ -462,6 +462,8 @@ public class ChromaClient : IDisposable
 				await DatabaseOperation("delete_collection", collection.Name, tenant, database, () => DeleteCollectionCore(collection.Name, tenant, database, deleteRecordsFirst: false, CancellationToken.None));
 				throw new ChromaException("The server creates the collection without its schema: Chroma 1.3.0 and later apply it. The collection was deleted.");
 			}
+			// As the deletion, not canceled with the call: the answer arrived, and the space decides whether the collection must go.
+			await _httpClient.WithSpace(collection, CancellationToken.None);
 			// Chroma 1.3.0 creates the collection with the space of the schema ignored: l2.
 			if (SettingsIgnored(definition, collection) is { } ignored)
 			{
@@ -525,7 +527,7 @@ public class ChromaClient : IDisposable
 				Configuration = definition.ToRequestConfiguration(),
 				Schema = definition.ToRequestSchema(),
 			};
-			var collection = await _httpClient.Post<GetOrCreateCollectionRequest, ChromaCollection>(_httpClient.Routes.Collections, request, requestParams, cancellationToken);
+			var collection = await _httpClient.WithSpace(await _httpClient.Post<GetOrCreateCollectionRequest, ChromaCollection>(_httpClient.Routes.Collections, request, requestParams, cancellationToken), cancellationToken);
 			// As in CreateCollection, but the collection stays: it may have existed before.
 			if (definition.SettingsInSchema && collection.SchemaJson is not { ValueKind: System.Text.Json.JsonValueKind.Object })
 			{

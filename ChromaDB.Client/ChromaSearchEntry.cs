@@ -37,8 +37,8 @@ public class ChromaSearchEntry
 	public IReadOnlyDictionary<string, object>? Metadata { get; init; }
 
 	/// <summary>
-	/// The score of the ranking, when selected: the lower, the better; for a search ranked by <c>ChromaRank.HybridRrf</c>, the fused
-	/// score, the higher, the better.
+	/// The score of the ranking, when selected: the lower, the better; for a search whose whole rank is <c>ChromaRank.HybridRrf</c>, the
+	/// fused score, the higher, the better. Inside an expression, the score comes as Chroma sends it.
 	/// </summary>
 	public float? Score { get; init; }
 }

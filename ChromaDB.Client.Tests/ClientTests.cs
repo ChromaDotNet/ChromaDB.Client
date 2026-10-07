@@ -168,7 +168,8 @@ public class ClientTests : ChromaTestsBase
 	public async Task SpaceOfACollectionWithoutOne()
 	{
 		var collection = await new ChromaClient(BaseConfigurationOptions, HttpClient).CreateCollectionAsync($"collection{Random.Shared.Next()}");
-		Assert.That(collection.Space, ConfigurationSpaceReported ? Is.EqualTo(ChromaSpace.L2) : Is.Null);
+		// Chroma 0.x keeps the space only in the metadata, so the client reads l2, its default; 1.0.0 to 1.0.5 do not report it.
+		Assert.That(collection.Space, ConfigurationSpaceReported || !IsChroma1 ? Is.EqualTo(ChromaSpace.L2) : Is.Null);
 	}
 
 	[Test]

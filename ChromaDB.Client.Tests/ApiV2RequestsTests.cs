@@ -71,6 +71,16 @@ public class ApiV2RequestsTests
 		Assert.That(delete.Body.TryGetProperty("ids", out _), Is.False);
 	}
 
+	// Behind a proxy with a path, the base URI names the API, as https://proxy/chroma/api/v2/: the description is at the root of the
+	// server, next to it.
+	[Test]
+	public async Task DeleteWithLimitBehindAProxy()
+	{
+		var server = new FakeServer(r => r.Path == "/chroma/openapi.json" ? (HttpStatusCode.OK, OpenApiWithDeleteLimit) : r.Path.EndsWith("/delete") ? (HttpStatusCode.OK, """{"deleted":2}""") : (HttpStatusCode.NotFound, "{}"));
+		var deleted = await CollectionClient(server, new ChromaConfigurationOptions("http://localhost:8000/chroma/api/v2/")).DeleteAsync(new ChromaDelete { WhereDocument = ChromaWhereDocumentOperator.Contains("x"), Limit = 2 });
+		Assert.That(deleted, Is.EqualTo(2));
+	}
+
 	// The servers that do not declare the limit ignore it and would delete every matching record: nothing is sent.
 	[TestCase(HttpStatusCode.OK, OpenApiWithoutDeleteLimit)]
 	[TestCase(HttpStatusCode.NotFound, "")]
