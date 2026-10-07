@@ -7,7 +7,7 @@
 		<IsPackable>true</IsPackable>
 		<!-- The analyzers of trimming and NativeAOT run on the target that has them. -->
 		<IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">true</IsAotCompatible>
-		<VersionPrefix>2.10.4</VersionPrefix>
+		<VersionPrefix>2.11.0</VersionPrefix>
 		<PackageId>ChromaDB.Client</PackageId>
 		<!-- -p:PackageIdPrefix=Name publishes the package as Name.Client. -->
 		<PackageId Condition="'$(PackageIdPrefix)' != ''">$(PackageIdPrefix).Client</PackageId>
@@ -29,7 +29,7 @@
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<NoWarn>$(NoWarn);RS0026;RS0027</NoWarn>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
-		<PackageReleaseNotes>2.10.3: AddAsync, UpdateAsync and UpsertAsync throw an ArgumentException before any request when the embeddings, metadatas, documents or URIs are not as many as the ids, or an embedding has NaN or an infinity, also when the embeddings go as base64. DeleteAsync with an empty list of ids and no filters throws an ArgumentException. GetAsync with more ids than the batch size returns an id given twice once. On Chroma 0.x a collection without a space reports L2, the default of Chroma. All the releases: $(PackageProjectUrl)/releases. Tested versions: $(PackageProjectUrl)/blob/main/docs/COMPATIBILITY.md. Migration from 1.x: $(PackageProjectUrl)#migrating-from-chromadbclient-1x</PackageReleaseNotes>
+		<PackageReleaseNotes>2.11.0: ChromaConfigurationOptions.WithChromaCloud says the server is Chroma Cloud behind a proxy or another address. Changes of behavior: a record without metadata keys comes back with an empty Metadata, not null, when the read includes the metadatas; AddAsync, UpdateAsync and UpsertAsync throw an ArgumentException for a metadata without keys and for a list of values of more than one type, as the Python client does; GetAsync throws an ArgumentOutOfRangeException for a negative limit or offset, and returns no record for a limit of 0 without a request; a write that fails after some of its batches went says how many records went, and a collection client made by name does not run it again; deleteRecordsFirst throws a ChromaException and keeps the collection when the server returns records after their delete; ChromaQuery.NResults rejects a negative number. Also: an id condition sends each id once, CreateCollectionAsync and GetOrCreateCollectionAsync reject the names . and .., a connection string takes http and https endpoints only, and the HybridRrf weight of the text never goes below 0. All the releases: $(PackageProjectUrl)/releases. Tested versions: $(PackageProjectUrl)/blob/main/docs/COMPATIBILITY.md. Migration from 1.x: $(PackageProjectUrl)#migrating-from-chromadbclient-1x</PackageReleaseNotes>
 	</PropertyGroup>
 	<ItemGroup>
 		<!-- The public API, checked at build: PublicAPI.Shipped.txt is the API of the last release, PublicAPI.Unshipped.txt what was
