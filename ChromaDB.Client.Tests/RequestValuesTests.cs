@@ -116,6 +116,18 @@ public class RequestValuesTests
 		Assert.That(() => collection.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Uris = [] }), Throws.ArgumentException.With.Message.Contains("uris"));
 	}
 
+	// A client made by name reads the collection on the first call: the checks come before, without any request.
+	[Test]
+	public void ChecksBeforeTheCollectionIsRead()
+	{
+		using var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(new NoRequests()));
+		var collection = client.GetCollectionClient("c");
+		Assert.That(() => collection.AddAsync(["a", "b"], [Embedding]), Throws.ArgumentException);
+		Assert.That(() => collection.UpdateAsync(["a"], documents: ["x", "y"]), Throws.ArgumentException);
+		Assert.That(() => collection.UpsertAsync(["a"], [new ReadOnlyMemory<float>([float.NaN])]), Throws.ArgumentException);
+		Assert.That(() => collection.DeleteAsync(new List<string>()), Throws.ArgumentException);
+	}
+
 	// NaN and infinity: JSON numbers cannot carry them, and base64 embeddings get the same check.
 	[Test]
 	public void NonFiniteEmbeddingsInBase64()

@@ -71,7 +71,7 @@ The v1 API of Chroma 0.6.3 fails on most requests, and Chroma 1.5.9 answers it w
 
 ## Known defects of the servers
 
-Each defect has a number, KD-n, to refer to it. Reproduced with plain HTTP, without the client, from 3 to 7 October 2026. The first ones, up to KD-11, the client cannot work around; the column on the right says what it does for the others.
+Each defect has a number, KD-n, to refer to it. Reproduced with plain HTTP, without the client, from 3 to 7 October 2026. The first ones, up to KD-11, the client cannot fully work around: KD-4 says how far its split of long lists goes. The column on the right says what it does for the others.
 
 | KD | Defect | Versions | The client |
 |---|---|---|---|

@@ -452,9 +452,11 @@ public class ChromaCollectionClient
 	/// <param name="records">The records: ids, and embeddings, metadatas, documents and URIs when given.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task AddAsync(ChromaRecords records, CancellationToken cancellationToken = default)
-		=> Operation("add", cancellationToken, async () =>
+	{
+		// Before the collection of a client made by name is read: records that cannot go send no request.
+		ChromaRequestChecks.SameLengths(records, nameof(records));
+		return Operation("add", cancellationToken, async () =>
 		{
-			ChromaRequestChecks.SameLengths(records, nameof(records));
 			ChromaRequestChecks.NoNullValues(records.Metadatas, nameof(records));
 			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
 			var prepared = WithSparseVectors(WithDocumentCopies(records, update: false));
@@ -477,6 +479,7 @@ public class ChromaCollectionClient
 				await _httpClient.Post(_httpClient.Routes.Collection + "/add", request, requestParams, cancellationToken);
 			}, cancellationToken);
 		});
+	}
 
 	/// <summary>
 	/// Updates the embeddings, metadatas and documents of the records with the ids.
@@ -501,9 +504,11 @@ public class ChromaCollectionClient
 	/// <param name="records">The records: ids, and embeddings, metadatas, documents and URIs when given.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task UpdateAsync(ChromaRecords records, CancellationToken cancellationToken = default)
-		=> Operation("update", cancellationToken, async () =>
+	{
+		// Before the collection of a client made by name is read: records that cannot go send no request.
+		ChromaRequestChecks.SameLengths(records, nameof(records));
+		return Operation("update", cancellationToken, async () =>
 		{
-			ChromaRequestChecks.SameLengths(records, nameof(records));
 			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
 			var prepared = WithSparseVectors(await WithDeletions(WithDocumentCopies(records, update: true), cancellationToken));
 			await CheckListsInMetadata(prepared, cancellationToken);
@@ -525,6 +530,7 @@ public class ChromaCollectionClient
 				await _httpClient.Post(_httpClient.Routes.Collection + "/update", request, requestParams, cancellationToken);
 			}, cancellationToken);
 		});
+	}
 
 	/// <summary>
 	/// Adds the records with the ids, or updates the ones that already exist. Since Chroma 1.0.16 the server requires
@@ -551,9 +557,11 @@ public class ChromaCollectionClient
 	/// <param name="records">The records: ids, and embeddings, metadatas, documents and URIs when given.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task UpsertAsync(ChromaRecords records, CancellationToken cancellationToken = default)
-		=> Operation("upsert", cancellationToken, async () =>
+	{
+		// Before the collection of a client made by name is read: records that cannot go send no request.
+		ChromaRequestChecks.SameLengths(records, nameof(records));
+		return Operation("upsert", cancellationToken, async () =>
 		{
-			ChromaRequestChecks.SameLengths(records, nameof(records));
 			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
 			var prepared = WithSparseVectors(await WithDeletions(WithDocumentCopies(records, update: true), cancellationToken));
 			await CheckListsInMetadata(prepared, cancellationToken);
@@ -575,6 +583,7 @@ public class ChromaCollectionClient
 				await _httpClient.Post(_httpClient.Routes.Collection + "/upsert", request, requestParams, cancellationToken);
 			}, cancellationToken);
 		});
+	}
 
 	// The copy of each document under the document copy key, when the server takes it: Chroma Cloud takes a metadata value of at most
 	// 8,182 bytes. In an update or an upsert, a document without its copy, as one too long or one deleted, deletes the stored copy with
@@ -831,13 +840,15 @@ public class ChromaCollectionClient
 	/// <param name="whereDocument">The filter on the documents, or null for none.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task DeleteAsync(IReadOnlyList<string> ids, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, CancellationToken cancellationToken = default)
-		=> Operation("delete", cancellationToken, async () =>
+	{
+		// As in DeleteAsync(ChromaDelete): every tested Chroma rejects a delete without ids and filters. Before the collection of a
+		// client made by name is read.
+		if (ids is [] && where is null && whereDocument is null)
 		{
-			// As in DeleteAsync(ChromaDelete): every tested Chroma rejects a delete without ids and filters.
-			if (ids is [] && where is null && whereDocument is null)
-			{
-				throw new ArgumentException("The ids of a delete without filters cannot be empty: there is nothing to delete.", nameof(ids));
-			}
+			throw new ArgumentException("The ids of a delete without filters cannot be empty: there is nothing to delete.", nameof(ids));
+		}
+		return Operation("delete", cancellationToken, async () =>
+		{
 			var split = ChromaWhereOperator.Split(where, whereDocument, ids);
 			if (split.Where == ChromaWhereOperator.None)
 			{
@@ -858,6 +869,7 @@ public class ChromaCollectionClient
 				await _httpClient.Post(_httpClient.Routes.Collection + "/delete", request, requestParams, cancellationToken);
 			}, cancellationToken);
 		});
+	}
 
 	/// <summary>
 	/// Deletes the records with the ids, the ones the filters match, or both, at most <c>delete.Limit</c> of them.
