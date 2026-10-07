@@ -1,6 +1,7 @@
 name: Release assets
 
-# Attaches to each GitHub release the packages published on nuget.org, their Sigstore signatures and their build provenance.
+# Attaches to each GitHub release the packages that the CI built from its tag, their Sigstore signatures and the build
+# provenance that the CI attested, after checking that nuget.org serves the same packages.
 on:
   release:
     types:
@@ -19,7 +20,8 @@ jobs:
     name: Packages, signatures and provenance
     runs-on: ubuntu-latest
     permissions:
-      attestations: write
+      actions: read
+      attestations: read
       contents: write
       id-token: write
     env:
@@ -33,34 +35,66 @@ jobs:
     - name: Download the packages from nuget.org
       run: |
         version="${TAG#v}"
-        mkdir packages
+        mkdir nuget
         for id in ChromaDotNet.Client ChromaDotNet.Client.DependencyInjection; do
           lower=$(echo "$id" | tr '[:upper:]' '[:lower:]')
-          file="packages/$id.$version.nupkg"
+          file="nuget/$id.$version.nupkg"
           # nuget.org can take a few minutes to serve a new package.
           for attempt in $(seq 1 60); do
-            curl -fsSL -o "$file" "https://api.nuget.org/v3-flatcontainer/$lower/$version/$lower.$version.nupkg" && break
+            if curl -fsSL -o "$file" "https://api.nuget.org/v3-flatcontainer/$lower/$version/$lower.$version.nupkg"; then
+              break
+            fi
+            # A failed transfer can leave a partial file.
+            rm -f "$file"
             sleep 30
           done
-          test -s "$file"
+          test -f "$file"
         done
+
+    - name: Download the packages built by the CI
+      run: |
+        # The CI run of the tag publishes the packages, so it is about to finish once nuget.org serves them.
+        for attempt in $(seq 1 20); do
+          run=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch "$TAG" --event push --status success --limit 1 --json databaseId --jq '.[].databaseId')
+          test -n "$run" && break
+          sleep 30
+        done
+        test -n "$run"
+        gh run download "$run" --repo "$GITHUB_REPOSITORY" --name packages --dir ci
+        mkdir packages
+        find ci -name '*.nupkg' -exec mv {} packages/ \;
+
+    - name: Check the provenance
+      run: |
+        for file in packages/*.nupkg; do
+          gh attestation verify "$file" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/ci.yml" --source-ref "refs/tags/$TAG" --format json --jq '.[].attestation.bundle' >> bundles.jsonl
+        done
+        sort -u bundles.jsonl > "packages/provenance-$TAG.intoto.jsonl"
+
+    - name: Compare with nuget.org
+      shell: python
+      run: |
+        # nuget.org adds its repository signature, .signature.p7s, to each package: every other file must be the same.
+        import glob, hashlib, os, sys, zipfile
+
+        def files(path):
+            with zipfile.ZipFile(path) as package:
+                return {entry.filename: hashlib.sha256(package.read(entry)).hexdigest() for entry in package.infolist()}
+
+        names = sorted(os.path.basename(path) for path in glob.glob('nuget/*.nupkg'))
+        if names != sorted(os.path.basename(path) for path in glob.glob('packages/*.nupkg')):
+            sys.exit('The CI built other packages than the ones on nuget.org.')
+        for name in names:
+            published = files(os.path.join('nuget', name))
+            published.pop('.signature.p7s', None)
+            if published != files(os.path.join('packages', name)):
+                sys.exit(f'{name} on nuget.org differs from the package built by the CI.')
 
     - name: Sign
       run: |
         for file in packages/*.nupkg; do
           cosign sign-blob --yes --bundle "$file.sigstore.json" "$file"
         done
-
-    - name: Attest provenance
-      id: attest
-      uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
-      with:
-        subject-path: packages/*.nupkg
-
-    - name: Add the provenance
-      env:
-        BUNDLE: ${{ steps.attest.outputs.bundle-path }}
-      run: jq -c . "$BUNDLE" > "packages/provenance-$TAG.intoto.jsonl"
 
     - name: Upload to the release
       run: gh release upload "$TAG" packages/* --clobber --repo "$GITHUB_REPOSITORY"
