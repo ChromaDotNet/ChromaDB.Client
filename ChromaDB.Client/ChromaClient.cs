@@ -605,6 +605,7 @@ public class ChromaClient : IDisposable
 		await _httpClient.Delete(_httpClient.Routes.CollectionByName, requestParams, cancellationToken);
 	}
 
+	// Works around KD-12 (docs/COMPATIBILITY.md)
 	// Chroma 1.5 keeps the lists in the metadata of the records of a collection or a database it deletes, and gives them to the next
 	// records it stores, in any collection and database; deleting the records first deletes their lists. Every Chroma 1.x sends the
 	// same version, so the records go first on all of them: not on Chroma 0.x, which stores no lists, nor on Chroma Cloud.

@@ -34,6 +34,7 @@ public class ChromaException : Exception
 	/// </summary>
 	public string? ErrorType { get; init; }
 
+	// Works around KD-42 and KD-43 (docs/COMPATIBILITY.md)
 	// A missing collection: 404 from Chroma 1.x, 400 or 500 from the 0.x servers, always with "does not exist" in the message, also when
 	// the tenant or the database is missing. A bare 404, like the one of a wrong address, is not one.
 	internal bool IsMissingCollection

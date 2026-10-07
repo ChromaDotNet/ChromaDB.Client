@@ -183,6 +183,7 @@ internal static partial class HttpClientHelpers
 		// A bare 404 or 405 usually means that this version of Chroma does not have the endpoint: name the request.
 		if ((int)httpResponseMessage.StatusCode is 404 or 405 && message is null or "Not Found" or "Method Not Allowed")
 		{
+			// Works around KD-41 (docs/COMPATIBILITY.md)
 			return new ChromaException($"{message ?? httpResponseMessage.StatusCode.ToString()}: {httpRequestMessage.Method} {httpRequestMessage.RequestUri?.AbsolutePath}") { StatusCode = httpResponseMessage.StatusCode, ErrorType = errorType };
 		}
 		return new ChromaException(message ?? $"Unexpected status code: {httpResponseMessage.StatusCode}.") { StatusCode = httpResponseMessage.StatusCode, ErrorType = errorType };

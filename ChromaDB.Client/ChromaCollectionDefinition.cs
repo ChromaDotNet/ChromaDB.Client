@@ -106,6 +106,7 @@ public class ChromaCollectionDefinition
 			return integerSettings;
 		}
 		var settings = new List<KeyValuePair<string, object>>();
+		// Works around KD-44 (docs/COMPATIBILITY.md)
 		if (Configuration?.Space is { } space && Configuration.Spann is null)
 		{
 			settings.Add(new(ChromaSpaceNames.MetadataKey, ChromaSpaceNames.ToName(space)));

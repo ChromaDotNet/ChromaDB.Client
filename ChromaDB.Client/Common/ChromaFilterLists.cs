@@ -9,6 +9,7 @@ internal static class ChromaFilterLists
 {
 	public const int MaxDepth = 900;
 
+	// Works around KD-4 (docs/COMPATIBILITY.md)
 	public static Dictionary<string, object> Shape(Dictionary<string, object> filter)
 		=> Depth(filter) <= MaxDepth ? filter : (Dictionary<string, object>)Split(filter);
 

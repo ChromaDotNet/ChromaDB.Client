@@ -112,6 +112,7 @@ public abstract class ChromaWhereOperator
 
 	internal abstract ChromaWhereOperator Negate();
 
+	// Works around KD-46 (docs/COMPATIBILITY.md)
 	/// <summary>
 	/// The records whose value for the key is one of the values, with <c>$in</c>. Without values it is <c>None</c>: every tested Chroma
 	/// rejects <c>$in</c> without values.
@@ -122,6 +123,7 @@ public abstract class ChromaWhereOperator
 	public static ChromaWhereOperator In(string key, params object[] values)
 		=> values is { Length: > 0 } ? new ChromaWhereValueOperator(key, "$in", "$nin", values) : None;
 
+	// Works around KD-46 (docs/COMPATIBILITY.md)
 	/// <summary>
 	/// The records whose value for the key is not one of the values, with <c>$nin</c>, which matches the records without the key too from
 	/// Chroma 0.5.15.

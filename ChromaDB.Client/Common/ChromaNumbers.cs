@@ -21,6 +21,7 @@ internal static class ChromaNumbers
 	private static readonly bool RuntimeShortest = Environment.Version.Major is 3 or >= 5;
 #endif
 
+	// Works around KD-7 (docs/COMPATIBILITY.md)
 	public static string Format(double value)
 	{
 		if (double.IsNaN(value) || double.IsInfinity(value))
@@ -276,6 +277,7 @@ internal static class ChromaNumbers
 	private static readonly BigInteger Two52 = BigInteger.One << 52;
 	private static readonly BigInteger Two53 = BigInteger.One << 53;
 
+	// Works around KD-9 and KD-10 (docs/COMPATIBILITY.md)
 	// Chroma 1.x sends null for a float it cannot write, NaN or infinite, like an embedding beyond the range of a float in a cosine
 	// collection: it reads as NaN, so that one record does not cost the whole answer. A number beyond the range of a float, like a
 	// distance that Chroma 0.6.3 computes as a double, reads as an infinity, as a cast from the double does.

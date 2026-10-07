@@ -34,6 +34,7 @@ internal sealed class ChromaHttpClient
 		DeserializerOptions = HttpClientHelpers.DeserializerOptions(options.MetadataValues);
 		BatchSplitting = options.BatchSplitting;
 		IsChromaCloud = options.IsChromaCloud;
+		// Works around KD-21 (docs/COMPATIBILITY.md)
 		// Chroma Cloud declares a max_batch_size of 1000, but takes 300 records per write and answers at most 300 per read, without an
 		// error: its quotas by default.
 		MaxBatchSize = options.MaxBatchSize ?? (IsChromaCloud ? ChromaCloudQuotas.MaxRecordsPerRequest : null);
@@ -97,6 +98,7 @@ internal sealed class ChromaHttpClient
 		return collections;
 	}
 
+	// Works around KD-14 (docs/COMPATIBILITY.md)
 	// Asked when a request needs it, once for concurrent calls, and again after ServerFacts.Lifetime, in case the server changed;
 	// a failed or canceled request is not kept, so the next call asks again.
 	// The 0.x servers send their own version; every Chroma 1.x answers "1.0.0", so the version tells only 0.x from 1.x apart.

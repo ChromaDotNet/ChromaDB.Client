@@ -6,6 +6,7 @@ namespace ChromaDB.Client.Common;
 // What a server would drop, change or fail on, stopped before the request with a message that says why.
 internal static class ChromaRequestChecks
 {
+	// Works around KD-22 (docs/COMPATIBILITY.md)
 	// An empty list in the metadata of a record: Chroma 0.6.3 and 1.5.9 drop the key without an error, 1.0 to 1.4
 	// reject it, Chroma Cloud stores it, and the Python client rejects it. Rejected here too, so that the same code does
 	// the same on every server.
@@ -55,6 +56,7 @@ internal static class ChromaRequestChecks
 		}
 	}
 
+	// Works around KD-20 (docs/COMPATIBILITY.md)
 	// No Chroma stores a list in the metadata of a collection: 0.x and 1.0 to 1.4 reject it, Chroma Cloud answers 500
 	// and 1.5.9 closes the connection.
 	public static void NoLists(IReadOnlyDictionary<string, object>? metadata, string paramName)

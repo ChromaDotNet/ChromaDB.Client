@@ -404,6 +404,7 @@ public class ChromaCollectionClient
 			}
 			catch (ChromaException ex) when (queryIds is { Count: > 0 } && ex.ErrorType == "InternalError")
 			{
+				// Works around KD-24 (docs/COMPATIBILITY.md)
 				// Chroma 1.x without filters answers 500 "Error finding id" when an id has no record, where Chroma Cloud leaves the id
 				// out: the query goes again with the ids that have a record, and without any it has no results.
 				var found = new HashSet<string>((await GetEntries(queryIds, null, null, null, null, ChromaGetInclude.None, cancellationToken)).Select(entry => entry.Id));
@@ -418,6 +419,7 @@ public class ChromaCollectionClient
 				response = await Send(queryIds.Where(found.Contains).ToList());
 			}
 			var result = response.Map(copy) ?? [];
+			// Works around KD-36 (docs/COMPATIBILITY.md)
 			// Chroma 0.x ignores the ids and searches all the records: a result outside the ids shows it. When all the results
 			// are among the ids, they are also the nearest among them, so the answer is right on those servers too.
 			if (queryIds is not null)
@@ -761,6 +763,7 @@ public class ChromaCollectionClient
 	private static ChromaException CannotEmbed(ChromaSparseVectorIndex index)
 		=> new($"The sparse vectors of \"{index.Key}\" come from the embedding function \"{index.EmbeddingFunction}\" of the schema, which the client cannot compute: it computes chroma_bm25. Give the sparse vectors yourself.");
 
+	// Works around KD-21 (docs/COMPATIBILITY.md)
 	// The records in batches of the batch size, one request after the other, with batch splitting, on by default. Chroma Cloud
 	// rejects a batch beyond its quota of records, "current usage of 301 exceeds limit of 300", before it writes any of it: the
 	// client keeps that limit for the server, and sends that batch and the rest in batches of it.
@@ -804,11 +807,13 @@ public class ChromaCollectionClient
 			? limit
 			: null;
 
+	// Works around KD-45 (docs/COMPATIBILITY.md)
 	// The smallest of the limit of the caller, 300 on Chroma Cloud when not given, the max_batch_size the server declares, and the
 	// quota of records the server enforced.
 	private async Task<int?> BatchSize(CancellationToken cancellationToken)
 		=> new[] { _httpClient.MaxBatchSize, await _httpClient.GetMaxBatchSize(cancellationToken), _httpClient.RecordsLimit }.Min();
 
+	// Works around KD-18 (docs/COMPATIBILITY.md)
 	// The 0.x servers accept lists in metadata but drop them without an error; Chroma 1.0 to 1.4 reject them, 1.5.0 stores them.
 	// Sparse vectors too: Chroma 0.6.3 accepts them and stores the metadata as null.
 	private async Task CheckListsInMetadata(ChromaRecords records, CancellationToken cancellationToken)
@@ -1301,6 +1306,7 @@ public class ChromaCollectionClient
 			}
 			var hasHnsw = hnsw.ValueKind == System.Text.Json.JsonValueKind.Object;
 			var hasSpann = value.TryGetProperty("spann", out var spann) && spann.ValueKind == System.Text.Json.JsonValueKind.Object;
+			// Works around KD-25 (docs/COMPATIBILITY.md)
 			if (configuration.Hnsw is not null && !hasHnsw && hasSpann)
 			{
 				throw new ChromaException("The collection has a SPANN index, as on Chroma Cloud, which rejects HNSW settings: set Spann instead.");
