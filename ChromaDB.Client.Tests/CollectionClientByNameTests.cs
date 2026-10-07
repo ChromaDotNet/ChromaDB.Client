@@ -41,6 +41,26 @@ public class CollectionClientByNameTests
 		Assert.That(collection.Collection.Id, Is.EqualTo(Guid.Parse(Second)));
 	}
 
+	// A write that fails after some of its batches went is not run again on a collection created again under the name: those batches
+	// stay in the collection that was there, and the exception says how many records went.
+	[Test]
+	public async Task APartialWriteIsNotRunAgain()
+	{
+		var server = new FakeServer(First);
+		server.OnRequest = path =>
+		{
+			if (path.EndsWith("/add"))
+			{
+				(server.Id, server.MissingId) = (Second, First);
+			}
+		};
+		var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000").WithBatchSplitting(1), new HttpClient(server));
+		var collection = client.GetCollectionClient("c");
+		await collection.CountAsync();
+		await Assert.ThatAsync(() => collection.AddAsync(["a", "b"], [new([1f]), new([2f])]), Throws.InstanceOf<ChromaException>().With.Message.Contains("1 of the 2 records"));
+		Assert.That(server.Requests.Where(x => x.EndsWith("/add")), Is.EqualTo(new[] { $"POST collections/{First}/add", $"POST collections/{First}/add" }));
+	}
+
 	// An id just read is not read again, and an id that stays the same keeps the failure.
 	[Test]
 	public async Task TheSameIdKeepsTheFailure()
@@ -139,6 +159,7 @@ public class CollectionClientByNameTests
 		public (HttpStatusCode Status, string Body) MissingAnswer { get; set; } = (HttpStatusCode.NotFound, Missing);
 		public bool NameMissing { get; set; }
 		public string? Schema { get; set; }
+		public Action<string>? OnRequest { get; set; }
 		public List<string> Requests { get; } = [];
 		public List<(string Path, JsonElement Body)> Bodies { get; } = [];
 
@@ -156,6 +177,8 @@ public class CollectionClientByNameTests
 				: path.EndsWith("/count") ? (HttpStatusCode.OK, "3")
 				: path.EndsWith("/version") ? (HttpStatusCode.OK, "\"1.5.9\"")
 				: (HttpStatusCode.OK, "{}");
+			// After the answer: a change of the server shows from the next request.
+			OnRequest?.Invoke(path);
 			return new HttpResponseMessage(status) { Content = new StringContent(body) };
 		}
 	}

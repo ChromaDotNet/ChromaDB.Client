@@ -50,6 +50,11 @@ public class ChromaCollectionDefinition
 	// Chroma rejects the two indexes together: "Multiple vector index configurations provided".
 	internal void Validate()
 	{
+		// As the requests by name: Chroma takes neither as a name.
+		if (Name is "." or "..")
+		{
+			throw new ArgumentException($"\"{Name}\" cannot be the name of a collection.", nameof(Name));
+		}
 		if (Configuration is { Hnsw: not null, Spann: not null })
 		{
 			throw new ArgumentException("A collection has one vector index: set Hnsw for a single Chroma server or Spann for Chroma Cloud, not both, as Chroma rejects them together.", nameof(Configuration));

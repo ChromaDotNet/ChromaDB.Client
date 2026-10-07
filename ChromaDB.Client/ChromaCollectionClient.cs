@@ -116,7 +116,7 @@ public class ChromaCollectionClient
 		{
 			return await body();
 		}
-		catch (ChromaException) when (resolved)
+		catch (ChromaException ex) when (resolved && !ex.PartlyDone)
 		{
 			var id = _collection.Id;
 			if (!await TryResolve(cancellationToken) || _collection.Id == id)
@@ -234,11 +234,23 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>The records.</returns>
 	public virtual Task<IReadOnlyList<ChromaCollectionEntry>> GetAsync(IReadOnlyList<string>? ids = null, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, int? limit = null, int? offset = null, ChromaGetInclude? include = null, CancellationToken cancellationToken = default)
-		=> Operation<IReadOnlyList<ChromaCollectionEntry>>("get", cancellationToken, async () =>
+	{
+		// As SearchAsync and ChromaQuery.Offset, whatever the number of ids, before the collection of a client made by name is read.
+		if (limit < 0 || offset < 0)
+		{
+			throw new ArgumentOutOfRangeException(limit < 0 ? nameof(limit) : nameof(offset), "The limit and the offset of a get cannot be negative.");
+		}
+		// Works around KD-13 (docs/COMPATIBILITY.md)
+		if (limit == 0)
+		{
+			return Task.FromResult<IReadOnlyList<ChromaCollectionEntry>>([]);
+		}
+		return Operation<IReadOnlyList<ChromaCollectionEntry>>("get", cancellationToken, async () =>
 		{
 			var split = ChromaWhereOperator.Split(where, whereDocument, ids);
 			return await GetEntries(split.Ids, split.Where, split.WhereDocument, limit, offset, include, cancellationToken);
 		});
+	}
 
 	private async Task<List<ChromaCollectionEntry>> GetEntries(IReadOnlyList<string>? ids, ChromaWhereOperator? where, ChromaWhereDocumentOperator? whereDocument, int? limit, int? offset, ChromaGetInclude? include, CancellationToken cancellationToken)
 	{
@@ -294,9 +306,13 @@ public class ChromaCollectionClient
 		while (true)
 		{
 			var ids = (await GetPage(null, null, null, size, null, ChromaGetInclude.None, cancellationToken)).Select(entry => entry.Id).ToList();
-			if (ids.Count == 0 || ids.SequenceEqual(deleted))
+			if (ids.Count == 0)
 			{
 				return;
+			}
+			if (ids.SequenceEqual(deleted))
+			{
+				throw new ChromaException($"The records were not deleted: the server returns them after their delete, like {ids[0]}. The collection stays with them.");
 			}
 			await _httpClient.Post(_httpClient.Routes.Collection + "/delete", new CollectionDeleteRequest() { Ids = ids }, requestParams, cancellationToken);
 			deleted = ids;
@@ -457,6 +473,7 @@ public class ChromaCollectionClient
 	{
 		// Before the collection of a client made by name is read: records that cannot go send no request.
 		ChromaRequestChecks.SameLengths(records, nameof(records));
+		ChromaRequestChecks.MetadataValues(records.Metadatas, nameof(records));
 		return Operation("add", cancellationToken, async () =>
 		{
 			ChromaRequestChecks.NoNullValues(records.Metadatas, nameof(records));
@@ -509,6 +526,7 @@ public class ChromaCollectionClient
 	{
 		// Before the collection of a client made by name is read: records that cannot go send no request.
 		ChromaRequestChecks.SameLengths(records, nameof(records));
+		ChromaRequestChecks.MetadataValues(records.Metadatas, nameof(records));
 		return Operation("update", cancellationToken, async () =>
 		{
 			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
@@ -562,6 +580,7 @@ public class ChromaCollectionClient
 	{
 		// Before the collection of a client made by name is read: records that cannot go send no request.
 		ChromaRequestChecks.SameLengths(records, nameof(records));
+		ChromaRequestChecks.MetadataValues(records.Metadatas, nameof(records));
 		return Operation("upsert", cancellationToken, async () =>
 		{
 			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
@@ -784,6 +803,16 @@ public class ChromaCollectionClient
 			catch (ChromaException ex) when (_httpClient.BatchSplitting && RecordsQuota(ex) is { } quota && quota < count)
 			{
 				_httpClient.LearnRecordsLimit(quota);
+			}
+			// The batches sent stay: a client made by name does not run the operation again, on a collection created again either.
+			catch (ChromaException ex) when (offset > 0)
+			{
+				throw new ChromaException($"{offset} of the {total} records went before the error, and stay: {ex.Message}", ex)
+				{
+					StatusCode = ex.StatusCode,
+					ErrorType = ex.ErrorType,
+					PartlyDone = true,
+				};
 			}
 		}
 		while (offset < total);
@@ -1058,7 +1087,7 @@ public class ChromaCollectionClient
 						{
 							Document = copy.Document(response.Documents?[i]?[j], response.Metadatas?[i]?[j]),
 							Embedding = response.Embeddings?[i]?[j],
-							Metadata = copy.Metadata(response.Metadatas?[i]?[j]),
+							Metadata = copy.Metadata(response.Metadatas?[i] is { } metadatas ? metadatas[j] ?? DocumentCopyReader.NoKeys : null),
 							Score = opposite ? -response.Scores?[i]?[j] : response.Scores?[i]?[j],
 						})
 						.ToList();

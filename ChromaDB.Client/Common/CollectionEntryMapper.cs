@@ -11,7 +11,7 @@ internal static class CollectionEntryMapper
 			.Select((id, i) => new ChromaCollectionEntry(id)
 			{
 				Embedding = response.Embeddings?[i],
-				Metadata = copy.Metadata(response.Metadatas?[i]),
+				Metadata = copy.Metadata(response.Metadatas is { } metadatas ? metadatas[i] ?? DocumentCopyReader.NoKeys : null),
 				Document = copy.Document(response.Documents?[i], response.Metadatas?[i]),
 				Uri = response.Uris?[i],
 			})

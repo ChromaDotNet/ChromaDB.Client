@@ -65,12 +65,18 @@ public static class ChromaClientExtensions
 	/// <returns>The services, for more registrations.</returns>
 	public static IServiceCollection AddKeyedChromaClient(this IServiceCollection services, object? serviceKey, Func<ChromaConfigurationOptions?, ChromaConfigurationOptions>? configurationOptions, Action<IHttpClientBuilder> configureHttpClient)
 	{
+		// A null key would register the client without a key, next to the one of AddChromaClient.
+		if (serviceKey is null)
+		{
+			throw new ArgumentNullException(nameof(serviceKey));
+		}
 		configurationOptions ??= DefaultConfigurationOptions;
 
 		ChromaConfigurationOptions options = new();
 		options = configurationOptions(options);
 
-		var httpClientName = $"{nameof(ChromaClient)}:{serviceKey}";
+		// The type with the text, so that keys like 1 and "1" get an HttpClient each.
+		var httpClientName = $"{nameof(ChromaClient)}:{serviceKey.GetType().FullName}:{serviceKey}";
 		services.AddKeyedSingleton(serviceKey, options);
 		configureHttpClient(services.AddHttpClient(httpClientName));
 		services.AddKeyedSingleton(serviceKey, (serviceProvider, _) => serviceProvider.CreateChromaClient(options, httpClientName));

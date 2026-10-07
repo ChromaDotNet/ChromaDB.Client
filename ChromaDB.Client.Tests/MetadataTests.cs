@@ -57,7 +57,8 @@ public class MetadataTests : ChromaTestsBase
 		await client.UpsertAsync(new ChromaRecords(["b"]) { Embeddings = [Embedding2], Metadatas = [new Dictionary<string, object> { ["x"] = null! }] });
 		var records = (await client.GetAsync(["a", "b"], include: ChromaGetInclude.Metadatas)).ToDictionary(x => x.Id, x => x.Metadata);
 		Assert.That(records["a"], Is.EquivalentTo(new Dictionary<string, object> { ["y"] = 2L }));
-		Assert.That(records["b"], Is.Null);
+		// A record without keys comes back with an empty metadata.
+		Assert.That(records["b"], Is.Not.Null.And.Empty);
 		Assert.That(() => client.AddAsync(new ChromaRecords(["c"]) { Embeddings = [Embedding1], Metadatas = [new Dictionary<string, object> { ["x"] = null! }] }), Throws.ArgumentException);
 	}
 
@@ -177,7 +178,7 @@ public class MetadataTests : ChromaTestsBase
 		var records = (await client.GetAsync(["a", "b"], include: ChromaGetInclude.Metadatas | ChromaGetInclude.Documents)).ToDictionary(x => x.Id);
 		Assert.That(records["a"].Metadata, Is.EquivalentTo(new Dictionary<string, object> { ["keep"] = 2L, ["x"] = 3L }));
 		Assert.That(records["a"].Document, Is.EqualTo(""));
-		Assert.That(records["b"].Metadata, Is.Null);
+		Assert.That(records["b"].Metadata, Is.Not.Null.And.Empty);
 		Assert.That(records["b"].Document, Is.Null);
 	}
 
@@ -194,7 +195,8 @@ public class MetadataTests : ChromaTestsBase
 		var records = (await client.GetAsync(include: ChromaGetInclude.Documents)).ToDictionary(x => x.Id);
 		Assert.That((records["a"].Document, records["b"].Document), Is.EqualTo(((string?)null, "")));
 		var record = (await client.GetAsync("a", include: ChromaGetInclude.Metadatas | ChromaGetInclude.Documents))!;
-		Assert.That((record.Metadata, record.Document), Is.EqualTo(((IReadOnlyDictionary<string, object>?)null, (string?)null)));
+		Assert.That(record.Metadata, Is.Not.Null.And.Empty);
+		Assert.That(record.Document, Is.Null);
 	}
 
 	// The values of ChromaMetadataConvert come back as they were written, and a filter with a converted value finds the same instant

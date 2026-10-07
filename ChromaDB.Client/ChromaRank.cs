@@ -206,8 +206,8 @@ public abstract class ChromaRank
 		var embeddingRank = Knn(embedding, embeddingKey, limit, defaultScore: limit, returnRank: true);
 		var textRank = SparseKnn(text, sparseKey, limit, defaultScore: limit, returnRank: true);
 		var textScore = SparseKnn(text, sparseKey, limit, defaultScore: 1);
-		// 1 for a record with a term of the text, whose dot product is positive, and 0 for the others.
-		var hasTerm = Min(1, (1 - textScore) * 1_000_000);
+		// 1 for a record with a term of the text, whose dot product is positive, and 0 for the others, never below.
+		var hasTerm = Max(0, Min(1, (1 - textScore) * 1_000_000));
 		return new ChromaOppositeScoreRank(-(1 / (k + embeddingRank) + hasTerm / (k + textRank)));
 	}
 

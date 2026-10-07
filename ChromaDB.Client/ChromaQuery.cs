@@ -12,7 +12,13 @@ public class ChromaQuery
 	/// <summary>
 	/// How many results to return for each query embedding, 10 by default.
 	/// </summary>
-	public int NResults { get; init; } = 10;
+	public int NResults
+	{
+		get => _nResults;
+		init => _nResults = value >= 0 ? value : throw new ArgumentOutOfRangeException(nameof(NResults), value, "The number of results of a query cannot be negative.");
+	}
+
+	private int _nResults = 10;
 	/// <summary>
 	/// How many of the nearest records to skip for each query embedding before the results, 0 by default. Chroma has no offset in
 	/// queries: the client asks for <c>NResults</c> plus the offset, and leaves out the first ones.

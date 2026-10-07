@@ -220,6 +220,7 @@ public class CollectionClientCUDTests : ChromaTestsBase
 			embeddings: Embeddings(2),
 			metadatas: [new Dictionary<string, object>
 			{
+				{ "key", "other" },
 			}, new Dictionary<string, object>
 			{
 				{ "key", "value" },

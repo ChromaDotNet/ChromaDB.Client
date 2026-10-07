@@ -32,7 +32,8 @@ public class ChromaSearchEntry
 	public ReadOnlyMemory<float>? Embedding { get; init; }
 
 	/// <summary>
-	/// The metadata: all of it with <c>ChromaSearchKeys.Metadata</c>, or only the selected fields.
+	/// The metadata: all of it with <c>ChromaSearchKeys.Metadata</c>, or only the selected fields; empty for a record without
+	/// them, and null when the search selects no metadata.
 	/// </summary>
 	public IReadOnlyDictionary<string, object>? Metadata { get; init; }
 

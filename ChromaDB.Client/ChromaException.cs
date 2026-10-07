@@ -37,6 +37,9 @@ public class ChromaException : Exception
 	// Works around KD-42 and KD-43 (docs/COMPATIBILITY.md)
 	// A missing collection: 404 from Chroma 1.x, 400 or 500 from the 0.x servers, always with "does not exist" in the message, also when
 	// the tenant or the database is missing. A bare 404, like the one of a wrong address, is not one.
+	// Part of the operation went before the error, as the first batches of a write: it is not run again.
+	internal bool PartlyDone { get; init; }
+
 	internal bool IsMissingCollection
 		=> StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError
 			&& (Message.Contains("does not exist") || ErrorType == "NotFoundError" && Message.StartsWith("Collection", StringComparison.Ordinal));

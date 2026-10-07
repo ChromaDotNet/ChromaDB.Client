@@ -57,7 +57,7 @@ public abstract class ChromaWhereOperator
 		{
 			if (condition is ChromaWhereValueOperator value && value.Ids() is { } conditionIds)
 			{
-				keptIds = keptIds is null ? conditionIds : keptIds.Intersect(conditionIds).ToList();
+				keptIds = keptIds is null ? conditionIds.Distinct().ToList() : keptIds.Intersect(conditionIds).ToList();
 			}
 			else if (condition.AsDocumentFilter() is { } document)
 			{

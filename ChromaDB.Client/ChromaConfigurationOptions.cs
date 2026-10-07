@@ -14,9 +14,12 @@ public class ChromaConfigurationOptions
 	/// </summary>
 	public Uri Uri { get; init; }
 	/// <summary>
-	/// Whether <c>Uri</c> is an address of Chroma Cloud, under <c>trychroma.com</c>.
+	/// Whether the server is Chroma Cloud: <c>Uri</c> under <c>trychroma.com</c>, or the options say so with <c>WithChromaCloud</c>,
+	/// as for Chroma Cloud behind a proxy or another address.
 	/// </summary>
-	public bool IsChromaCloud => Uri.Host.EndsWith(".trychroma.com", StringComparison.OrdinalIgnoreCase);
+	public bool IsChromaCloud => _chromaCloud ?? Uri.Host.EndsWith(".trychroma.com", StringComparison.OrdinalIgnoreCase);
+
+	private bool? _chromaCloud;
 	/// <summary>
 	/// The tenant of the requests that are not given one; when null or empty, <c>default_tenant</c>.
 	/// </summary>
@@ -139,7 +142,7 @@ public class ChromaConfigurationOptions
 					throw new ArgumentException($"The connection string has the key \"{key}\": it takes Endpoint, Token, Tenant and Database.", nameof(connectionString));
 			}
 		}
-		if (endpoint is null || !Uri.TryCreate(endpoint, UriKind.Absolute, out var endpointUri))
+		if (endpoint is null || !Uri.TryCreate(endpoint, UriKind.Absolute, out var endpointUri) || endpointUri.Scheme is not ("http" or "https"))
 		{
 			throw new ArgumentException("The connection string needs Endpoint, the URI of the server.", nameof(connectionString));
 		}
@@ -157,6 +160,7 @@ public class ChromaConfigurationOptions
 		MetadataValues = options.MetadataValues;
 		BatchSplitting = options.BatchSplitting;
 		MaxBatchSize = options.MaxBatchSize;
+		_chromaCloud = options._chromaCloud;
 	}
 
 	/// <summary>
@@ -217,6 +221,16 @@ public class ChromaConfigurationOptions
 	/// <returns>The new options; these do not change.</returns>
 	public ChromaConfigurationOptions WithBasicAuth(string username, string password)
 		=> new(this) { BasicAuthUsername = username, BasicAuthPassword = password };
+
+	/// <summary>
+	/// A copy of these options that says whether the server is Chroma Cloud, whatever its address: for Chroma Cloud behind a proxy
+	/// or another address. On Chroma Cloud the client writes in batches of 300 from the start, checks the keys of a schema before the
+	/// creation of a collection, and deletes a collection or a database in one request.
+	/// </summary>
+	/// <param name="chromaCloud">Whether the server is Chroma Cloud.</param>
+	/// <returns>The new options; these do not change.</returns>
+	public ChromaConfigurationOptions WithChromaCloud(bool chromaCloud = true)
+		=> new(this) { _chromaCloud = chromaCloud };
 
 	/// <summary>
 	/// A copy of these options with the given version of the Chroma API.

@@ -123,6 +123,64 @@ internal static class ChromaRequestChecks
 		}
 	}
 
+	// What the Python client checks too: a metadata has at least one key, and a list holds values of one type, strings, integers,
+	// floating-point numbers or Booleans. The server answers either with an error that does not say what is wrong, or stores no metadata.
+	// A list that can be read once is not read here.
+	public static void MetadataValues(IReadOnlyList<IReadOnlyDictionary<string, object>?>? metadatas, string paramName)
+	{
+		foreach (var metadata in metadatas ?? [])
+		{
+			if (metadata is { Count: 0 })
+			{
+				throw new ArgumentException("A metadata is empty: Chroma takes at least one key, as the Python client checks; null is a record without metadata.", paramName);
+			}
+			foreach (var pair in metadata ?? Enumerable.Empty<KeyValuePair<string, object>>())
+			{
+				if (IsList(pair.Value) && pair.Value is JsonElement or ICollection && Kinds(pair.Value).Distinct().Skip(1).Any())
+				{
+					throw new ArgumentException($"The list of the metadata key \"{pair.Key}\" holds values of more than one type: Chroma takes strings, integers, floating-point numbers or Booleans, one type in a list.", paramName);
+				}
+			}
+		}
+	}
+
+	// The type of each value of a list, as Chroma tells them: null for one it does not take.
+	private static IEnumerable<string?> Kinds(object value)
+	{
+		if (value is JsonElement element)
+		{
+			foreach (var item in element.EnumerateArray())
+			{
+				yield return item.ValueKind switch
+				{
+					JsonValueKind.String => "string",
+					JsonValueKind.True or JsonValueKind.False => "bool",
+					JsonValueKind.Number => item.TryGetInt64(out _) ? "int" : "float",
+					_ => null,
+				};
+			}
+			yield break;
+		}
+		foreach (var item in (IEnumerable)value)
+		{
+			yield return item switch
+			{
+				string => "string",
+				bool => "bool",
+				sbyte or byte or short or ushort or int or uint or long or ulong => "int",
+				float or double or decimal => "float",
+				JsonElement json => json.ValueKind switch
+				{
+					JsonValueKind.String => "string",
+					JsonValueKind.True or JsonValueKind.False => "bool",
+					JsonValueKind.Number => json.TryGetInt64(out _) ? "int" : "float",
+					_ => null,
+				},
+				_ => null,
+			};
+		}
+	}
+
 	// A lone half of a surrogate pair: UTF-8 has no form for it, and System.Text.Json would send U+FFFD in its place, so
 	// an id or a document would come back changed.
 	public static void NoLoneSurrogates(string value, string what)

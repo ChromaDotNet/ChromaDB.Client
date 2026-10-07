@@ -70,12 +70,12 @@ public class DeleteRecordsFirstTests
 		Assert.That(server.Requests.Select(x => x.Request), Is.EqualTo(new[] { "DELETE tenants/default_tenant/databases/default_database/collections/c" }));
 	}
 
-	// A page that comes back after its delete would come back forever: the collection goes with it.
+	// A page that comes back after its delete would come back forever: the client throws, and the collection stays with its records.
 	[Test]
 	public async Task RecordsThatStayStopTheDeletes()
 	{
 		var server = new FakeServer("1.0.0", $$"""{"id":"{{Id}}","name":"c"}""", """["a"]""", """["a"]""");
-		await Client(server).DeleteCollectionAsync("c", deleteRecordsFirst: true);
+		await Assert.ThatAsync(() => Client(server).DeleteCollectionAsync("c", deleteRecordsFirst: true), Throws.InstanceOf<ChromaException>().With.Message.Contains("not deleted"));
 		var records = $"tenants/default_tenant/databases/default_database/collections/{Id}";
 		Assert.That(server.Requests.Select(x => x.Request), Is.EqualTo(new[]
 		{
@@ -85,7 +85,6 @@ public class DeleteRecordsFirstTests
 			$"POST {records}/get",
 			$"POST {records}/delete",
 			$"POST {records}/get",
-			"DELETE tenants/default_tenant/databases/default_database/collections/c",
 		}));
 	}
 

@@ -41,3 +41,4 @@ static ChromaDB.Client.ChromaMetadataConvert.ToMetadata(System.Collections.Gener
 virtual ChromaDB.Client.ChromaCollectionClient.WithMetadataValues(ChromaDB.Client.ChromaMetadataValues metadataValues) -> ChromaDB.Client.ChromaCollectionClient!
 ChromaDB.Client.Models.ChromaCollectionSchema.WithBm25Index(string! sourceKey, bool ifSupported = false) -> ChromaDB.Client.Models.ChromaCollectionSchema!
 virtual ChromaDB.Client.ChromaCollectionClient.FindBm25IndexAsync(string! sourceKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaSparseVectorIndex?>!
+ChromaDB.Client.ChromaConfigurationOptions.WithChromaCloud(bool chromaCloud = true) -> ChromaDB.Client.ChromaConfigurationOptions!

@@ -14,6 +14,9 @@ internal readonly struct DocumentCopyReader
 		_dropMetadata = !keepMetadata;
 	}
 
+	// The metadata of a record without keys, when the metadata is read: empty, not null.
+	public static readonly IReadOnlyDictionary<string, object> NoKeys = new System.Collections.ObjectModel.ReadOnlyDictionary<string, object>(new Dictionary<string, object>());
+
 	// Whether the documents need the metadata.
 	public bool ReadsMetadata => _key is not null;
 
