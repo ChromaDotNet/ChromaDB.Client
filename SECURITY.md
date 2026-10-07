@@ -32,3 +32,9 @@ Each GitHub release has the packages published on nuget.org and their Sigstore s
 ```
 cosign verify-blob ChromaDotNet.Client.2.10.0.nupkg --bundle ChromaDotNet.Client.2.10.0.nupkg.sigstore.json --certificate-identity-regexp '^https://github.com/ChromaDotNet/ChromaDB.Client/\.github/workflows/release-assets\.yml@' --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
+
+The same workflow attaches the build provenance of the packages (`provenance-<tag>.intoto.jsonl`) and records it on GitHub. With the GitHub CLI:
+
+```
+gh attestation verify ChromaDotNet.Client.2.10.0.nupkg --repo ChromaDotNet/ChromaDB.Client
+```
