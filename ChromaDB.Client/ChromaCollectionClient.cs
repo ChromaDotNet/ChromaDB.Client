@@ -779,7 +779,7 @@ public class ChromaCollectionClient
 
 	// Works around KD-49 (docs/COMPATIBILITY.md)
 	// A strategy other than the upsert of the server, for writes with embeddings: on Chroma 0.x, which has not the defect, the writes go
-	// as they are, and its older versions do not read the URIs that the strategies read.
+	// as they are.
 	private async Task<bool> WritesByStrategy(ChromaRecords records, CancellationToken cancellationToken)
 		=> _httpClient.UpsertStrategy != ChromaUpsertStrategy.Server && records.Embeddings is not null && !await _httpClient.IsChroma0(cancellationToken);
 
