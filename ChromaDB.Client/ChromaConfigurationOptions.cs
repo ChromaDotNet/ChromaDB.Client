@@ -60,8 +60,8 @@ public class ChromaConfigurationOptions
 	public bool BatchSplitting { get; init; } = true;
 	/// <summary>
 	/// How <c>UpdateAsync</c> and <c>UpsertAsync</c> write the embeddings of records that exist: <c>ChromaUpsertStrategy.Server</c>, the
-	/// update and the upsert of the server, by default. The other strategies work around a defect of Chroma 1.0.21 to 1.5.9, and some
-	/// of them have a risk of data loss: see <c>ChromaUpsertStrategy</c>.
+	/// update and the upsert of the server, by default. <c>ChromaUpsertStrategy.SkipUnchangedEmbeddings</c> works around a defect of
+	/// Chroma 1.0.21 to 1.5.9 for the records whose embedding does not change.
 	/// </summary>
 	public ChromaUpsertStrategy UpsertStrategy { get; init; }
 	private readonly int? _maxBatchSize;
@@ -241,7 +241,7 @@ public class ChromaConfigurationOptions
 
 	/// <summary>
 	/// A copy of these options with the given strategy for the embeddings of records that exist in <c>UpdateAsync</c> and
-	/// <c>UpsertAsync</c>. Read <c>ChromaUpsertStrategy</c> first: some strategies have a risk of data loss.
+	/// <c>UpsertAsync</c>: see <c>ChromaUpsertStrategy</c>.
 	/// </summary>
 	/// <param name="strategy">The strategy.</param>
 	/// <returns>The new options; these do not change.</returns>

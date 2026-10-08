@@ -880,7 +880,7 @@ public class ChromaCollectionClient
 			Uris = records.Uris is { } uris ? indexes.Select(i => uris[i]).ToList() : null,
 		};
 
-	// The records in batches to the endpoint: update, upsert or add, which take the same fields.
+	// The records in batches to the endpoint: update or upsert, which take the same fields.
 	private Task SendWrite(ChromaRecords records, string endpoint, bool base64, RequestQueryParams requestParams, CancellationToken cancellationToken)
 		=> InBatches(records, batch =>
 		{
@@ -889,7 +889,6 @@ public class ChromaCollectionClient
 			var path = _httpClient.Routes.Collection + "/" + endpoint;
 			return endpoint switch
 			{
-				"add" => _httpClient.Post(path, new CollectionAddRequest() { Ids = batch.Ids, Embeddings = embeddings, Metadatas = metadatas, Documents = batch.Documents, Uris = batch.Uris }, requestParams, cancellationToken),
 				"upsert" => _httpClient.Post(path, new CollectionUpsertRequest() { Ids = batch.Ids, Embeddings = embeddings, Metadatas = metadatas, Documents = batch.Documents, Uris = batch.Uris }, requestParams, cancellationToken),
 				_ => _httpClient.Post(path, new CollectionUpdateRequest() { Ids = batch.Ids, Embeddings = embeddings, Metadatas = metadatas, Documents = batch.Documents, Uris = batch.Uris }, requestParams, cancellationToken),
 			};

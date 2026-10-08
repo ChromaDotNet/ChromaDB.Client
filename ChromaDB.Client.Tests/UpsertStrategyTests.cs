@@ -133,19 +133,11 @@ public class UpsertStrategyTests
 		return new(Guid.Empty, "c", strategy is { } chosen ? options.WithUpsertStrategy(chosen) : options, new HttpClient(handler));
 	}
 
-	// Keeps the records it is given, answers a get of ids with them, and records the writes and their bodies. The first FailAdds adds
-	// answer 500, and so does the delete number FailDelete. The collection c is read by name, with its id; with GoneOnAdd an add finds
-	// it gone, and the name has another id from then on.
+	// Keeps the records it is given, answers a get of ids with them, and records the writes and their bodies.
 	internal sealed class Server : HttpMessageHandler
 	{
 		readonly Dictionary<string, (float[] Embedding, string Metadata, string? Document)> _stored = [];
-		int _deletes;
-		string _id = "11111111-1111-1111-1111-111111111111";
-		string? _gone;
-		public int FailAdds { get; set; }
-		public int FailDelete { get; set; }
 		public string Version { get; set; } = "1.0.0";
-		public bool GoneOnAdd { get; set; }
 		public List<(string Path, JsonElement Body)> Bodies { get; } = [];
 
 		public void Store(string id, ReadOnlyMemory<float> embedding, string metadata, string? document) => _stored[id] = (embedding.ToArray(), metadata, document);
@@ -166,33 +158,8 @@ public class UpsertStrategyTests
 			{
 				return Answer(HttpStatusCode.OK, $"\"{Version}\"");
 			}
-			if (path == "c")
-			{
-				return Answer(HttpStatusCode.OK, "{\"id\":\"" + _id + "\",\"name\":\"c\",\"configuration_json\":{\"hnsw\":{\"space\":\"l2\"}}}");
-			}
-			if (_gone is { } gone && request.RequestUri.AbsolutePath.Contains(gone))
-			{
-				return Answer(HttpStatusCode.NotFound, """{"error":"NotFoundError","message":"Collection does not exist"}""");
-			}
-			if (path == "count")
-			{
-				return Answer(HttpStatusCode.OK, "2");
-			}
 			var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken)).RootElement.Clone();
 			Bodies.Add((path, body));
-			if (path == "add" && GoneOnAdd)
-			{
-				(_gone, _id, GoneOnAdd) = (_id, "22222222-2222-2222-2222-222222222222", false);
-				return Answer(HttpStatusCode.NotFound, """{"error":"NotFoundError","message":"Collection does not exist"}""");
-			}
-			if (path == "add" && FailAdds-- > 0)
-			{
-				return Answer(HttpStatusCode.InternalServerError, """{"error":"InternalError","message":"add failed"}""");
-			}
-			if (path == "delete" && ++_deletes == FailDelete)
-			{
-				return Answer(HttpStatusCode.InternalServerError, """{"error":"InternalError","message":"delete failed"}""");
-			}
 			if (path != "get")
 			{
 				return Answer(HttpStatusCode.OK, "{}");
