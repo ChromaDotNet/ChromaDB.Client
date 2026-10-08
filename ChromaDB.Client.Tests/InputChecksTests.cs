@@ -111,6 +111,19 @@ public class InputChecksTests
 		Assert.That(server.Bodies.Where(x => x.Path.EndsWith("/add")).Select(x => x.Body.GetProperty("ids").GetArrayLength()), Is.EqualTo(new[] { 300, 1 }));
 	}
 
+	// The creation sends get_or_create once, as the API of Chroma names it.
+	[Test]
+	public async Task CreationSendsGetOrCreateOnce()
+	{
+		var server = new Server();
+		using var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(server));
+		try { await client.CreateCollectionAsync("abc"); } catch (ChromaException) { }
+		try { await client.GetOrCreateCollectionAsync("abc"); } catch (ChromaException) { }
+		var bodies = server.Bodies.Where(x => x.Path.EndsWith("/collections")).Select(x => x.Body.EnumerateObject().Select(p => p.Name).ToList()).ToList();
+		Assert.That(bodies, Has.Count.EqualTo(2));
+		Assert.That(bodies, Has.All.Contains("get_or_create").And.All.Not.Contains("GetOrCreate"));
+	}
+
 	// Keys with the same text, like 1 and "1", get an HttpClient each; a null key would register the client without a key.
 	[Test]
 	public async Task KeyedClientsWithTheSameText()
