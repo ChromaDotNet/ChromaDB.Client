@@ -266,7 +266,7 @@ Chroma 1.0.21 to 1.5.9, installed on your own servers, may lose a record from th
 
 ### On the server: `RAYON_NUM_THREADS=1`
 
-With the environment variable `RAYON_NUM_THREADS=1` on the server, the parallel work of Chroma runs on one thread, and no record was lost in our measurements, whatever the client does:
+With the environment variable `RAYON_NUM_THREADS=1` on the server, the parallel work of Chroma runs on one thread, and no record was lost in our measurements, whatever the client does. It costs time on upserts of records that exist:
 
 ```bash
 docker run -e RAYON_NUM_THREADS=1 -p 8000:8000 chromadb/chroma:1.5.9
@@ -276,10 +276,13 @@ Measured on Chroma 1.5.9, in a `cosine` collection, two containers started the s
 
 | Case | Without | With `RAYON_NUM_THREADS=1` |
 |---|---|---|
-| 120 records, 20 written again with new vectors, 200 runs | 23 runs miss a record | 0 |
-| 60 records, 20 written again with the same vectors and new metadata, 300 runs | 27 | 0 |
+| 120 records, 20 written again with new vectors | 23 runs of 200 miss a record | 0 of 200, and 0 of 600 more |
+| 60 records, 20 written again with the same vectors and new metadata | 27 runs of 300 | 0 of 300 |
+| add of 5,000 records of 384 dimensions | 0.70 to 1.35 s | 1.29 to 1.69 s |
+| upsert of the same 5,000 records with new vectors | 1.34 to 2.06 s | 7.32 to 7.79 s |
+| 100 queries of 10 results | 0.23 to 0.35 s | 0.23 to 0.35 s |
 
-Not measured yet: how much slower the indexing of large writes gets with one thread, a long run of many updates, and the versions from 1.0.21 to 1.5.0. Writing the records one per request from the client does not help: the runs that miss a record stay the same.
+The times are of 6 runs each. One thread makes the defect much rarer, but it may not remove it all: with the code of Chroma changed to apply the records in sequence, another measurement lost a record in 1 run of 600, with 60 records. Not measured yet: a long run of many updates, and the versions from 1.0.21 to 1.5.0. Writing the records one per request from the client does not help: the runs that miss a record stay the same.
 
 ### In the client: upsert strategies
 

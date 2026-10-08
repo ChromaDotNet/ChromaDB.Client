@@ -45,7 +45,8 @@ public class UpsertStrategyServerTests : ChromaTestsBase
 	[Explicit("A measurement of KD-49 on a single Chroma server.")]
 	public async Task LostRecordsAfterUpserts(ChromaUpsertStrategy strategy)
 	{
-		const int runs = 200;
+		// More runs with dotnet test -- TestRunParameters.Parameter(name=\"runs\", value=\"600\").
+		var runs = int.Parse(TestContext.Parameters.Get("runs", "200"), System.Globalization.CultureInfo.InvariantCulture);
 		const int records = 120;
 		var options = BaseConfigurationOptions.WithUpsertStrategy(strategy);
 		var random = new Random(1);
@@ -100,6 +101,37 @@ public class UpsertStrategyServerTests : ChromaTestsBase
 		if (strategy == ChromaUpsertStrategy.SkipUnchangedEmbeddings)
 		{
 			Assert.That(lost, Is.EqualTo(0));
+		}
+	}
+
+	// What one thread on the server costs: an add of 5,000 records of 384 dimensions, an upsert of the same records with new vectors,
+	// and 100 queries of 10 results, 3 times. Not in the CI: it takes minutes.
+	[Test]
+	[Explicit("A measurement of the cost of RAYON_NUM_THREADS=1 on a single Chroma server.")]
+	public async Task WriteAndQueryTimes()
+	{
+		const int records = 5000;
+		var random = new Random(1);
+		ReadOnlyMemory<float> Large() => Enumerable.Range(0, 384).Select(_ => (float)random.NextDouble()).ToArray();
+		for (var round = 0; round < 3; round++)
+		{
+			var collection = await new ChromaClient(BaseConfigurationOptions, HttpClient).CreateCollectionAsync(new ChromaCollectionDefinition($"times{Random.Shared.Next()}") { Configuration = new() { Space = ChromaSpace.Cosine } });
+			var client = new ChromaCollectionClient(collection, BaseConfigurationOptions, HttpClient);
+			var ids = Enumerable.Range(0, records).Select(i => $"r{i}").ToList();
+			var watch = System.Diagnostics.Stopwatch.StartNew();
+			await client.AddAsync(ids, ids.Select(_ => Large()).ToList());
+			var add = watch.Elapsed;
+			watch.Restart();
+			await client.UpsertAsync(ids, ids.Select(_ => Large()).ToList());
+			var upsert = watch.Elapsed;
+			watch.Restart();
+			for (var query = 0; query < 100; query++)
+			{
+				await client.QueryAsync(new ChromaQuery([Large()]) { NResults = 10 });
+			}
+			var queries = watch.Elapsed;
+			TestContext.Out.WriteLine($"Round {round}: add {add.TotalSeconds:F2} s, upsert {upsert.TotalSeconds:F2} s, 100 queries {queries.TotalSeconds:F2} s.");
+			await new ChromaClient(BaseConfigurationOptions, HttpClient).DeleteCollectionAsync(collection.Name);
 		}
 	}
 
