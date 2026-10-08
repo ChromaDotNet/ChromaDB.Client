@@ -126,6 +126,49 @@ public class UpsertStrategyTests
 		Assert.That(server.Body("get").GetProperty("include").EnumerateArray().Select(x => x.GetString()), Is.EqualTo(new[] { "embeddings" }));
 	}
 
+	// Once the unchanged records went, a failure of the others is partly done: a client made by name does not run the write again on a
+	// collection created again under the name, which would read the records once more.
+	[Test]
+	public async Task APartialWriteIsNotRunAgainByName()
+	{
+		var server = new Server();
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		server.Store("b", Old, """{"k":1}""", "doc b");
+		var options = new ChromaConfigurationOptions("http://localhost:8000").WithUpsertStrategy(ChromaUpsertStrategy.SkipUnchangedEmbeddings);
+		var collection = new ChromaClient(options, new HttpClient(server)).GetCollectionClient("c");
+		await collection.GetCollectionAsync();
+		server.GoneOnUpsert = true;
+		await Assert.ThatAsync(() => collection.UpsertAsync(["a", "b"], [Same, New]), Throws.InstanceOf<ChromaException>());
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a,b", "update a", "upsert b" }));
+	}
+
+	// The reads and the writes go in batches of the batch size.
+	[Test]
+	public async Task InBatches()
+	{
+		var server = new Server();
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		server.Store("b", Same, """{"k":1}""", "doc b");
+		await Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings, maxBatchSize: 1).UpsertAsync(["a", "b", "c"], [Same, Same, New]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a", "get b", "get c", "update a", "update b", "upsert c" }));
+	}
+
+	// In a cosine collection, 4 ulp count as the same embedding, and 5 do not.
+	[TestCase(4, "update a")]
+	[TestCase(-4, "update a")]
+	[TestCase(5, "upsert a")]
+	[TestCase(-5, "upsert a")]
+	public async Task CosineThreshold(int ulps, string write)
+	{
+		var server = new Server();
+		server.Store("a", new([0.5f, 0.25f]), """{"k":1}""", "doc a");
+		var off = BitConverter.Int32BitsToSingle(BitConverter.SingleToInt32Bits(0.25f) + ulps);
+		var collection = new ChromaCollection("c") { Id = Guid.Empty, Metadata = new Dictionary<string, object> { ["hnsw:space"] = "cosine" } };
+		var client = new ChromaCollectionClient(collection, new ChromaConfigurationOptions("http://localhost:8000").WithUpsertStrategy(ChromaUpsertStrategy.SkipUnchangedEmbeddings), new HttpClient(server));
+		await client.UpsertAsync(["a"], [new([0.5f, off])]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a", write }));
+	}
+
 	static ChromaCollectionClient Collection(HttpMessageHandler handler, ChromaUpsertStrategy? strategy, int? maxBatchSize = null, ChromaConfigurationOptions? options = null)
 	{
 		options ??= new ChromaConfigurationOptions("http://localhost:8000");
@@ -133,11 +176,15 @@ public class UpsertStrategyTests
 		return new(Guid.Empty, "c", strategy is { } chosen ? options.WithUpsertStrategy(chosen) : options, new HttpClient(handler));
 	}
 
-	// Keeps the records it is given, answers a get of ids with them, and records the writes and their bodies.
+	// Keeps the records it is given, answers a get of ids with them, and records the writes and their bodies. The collection c is read by
+	// name; with GoneOnUpsert an upsert finds it gone, and the name has another id from then on.
 	internal sealed class Server : HttpMessageHandler
 	{
 		readonly Dictionary<string, (float[] Embedding, string Metadata, string? Document)> _stored = [];
+		string _id = "11111111-1111-1111-1111-111111111111";
+		string? _gone;
 		public string Version { get; set; } = "1.0.0";
+		public bool GoneOnUpsert { get; set; }
 		public List<(string Path, JsonElement Body)> Bodies { get; } = [];
 
 		public void Store(string id, ReadOnlyMemory<float> embedding, string metadata, string? document) => _stored[id] = (embedding.ToArray(), metadata, document);
@@ -158,8 +205,21 @@ public class UpsertStrategyTests
 			{
 				return Answer(HttpStatusCode.OK, $"\"{Version}\"");
 			}
+			if (path == "c")
+			{
+				return Answer(HttpStatusCode.OK, "{\"id\":\"" + _id + "\",\"name\":\"c\",\"configuration_json\":{\"hnsw\":{\"space\":\"l2\"}}}");
+			}
+			if (_gone is { } gone && request.RequestUri.AbsolutePath.Contains(gone))
+			{
+				return Answer(HttpStatusCode.NotFound, """{"error":"NotFoundError","message":"Collection does not exist"}""");
+			}
 			var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken)).RootElement.Clone();
 			Bodies.Add((path, body));
+			if (path == "upsert" && GoneOnUpsert)
+			{
+				(_gone, _id, GoneOnUpsert) = (_id, "22222222-2222-2222-2222-222222222222", false);
+				return Answer(HttpStatusCode.NotFound, """{"error":"NotFoundError","message":"Collection does not exist"}""");
+			}
 			if (path != "get")
 			{
 				return Answer(HttpStatusCode.OK, "{}");
