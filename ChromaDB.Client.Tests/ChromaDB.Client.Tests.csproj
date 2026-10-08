@@ -15,7 +15,7 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="ChromaDotNet.Testcontainers" Version="0.1.0" />
+		<PackageReference Include="ChromaDotNet.Testcontainers" Version="0.1.7" />
 		<!-- The OpenTelemetry SDK, for the buckets it gives db.client.operation.duration. -->
 		<PackageReference Include="OpenTelemetry.Exporter.InMemory" Version="$(OpenTelemetryVersion)" />
 		<PackageReference Include="GitHubActionsTestLogger" Version="2.3.3">
