@@ -260,6 +260,47 @@ var options = new ChromaConfigurationOptions(uri: "https://api.trychroma.com").W
 
 `ChromaCloudQuotas` holds the default quotas of a Chroma Cloud tenant, as its documentation lists them: 300 records per request, 8,182 bytes per metadata value, 16,384 per document, 32 metadata keys of at most 36 bytes, 8 predicates per filter. A single Chroma server has none of them. Chroma Cloud creates a collection whose schema names a key beyond 36 bytes, and then rejects every write with that key, so on Chroma Cloud `CreateCollectionAsync` and `GetOrCreateCollectionAsync` throw an `ArgumentException` before the request.
 
+## Records lost after an update of their embeddings
+
+Chroma 1.0.21 to 1.5.9, installed on your own servers, may lose a record from the vector index after an `UpdateAsync` or an `UpsertAsync` with embeddings of records that exist, also with the embeddings they had. A query no longer finds it, not even with its own embedding, while `GetAsync` and `CountAsync` do. The record lost is often not one of those written. Chroma applies the records of a write to the vector index in parallel, and the update of a record in place can leave another one without links. Chroma Cloud has not shown it, and Chroma 0.x has not the defect. It is KD-49 in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
+
+### On the server: `RAYON_NUM_THREADS=1`
+
+With the environment variable `RAYON_NUM_THREADS=1` on the server, the parallel work of Chroma runs on one thread, and no record was lost in our measurements, whatever the client does. It costs time on upserts of records that exist:
+
+```bash
+docker run -e RAYON_NUM_THREADS=1 -p 8000:8000 chromadb/chroma:1.5.9
+```
+
+Measured on Chroma 1.5.9, in a `cosine` collection, two containers started the same way, with and without the variable:
+
+| Case | Without | With `RAYON_NUM_THREADS=1` |
+|---|---|---|
+| 120 records, 20 written again with new vectors | 23 runs of 200 miss a record | 0 of 200, and 0 of 600 more |
+| 60 records, 20 written again with the same vectors and new metadata | 27 runs of 300 | 0 of 300 |
+| add of 5,000 records of 384 dimensions | 0.70 to 1.35 s | 1.29 to 1.69 s |
+| upsert of the same 5,000 records with new vectors | 1.34 to 2.06 s | 7.32 to 7.79 s |
+| 100 queries of 10 results | 0.23 to 0.35 s | 0.23 to 0.35 s |
+
+The times are of 6 runs each. One thread makes the defect much rarer, but it may not remove it all: with the code of Chroma changed to apply the records in sequence, another measurement lost a record in 1 run of 600, with 60 records. Not measured yet: a long run of many updates, and the versions from 1.0.21 to 1.5.0. Writing the records one per request from the client does not help: the runs that miss a record stay the same.
+
+### In the client: upsert strategies
+
+When the server cannot be changed, `WithUpsertStrategy` on the options says how `UpdateAsync` and `UpsertAsync` write the embeddings of records that exist:
+
+```csharp
+var options = new ChromaConfigurationOptions("http://localhost:8000").WithUpsertStrategy(ChromaUpsertStrategy.SkipUnchangedEmbeddings);
+```
+
+| Strategy | What it protects | What it costs |
+|---|---|---|
+| `Server`, the default | nothing: the update and the upsert of the server | nothing more |
+| `SkipUnchangedEmbeddings` | the records written again with the same embedding, as with new metadata or a new document: they are updated without it, which does not touch the vector index | a get of the records first |
+
+With `SkipUnchangedEmbeddings` no record is deleted, so there is no risk of data loss. A record whose embedding changes still goes by the upsert of the server, and then the vector index can still lose a record, often another one. So does an id given more than once in the same write, in the order given, as Chroma applies the writes in order, so it stays exposed too. In a `cosine` collection, where Chroma 1.x gives an embedding back 1 or 2 ulp off (KD-8), values within 4 ulp count as the same; an embedding computed again by a model can differ by more, and then it goes as changed. On Chroma 0.x, which has not the defect, the writes go as they are. A `Microsoft.Extensions.VectorData` store built on a `ChromaClient` with these options, which writes by upserts with the embeddings, gets it too.
+
+Turn it on for Chroma 1.0.21 to 1.5.9 installed on your own servers without `RAYON_NUM_THREADS=1`, where records are written again with the embeddings they had. Measured on Chroma 1.5.9, in a series of runs separate from the one above, so the numbers of `Server` differ a little from those of the table: in a `cosine` collection of 60 records with random vectors, of which 20 are written again with the same vectors and new metadata, 300 runs: a query of all the records missed one in 28 runs with `Server`, and in none with `SkipUnchangedEmbeddings`. With 120 records of which 20 get new vectors, 200 runs, they missed one in 22 runs with `Server` and in 25 with `SkipUnchangedEmbeddings`, which cannot help there.
+
 ## Deleting records
 
 ```csharp

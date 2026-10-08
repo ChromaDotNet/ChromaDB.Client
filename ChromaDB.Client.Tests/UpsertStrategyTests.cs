@@ -1,0 +1,261 @@
+using System.Net;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using ChromaDB.Client.Models;
+using NUnit.Framework;
+
+namespace ChromaDB.Client.Tests;
+
+// The upsert strategies, against a fake server: Chroma 1.0.21 to 1.5.9 may lose a record from the vector index after an upsert or an
+// update with embeddings of records that exist (KD-49).
+[TestFixture]
+public class UpsertStrategyTests
+{
+	static readonly ReadOnlyMemory<float> Same = new([1f, 0f]);
+	static readonly ReadOnlyMemory<float> Old = new([0f, 1f]);
+	static readonly ReadOnlyMemory<float> New = new([1f, 1f]);
+
+	[Test]
+	public void TheOption()
+	{
+		var options = new ChromaConfigurationOptions("http://localhost:8000");
+		Assert.That(options.UpsertStrategy, Is.EqualTo(ChromaUpsertStrategy.Server));
+		Assert.That(options.WithUpsertStrategy(ChromaUpsertStrategy.Server).WithDatabase("d").UpsertStrategy, Is.EqualTo(ChromaUpsertStrategy.Server));
+	}
+
+	// The default: the upsert and the update go as they are, without reading the records.
+	[Test]
+	public async Task ServerByDefault()
+	{
+		var server = new Server();
+		server.Store("a", Old, """{"k":1}""", "doc a");
+		var collection = Collection(server, null);
+		await collection.UpsertAsync(["a"], [New]);
+		await collection.UpdateAsync(["a"], [Same]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "upsert a", "update a" }));
+	}
+
+	// SkipUnchangedEmbeddings: a keeps its embedding and is updated without it, which does not touch the vector index; b changes it
+	// and c is new, and they go by the upsert of the server. The fields go as given: without documents, the update sends none.
+	[Test]
+	public async Task SkipUnchangedEmbeddingsInAnUpsert()
+	{
+		var server = new Server();
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		server.Store("b", Old, """{"k":1}""", "doc b");
+		await Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings).UpsertAsync(new ChromaRecords(["a", "b", "c"])
+		{
+			Embeddings = [Same, New, New],
+			Metadatas = [new Dictionary<string, object> { ["k"] = 2L }, new Dictionary<string, object> { ["k"] = 2L }, new Dictionary<string, object> { ["k"] = 3L }],
+		});
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a,b,c", "update a", "upsert b,c" }));
+		var update = server.Body("update");
+		Assert.That(update.TryGetProperty("embeddings", out var embeddings) && embeddings.ValueKind != JsonValueKind.Null, Is.False);
+		Assert.That(update.GetProperty("metadatas")[0].ToString(), Is.EqualTo("""{"k":2}"""));
+		Assert.That(update.TryGetProperty("documents", out var documents) && documents.ValueKind != JsonValueKind.Null, Is.False);
+		Assert.That(server.Body("upsert").GetProperty("embeddings")[0].EnumerateArray().Select(x => x.GetSingle()), Is.EqualTo(new[] { 1f, 1f }));
+	}
+
+	[Test]
+	public async Task SkipUnchangedEmbeddingsInAnUpdate()
+	{
+		var server = new Server();
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		await Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings).UpdateAsync(["a", "z"], [Same, New]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a,z", "update a", "update z" }));
+	}
+
+	// The defect is of Chroma 1.x: on Chroma 0.x the writes go as they are, whatever the strategy.
+	[Test]
+	public async Task OnChroma0TheWritesGoAsTheyAre()
+	{
+		var server = new Server { Version = "0.6.3" };
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		await Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings).UpsertAsync(["a"], [Same]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "upsert a" }));
+	}
+
+	// Without embeddings an update or an upsert does not touch the vector index: it goes as it is.
+	[Test]
+	public async Task WithoutEmbeddings()
+	{
+		var server = new Server();
+		server.Store("a", Old, """{"k":1}""", "doc a");
+		await Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings).UpdateAsync(["a"], metadatas: [new Dictionary<string, object> { ["k"] = 2L }]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "update a" }));
+	}
+
+	// In a cosine collection Chroma 1.x gives an embedding back 1 or 2 ulp off (KD-8): the same embedding sent again is unchanged, and
+	// one that differs by more is not.
+	[Test]
+	public async Task CosineEmbeddingsReadBackOff()
+	{
+		var server = new Server();
+		server.Store("a", new([0.31594023f, 0.19201598f, 0.9178214f, -0.39999998f]), """{"k":1}""", "doc a");
+		var collection = new ChromaCollection("c") { Id = Guid.Empty, Metadata = new Dictionary<string, object> { ["hnsw:space"] = "cosine" } };
+		var client = new ChromaCollectionClient(collection, new ChromaConfigurationOptions("http://localhost:8000").WithUpsertStrategy(ChromaUpsertStrategy.SkipUnchangedEmbeddings), new HttpClient(server));
+		await client.UpsertAsync(["a"], [new([0.31594023f, 0.19201598f, 0.91782147f, -0.4f])]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a", "update a" }));
+		server.Bodies.Clear();
+		await client.UpsertAsync(["a"], [new([0.31594023f, 0.19201598f, 0.9178215f, -0.40001f])]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a", "upsert a" }));
+	}
+
+	// An id given more than once goes to the server in the order given, as with Server: Chroma applies the writes in order, and the last
+	// one stays.
+	[Test]
+	public async Task RepeatedIdsGoInTheOrderGiven()
+	{
+		var server = new Server();
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		await Collection(server, null).UpsertAsync(["a", "a"], [New, Same]);
+		var expected = server.Body("upsert").ToString();
+		server.Bodies.Clear();
+		await Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings).UpsertAsync(["a", "a"], [New, Same]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a", "upsert a,a" }));
+		Assert.That(server.Body("upsert").ToString(), Is.EqualTo(expected));
+	}
+
+	// The strategy reads the embeddings only: the other fields go as given.
+	[Test]
+	public async Task ReadsTheEmbeddingsOnly()
+	{
+		var server = new Server();
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		await Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings).UpsertAsync(["a"], [Same]);
+		Assert.That(server.Body("get").GetProperty("include").EnumerateArray().Select(x => x.GetString()), Is.EqualTo(new[] { "embeddings" }));
+	}
+
+	// Once the unchanged records went, a failure of the others is partly done: a client made by name does not run the write again on a
+	// collection created again under the name, which would read the records once more.
+	[Test]
+	public async Task APartialWriteIsNotRunAgainByName()
+	{
+		var server = new Server();
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		server.Store("b", Old, """{"k":1}""", "doc b");
+		var options = new ChromaConfigurationOptions("http://localhost:8000").WithUpsertStrategy(ChromaUpsertStrategy.SkipUnchangedEmbeddings);
+		var collection = new ChromaClient(options, new HttpClient(server)).GetCollectionClient("c");
+		await collection.GetCollectionAsync();
+		server.GoneOnUpsert = true;
+		await Assert.ThatAsync(() => collection.UpsertAsync(["a", "b"], [Same, New]), Throws.InstanceOf<ChromaException>().With.Message.StartsWith("1 of the 2 records went before the error, and stay"));
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a,b", "update a", "upsert b" }));
+	}
+
+	// The reads and the writes go in batches of the batch size.
+	[Test]
+	public async Task InBatches()
+	{
+		var server = new Server();
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		server.Store("b", Same, """{"k":1}""", "doc b");
+		await Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings, maxBatchSize: 1).UpsertAsync(["a", "b", "c"], [Same, Same, New]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a", "get b", "get c", "update a", "update b", "upsert c" }));
+	}
+
+	// In a cosine collection, 4 ulp count as the same embedding, and 5 do not.
+	[TestCase(4, "update a")]
+	[TestCase(-4, "update a")]
+	[TestCase(5, "upsert a")]
+	[TestCase(-5, "upsert a")]
+	public async Task CosineThreshold(int ulps, string write)
+	{
+		var server = new Server();
+		server.Store("a", new([0.5f, 0.25f]), """{"k":1}""", "doc a");
+		var off = BitConverter.Int32BitsToSingle(BitConverter.SingleToInt32Bits(0.25f) + ulps);
+		var collection = new ChromaCollection("c") { Id = Guid.Empty, Metadata = new Dictionary<string, object> { ["hnsw:space"] = "cosine" } };
+		var client = new ChromaCollectionClient(collection, new ChromaConfigurationOptions("http://localhost:8000").WithUpsertStrategy(ChromaUpsertStrategy.SkipUnchangedEmbeddings), new HttpClient(server));
+		await client.UpsertAsync(["a"], [new([0.5f, off])]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a", write }));
+	}
+
+	// A write that fails halfway says once how many records went, of all those given: the unchanged ones that went, and the others.
+	[TestCase("update 2", "1 of the 4 records went before the error, and stay: write failed")]
+	[TestCase("upsert 2", "3 of the 4 records went before the error, and stay: write failed")]
+	public async Task HowManyRecordsWent(string failAt, string message)
+	{
+		var server = new Server { FailAt = failAt };
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		server.Store("b", Same, """{"k":1}""", "doc b");
+		await Assert.ThatAsync(() => Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings, maxBatchSize: 1).UpsertAsync(["a", "b", "c", "d"], [Same, Same, New, New]),
+			Throws.InstanceOf<ChromaException>().With.Message.EqualTo(message));
+	}
+
+	static ChromaCollectionClient Collection(HttpMessageHandler handler, ChromaUpsertStrategy? strategy, int? maxBatchSize = null, ChromaConfigurationOptions? options = null)
+	{
+		options ??= new ChromaConfigurationOptions("http://localhost:8000");
+		options = maxBatchSize is { } size ? options.WithBatchSplitting(size) : options;
+		return new(Guid.Empty, "c", strategy is { } chosen ? options.WithUpsertStrategy(chosen) : options, new HttpClient(handler));
+	}
+
+	// Keeps the records it is given, answers a get of ids with them, and records the writes and their bodies. The collection c is read by
+	// name; with GoneOnUpsert an upsert finds it gone, and the name has another id from then on; FailAt makes one write answer 500.
+	internal sealed class Server : HttpMessageHandler
+	{
+		readonly Dictionary<string, (float[] Embedding, string Metadata, string? Document)> _stored = [];
+		string _id = "11111111-1111-1111-1111-111111111111";
+		string? _gone;
+		public string Version { get; set; } = "1.0.0";
+		public bool GoneOnUpsert { get; set; }
+		// Like "update 2": the second update answers 500.
+		public string? FailAt { get; set; }
+		readonly Dictionary<string, int> _writes = [];
+		public List<(string Path, JsonElement Body)> Bodies { get; } = [];
+
+		public void Store(string id, ReadOnlyMemory<float> embedding, string metadata, string? document) => _stored[id] = (embedding.ToArray(), metadata, document);
+
+		public IEnumerable<string> Writes()
+			=> Bodies.Select(x => $"{x.Path} {string.Join(",", x.Body.GetProperty("ids").EnumerateArray().Select(id => id.GetString()))}");
+
+		public JsonElement Body(string path) => Bodies.Single(x => x.Path == path).Body;
+
+		protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+		{
+			var path = request.RequestUri!.AbsolutePath.Split('/').Last();
+			if (path == "pre-flight-checks")
+			{
+				return Answer(HttpStatusCode.OK, """{"max_batch_size":100,"supports_base64_encoding":false}""");
+			}
+			if (path == "version")
+			{
+				return Answer(HttpStatusCode.OK, $"\"{Version}\"");
+			}
+			if (path == "c")
+			{
+				return Answer(HttpStatusCode.OK, "{\"id\":\"" + _id + "\",\"name\":\"c\",\"configuration_json\":{\"hnsw\":{\"space\":\"l2\"}}}");
+			}
+			if (_gone is { } gone && request.RequestUri.AbsolutePath.Contains(gone))
+			{
+				return Answer(HttpStatusCode.NotFound, """{"error":"NotFoundError","message":"Collection does not exist"}""");
+			}
+			var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken)).RootElement.Clone();
+			Bodies.Add((path, body));
+			_writes[path] = _writes.TryGetValue(path, out var count) ? count + 1 : 1;
+			if (FailAt == $"{path} {_writes[path]}")
+			{
+				return Answer(HttpStatusCode.InternalServerError, """{"error":"InternalError","message":"write failed"}""");
+			}
+			if (path == "upsert" && GoneOnUpsert)
+			{
+				(_gone, _id, GoneOnUpsert) = (_id, "22222222-2222-2222-2222-222222222222", false);
+				return Answer(HttpStatusCode.NotFound, """{"error":"NotFoundError","message":"Collection does not exist"}""");
+			}
+			if (path != "get")
+			{
+				return Answer(HttpStatusCode.OK, "{}");
+			}
+			var ids = body.GetProperty("ids").EnumerateArray().Select(x => x.GetString()!).Where(_stored.ContainsKey).ToList();
+			var answer = new JsonObject
+			{
+				["ids"] = new JsonArray(ids.Select(id => (JsonNode)JsonValue.Create(id)!).ToArray()),
+				["embeddings"] = new JsonArray(ids.Select(id => (JsonNode)new JsonArray(_stored[id].Embedding.Select(x => (JsonNode)JsonValue.Create(x)!).ToArray())).ToArray()),
+				["metadatas"] = new JsonArray(ids.Select(id => JsonNode.Parse(_stored[id].Metadata)).ToArray()),
+				["documents"] = new JsonArray(ids.Select(id => (JsonNode?)JsonValue.Create(_stored[id].Document)).ToArray()),
+				["uris"] = new JsonArray(ids.Select(_ => (JsonNode?)null).ToArray()),
+			};
+			return Answer(HttpStatusCode.OK, answer.ToJsonString());
+		}
+
+		static HttpResponseMessage Answer(HttpStatusCode status, string body) => new(status) { Content = new StringContent(body) };
+	}
+}

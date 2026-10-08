@@ -537,6 +537,11 @@ public class ChromaCollectionClient
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
+			if (await WritesByStrategy(prepared, cancellationToken))
+			{
+				await WriteByStrategy(prepared, upsert: false, base64, requestParams, cancellationToken);
+				return;
+			}
 			await InBatches(prepared, async batch =>
 			{
 				var request = new CollectionUpdateRequest()
@@ -591,6 +596,11 @@ public class ChromaCollectionClient
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
+			if (await WritesByStrategy(prepared, cancellationToken))
+			{
+				await WriteByStrategy(prepared, upsert: true, base64, requestParams, cancellationToken);
+				return;
+			}
 			await InBatches(prepared, async batch =>
 			{
 				var request = new CollectionUpsertRequest()
@@ -767,6 +777,130 @@ public class ChromaCollectionClient
 		};
 	}
 
+	// Works around KD-49 (docs/COMPATIBILITY.md)
+	// A strategy other than the upsert of the server, for writes with embeddings: on Chroma 0.x, which has not the defect, the writes go
+	// as they are.
+	private async Task<bool> WritesByStrategy(ChromaRecords records, CancellationToken cancellationToken)
+		=> _httpClient.UpsertStrategy != ChromaUpsertStrategy.Server && records.Embeddings is not null && !await _httpClient.IsChroma0(cancellationToken);
+
+	// The embeddings of the records are read first. A record whose embedding does not change is updated without it, with its other
+	// fields as given; the others go by the update or the upsert of the server.
+	private async Task WriteByStrategy(ChromaRecords records, bool upsert, bool base64, RequestQueryParams requestParams, CancellationToken cancellationToken)
+	{
+		var stored = await ReadStored(records.Ids.Distinct().ToList(), cancellationToken);
+		var unchanged = new List<int>();
+		var others = new List<int>();
+		// An id given more than once goes with the others, in the order given: Chroma applies the writes in order, and the last one stays.
+		var repeated = new HashSet<string>(records.Ids.GroupBy(id => id).Where(group => group.Count() > 1).Select(group => group.Key));
+		for (var i = 0; i < records.Ids.Count; i++)
+		{
+			if (!repeated.Contains(records.Ids[i]) && stored.TryGetValue(records.Ids[i], out var entry) && entry.Embedding is { } embedding
+				&& SameEmbedding(embedding.Span, records.Embeddings![i].Span, _collection.Space == ChromaSpace.Cosine))
+			{
+				unchanged.Add(i);
+			}
+			else
+			{
+				others.Add(i);
+			}
+		}
+		// Once a write went, a failure is partly done: a client made by name does not run the operation again. The error says once how many
+		// records went, of all those given.
+		var went = 0;
+		try
+		{
+			if (unchanged.Count > 0)
+			{
+				await SendWrite(Pick(records, unchanged, embeddings: false), "update", base64, requestParams, cancellationToken);
+				went = unchanged.Count;
+			}
+			if (others.Count > 0)
+			{
+				await SendWrite(Pick(records, others), upsert ? "upsert" : "update", base64, requestParams, cancellationToken);
+			}
+		}
+		catch (ChromaException ex) when (went + (ex.RecordsWent ?? 0) > 0)
+		{
+			var error = ex.RecordsWent is not null && ex.InnerException is ChromaException inner ? inner : ex;
+			throw new ChromaException($"{went + (ex.RecordsWent ?? 0)} of the {records.Ids.Count} records went before the error, and stay: {error.Message}", error)
+			{
+				StatusCode = error.StatusCode,
+				ErrorType = error.ErrorType,
+				PartlyDone = true,
+				RecordsWent = went + (ex.RecordsWent ?? 0),
+			};
+		}
+	}
+
+	// Works around KD-8 (docs/COMPATIBILITY.md)
+	// Whether the embedding written is the one stored. In a cosine collection Chroma 1.x gives an embedding back 1 or 2 ulp off, so there
+	// the values may differ by up to 4 ulp, far below any change of a vector that matters.
+	private static bool SameEmbedding(ReadOnlySpan<float> stored, ReadOnlySpan<float> given, bool cosine)
+	{
+		if (!cosine || stored.Length != given.Length)
+		{
+			return stored.SequenceEqual(given);
+		}
+		var storedBits = System.Runtime.InteropServices.MemoryMarshal.Cast<float, int>(stored);
+		var givenBits = System.Runtime.InteropServices.MemoryMarshal.Cast<float, int>(given);
+		for (var i = 0; i < stored.Length; i++)
+		{
+			if (stored[i] != given[i] && ((storedBits[i] < 0) != (givenBits[i] < 0) || Math.Abs((long)storedBits[i] - givenBits[i]) > 4))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	// The embeddings of the records with the ids.
+	private async Task<Dictionary<string, ChromaCollectionEntry>> ReadStored(IReadOnlyList<string> ids, CancellationToken cancellationToken)
+	{
+		var requestParams = new RequestQueryParams()
+			.Insert("{tenant}", _tenant)
+			.Insert("{database}", _database)
+			.Insert("{collection_id}", _collection.Id);
+		var size = Math.Max((_httpClient.BatchSplitting ? await BatchSize(cancellationToken) : null) ?? ids.Count, 1);
+		var stored = new Dictionary<string, ChromaCollectionEntry>();
+		for (var i = 0; i < ids.Count; i += size)
+		{
+			var request = new CollectionGetRequest()
+			{
+				Ids = ids.Skip(i).Take(size).ToList(),
+				Include = ChromaGetInclude.Embeddings.ToInclude(),
+			};
+			var response = await _httpClient.Post<CollectionGetRequest, CollectionEntriesGetResponse>(_httpClient.Routes.Collection + "/get", request, requestParams, cancellationToken);
+			foreach (var entry in response.Map())
+			{
+				stored[entry.Id] = entry;
+			}
+		}
+		return stored;
+	}
+
+	private static ChromaRecords Pick(ChromaRecords records, List<int> indexes, bool embeddings = true)
+		=> new(indexes.Select(i => records.Ids[i]).ToList())
+		{
+			Embeddings = embeddings && records.Embeddings is { } given ? indexes.Select(i => given[i]).ToList() : null,
+			Metadatas = records.Metadatas is { } metadatas ? indexes.Select(i => metadatas[i]).ToList() : null,
+			Documents = records.Documents is { } documents ? indexes.Select(i => documents[i]).ToList() : null,
+			Uris = records.Uris is { } uris ? indexes.Select(i => uris[i]).ToList() : null,
+		};
+
+	// The records in batches to the endpoint: update or upsert, which take the same fields.
+	private Task SendWrite(ChromaRecords records, string endpoint, bool base64, RequestQueryParams requestParams, CancellationToken cancellationToken)
+		=> InBatches(records, batch =>
+		{
+			var embeddings = batch.Embeddings is { } given ? new ChromaEmbeddings(given, base64) : null;
+			var metadatas = MetadatasOrNone(batch.Metadatas);
+			var path = _httpClient.Routes.Collection + "/" + endpoint;
+			return endpoint switch
+			{
+				"upsert" => _httpClient.Post(path, new CollectionUpsertRequest() { Ids = batch.Ids, Embeddings = embeddings, Metadatas = metadatas, Documents = batch.Documents, Uris = batch.Uris }, requestParams, cancellationToken),
+				_ => _httpClient.Post(path, new CollectionUpdateRequest() { Ids = batch.Ids, Embeddings = embeddings, Metadatas = metadatas, Documents = batch.Documents, Uris = batch.Uris }, requestParams, cancellationToken),
+			};
+		}, cancellationToken);
+
 	// A list of metadata that are all null goes as no metadata.
 	private static IReadOnlyList<IReadOnlyDictionary<string, object>?>? MetadatasOrNone(IReadOnlyList<IReadOnlyDictionary<string, object>?>? metadatas)
 		=> metadatas?.Any(metadata => metadata is not null) == true ? metadatas : null;
@@ -812,6 +946,7 @@ public class ChromaCollectionClient
 					StatusCode = ex.StatusCode,
 					ErrorType = ex.ErrorType,
 					PartlyDone = true,
+					RecordsWent = offset,
 				};
 			}
 		}

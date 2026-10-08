@@ -42,3 +42,9 @@ virtual ChromaDB.Client.ChromaCollectionClient.WithMetadataValues(ChromaDB.Clien
 ChromaDB.Client.Models.ChromaCollectionSchema.WithBm25Index(string! sourceKey, bool ifSupported = false) -> ChromaDB.Client.Models.ChromaCollectionSchema!
 virtual ChromaDB.Client.ChromaCollectionClient.FindBm25IndexAsync(string! sourceKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaSparseVectorIndex?>!
 ChromaDB.Client.ChromaConfigurationOptions.WithChromaCloud(bool chromaCloud = true) -> ChromaDB.Client.ChromaConfigurationOptions!
+ChromaDB.Client.ChromaUpsertStrategy
+ChromaDB.Client.ChromaUpsertStrategy.Server = 0 -> ChromaDB.Client.ChromaUpsertStrategy
+ChromaDB.Client.ChromaConfigurationOptions.UpsertStrategy.get -> ChromaDB.Client.ChromaUpsertStrategy
+ChromaDB.Client.ChromaConfigurationOptions.UpsertStrategy.init -> void
+ChromaDB.Client.ChromaConfigurationOptions.WithUpsertStrategy(ChromaDB.Client.ChromaUpsertStrategy strategy) -> ChromaDB.Client.ChromaConfigurationOptions!
+ChromaDB.Client.ChromaUpsertStrategy.SkipUnchangedEmbeddings = 1 -> ChromaDB.Client.ChromaUpsertStrategy

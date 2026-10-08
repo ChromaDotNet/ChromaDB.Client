@@ -58,6 +58,12 @@ public class ChromaConfigurationOptions
 	/// <c>max_batch_size</c> of the server, and <c>GetAsync</c> reads in pages of it; on by default.
 	/// </summary>
 	public bool BatchSplitting { get; init; } = true;
+	/// <summary>
+	/// How <c>UpdateAsync</c> and <c>UpsertAsync</c> write the embeddings of records that exist: <c>ChromaUpsertStrategy.Server</c>, the
+	/// update and the upsert of the server, by default. <c>ChromaUpsertStrategy.SkipUnchangedEmbeddings</c> works around a defect of
+	/// Chroma 1.0.21 to 1.5.9 for the records whose embedding does not change.
+	/// </summary>
+	public ChromaUpsertStrategy UpsertStrategy { get; init; }
 	private readonly int? _maxBatchSize;
 
 	/// <summary>
@@ -160,6 +166,7 @@ public class ChromaConfigurationOptions
 		MetadataValues = options.MetadataValues;
 		BatchSplitting = options.BatchSplitting;
 		MaxBatchSize = options.MaxBatchSize;
+		UpsertStrategy = options.UpsertStrategy;
 		_chromaCloud = options._chromaCloud;
 	}
 
@@ -231,6 +238,15 @@ public class ChromaConfigurationOptions
 	/// <returns>The new options; these do not change.</returns>
 	public ChromaConfigurationOptions WithChromaCloud(bool chromaCloud = true)
 		=> new(this) { _chromaCloud = chromaCloud };
+
+	/// <summary>
+	/// A copy of these options with the given strategy for the embeddings of records that exist in <c>UpdateAsync</c> and
+	/// <c>UpsertAsync</c>: see <c>ChromaUpsertStrategy</c>.
+	/// </summary>
+	/// <param name="strategy">The strategy.</param>
+	/// <returns>The new options; these do not change.</returns>
+	public ChromaConfigurationOptions WithUpsertStrategy(ChromaUpsertStrategy strategy)
+		=> new(this) { UpsertStrategy = strategy };
 
 	/// <summary>
 	/// A copy of these options with the given version of the Chroma API.
