@@ -784,8 +784,104 @@ public class ChromaCollectionClient
 	private async Task<bool> WritesByStrategy(ChromaRecords records, CancellationToken cancellationToken)
 		=> _httpClient.UpsertStrategy != ChromaUpsertStrategy.Server && records.Embeddings is not null && !await _httpClient.IsChroma0(cancellationToken);
 
-	private Task WriteByStrategy(ChromaRecords records, bool upsert, bool base64, RequestQueryParams requestParams, CancellationToken cancellationToken)
-		=> throw new NotSupportedException($"The upsert strategy {_httpClient.UpsertStrategy} is not supported.");
+	// The records are read first, as they are stored, with their embeddings. One whose embedding does not change is updated without it,
+	// with the stored document and URI for a null that keeps them; the others go as the strategy says.
+	private async Task WriteByStrategy(ChromaRecords records, bool upsert, bool base64, RequestQueryParams requestParams, CancellationToken cancellationToken)
+	{
+		var stored = await ReadStored(records.Ids.Distinct().ToList(), cancellationToken);
+		var unchanged = new List<int>();
+		var unchangedDocuments = new List<string?>();
+		var unchangedUris = new List<string?>();
+		var others = new List<int>();
+		for (var i = 0; i < records.Ids.Count; i++)
+		{
+			if (stored.TryGetValue(records.Ids[i], out var entry) && entry.Embedding is { } embedding && embedding.Span.SequenceEqual(records.Embeddings![i].Span))
+			{
+				unchanged.Add(i);
+				// Chroma 0.6.3 takes a null document of an update as a deletion.
+				unchangedDocuments.Add(records.Documents?[i] ?? entry.Document);
+				unchangedUris.Add(records.Uris?[i] ?? entry.Uri);
+			}
+			else
+			{
+				others.Add(i);
+			}
+		}
+		// Once a write went, a failure is partly done: a client made by name does not run the operation again.
+		var written = false;
+		try
+		{
+			if (unchanged.Count > 0)
+			{
+				await SendWrite(new ChromaRecords(unchanged.Select(i => records.Ids[i]).ToList())
+				{
+					Metadatas = records.Metadatas is { } metadatas ? unchanged.Select(i => metadatas[i]).ToList() : null,
+					Documents = unchangedDocuments.Any(document => document is not null) ? unchangedDocuments : null,
+					Uris = unchangedUris.Any(uri => uri is not null) ? unchangedUris : null,
+				}, "update", base64, requestParams, cancellationToken);
+				written = true;
+			}
+			if (others.Count > 0)
+			{
+				await SendWrite(Pick(records, others), upsert ? "upsert" : "update", base64, requestParams, cancellationToken);
+			}
+		}
+		catch (ChromaException ex) when (written && !ex.PartlyDone)
+		{
+			throw new ChromaException(ex.Message, ex) { StatusCode = ex.StatusCode, ErrorType = ex.ErrorType, PartlyDone = true };
+		}
+	}
+
+	// The records with the ids, as they are stored, with their embeddings, and with the exact values of their metadata whatever the
+	// client reads, so that they are written back the same: with Inferred a date in text would come back a DateTime.
+	private async Task<Dictionary<string, ChromaCollectionEntry>> ReadStored(IReadOnlyList<string> ids, CancellationToken cancellationToken)
+	{
+		var requestParams = new RequestQueryParams()
+			.Insert("{tenant}", _tenant)
+			.Insert("{database}", _database)
+			.Insert("{collection_id}", _collection.Id);
+		var size = Math.Max((_httpClient.BatchSplitting ? await BatchSize(cancellationToken) : null) ?? ids.Count, 1);
+		var exact = _httpClient.WithMetadataValues(ChromaMetadataValues.Exact);
+		var stored = new Dictionary<string, ChromaCollectionEntry>();
+		for (var i = 0; i < ids.Count; i += size)
+		{
+			var request = new CollectionGetRequest()
+			{
+				Ids = ids.Skip(i).Take(size).ToList(),
+				Include = (ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents | ChromaGetInclude.Uris).ToInclude(),
+			};
+			var response = await exact.Post<CollectionGetRequest, CollectionEntriesGetResponse>(_httpClient.Routes.Collection + "/get", request, requestParams, cancellationToken);
+			foreach (var entry in response.Map())
+			{
+				stored[entry.Id] = entry;
+			}
+		}
+		return stored;
+	}
+
+	private static ChromaRecords Pick(ChromaRecords records, List<int> indexes)
+		=> new(indexes.Select(i => records.Ids[i]).ToList())
+		{
+			Embeddings = records.Embeddings is { } embeddings ? indexes.Select(i => embeddings[i]).ToList() : null,
+			Metadatas = records.Metadatas is { } metadatas ? indexes.Select(i => metadatas[i]).ToList() : null,
+			Documents = records.Documents is { } documents ? indexes.Select(i => documents[i]).ToList() : null,
+			Uris = records.Uris is { } uris ? indexes.Select(i => uris[i]).ToList() : null,
+		};
+
+	// The records in batches to the endpoint: update, upsert or add, which take the same fields.
+	private Task SendWrite(ChromaRecords records, string endpoint, bool base64, RequestQueryParams requestParams, CancellationToken cancellationToken)
+		=> InBatches(records, batch =>
+		{
+			var embeddings = batch.Embeddings is { } given ? new ChromaEmbeddings(given, base64) : null;
+			var metadatas = MetadatasOrNone(batch.Metadatas);
+			var path = _httpClient.Routes.Collection + "/" + endpoint;
+			return endpoint switch
+			{
+				"add" => _httpClient.Post(path, new CollectionAddRequest() { Ids = batch.Ids, Embeddings = embeddings, Metadatas = metadatas, Documents = batch.Documents, Uris = batch.Uris }, requestParams, cancellationToken),
+				"upsert" => _httpClient.Post(path, new CollectionUpsertRequest() { Ids = batch.Ids, Embeddings = embeddings, Metadatas = metadatas, Documents = batch.Documents, Uris = batch.Uris }, requestParams, cancellationToken),
+				_ => _httpClient.Post(path, new CollectionUpdateRequest() { Ids = batch.Ids, Embeddings = embeddings, Metadatas = metadatas, Documents = batch.Documents, Uris = batch.Uris }, requestParams, cancellationToken),
+			};
+		}, cancellationToken);
 
 	private static IReadOnlyList<IReadOnlyDictionary<string, object>?>? MetadatasOrNone(IReadOnlyList<IReadOnlyDictionary<string, object>?>? metadatas)
 		=> metadatas?.Any(metadata => metadata is not null) == true ? metadatas : null;

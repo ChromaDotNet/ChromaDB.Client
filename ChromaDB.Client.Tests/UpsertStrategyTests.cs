@@ -35,6 +35,56 @@ public class UpsertStrategyTests
 		Assert.That(server.Writes(), Is.EqualTo(new[] { "upsert a", "update a" }));
 	}
 
+	// SkipUnchangedEmbeddings: a keeps its embedding and is updated without it, which does not touch the vector index; b changes it
+	// and c is new, and they go by the upsert of the server. A null document goes as the stored one: Chroma 0.6.3 deletes it.
+	[Test]
+	public async Task SkipUnchangedEmbeddingsInAnUpsert()
+	{
+		var server = new Server();
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		server.Store("b", Old, """{"k":1}""", "doc b");
+		await Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings).UpsertAsync(new ChromaRecords(["a", "b", "c"])
+		{
+			Embeddings = [Same, New, New],
+			Metadatas = [new Dictionary<string, object> { ["k"] = 2L }, new Dictionary<string, object> { ["k"] = 2L }, new Dictionary<string, object> { ["k"] = 3L }],
+		});
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a,b,c", "update a", "upsert b,c" }));
+		var update = server.Body("update");
+		Assert.That(update.TryGetProperty("embeddings", out var embeddings) && embeddings.ValueKind != JsonValueKind.Null, Is.False);
+		Assert.That(update.GetProperty("metadatas")[0].ToString(), Is.EqualTo("""{"k":2}"""));
+		Assert.That(update.GetProperty("documents")[0].GetString(), Is.EqualTo("doc a"));
+		Assert.That(server.Body("upsert").GetProperty("embeddings")[0].EnumerateArray().Select(x => x.GetSingle()), Is.EqualTo(new[] { 1f, 1f }));
+	}
+
+	[Test]
+	public async Task SkipUnchangedEmbeddingsInAnUpdate()
+	{
+		var server = new Server();
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		await Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings).UpdateAsync(["a", "z"], [Same, New]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a,z", "update a", "update z" }));
+	}
+
+	// The defect is of Chroma 1.x: on Chroma 0.x the writes go as they are, whatever the strategy.
+	[Test]
+	public async Task OnChroma0TheWritesGoAsTheyAre()
+	{
+		var server = new Server { Version = "0.6.3" };
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		await Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings).UpsertAsync(["a"], [Same]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "upsert a" }));
+	}
+
+	// Without embeddings an update or an upsert does not touch the vector index: it goes as it is.
+	[Test]
+	public async Task WithoutEmbeddings()
+	{
+		var server = new Server();
+		server.Store("a", Old, """{"k":1}""", "doc a");
+		await Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings).UpdateAsync(["a"], metadatas: [new Dictionary<string, object> { ["k"] = 2L }]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "update a" }));
+	}
+
 	static ChromaCollectionClient Collection(HttpMessageHandler handler, ChromaUpsertStrategy? strategy, int? maxBatchSize = null, ChromaConfigurationOptions? options = null)
 	{
 		options ??= new ChromaConfigurationOptions("http://localhost:8000");

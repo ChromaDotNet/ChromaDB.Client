@@ -12,4 +12,11 @@ public enum ChromaUpsertStrategy
 	/// The update and the upsert of the server, as they are: the default.
 	/// </summary>
 	Server,
+
+	/// <summary>
+	/// A record whose embedding does not change is updated without it, which does not touch the vector index; the other records go by
+	/// the update or the upsert of the server. No record is deleted, so there is no risk of data loss, but a record whose embedding
+	/// changes can still be lost by the vector index. It costs a get of the records first.
+	/// </summary>
+	SkipUnchangedEmbeddings,
 }
