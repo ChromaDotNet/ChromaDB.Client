@@ -101,6 +101,21 @@ public class UpsertStrategyTests
 		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a", "upsert a" }));
 	}
 
+	// An id given more than once goes to the server in the order given, as with Server: Chroma applies the writes in order, and the last
+	// one stays.
+	[Test]
+	public async Task RepeatedIdsGoInTheOrderGiven()
+	{
+		var server = new Server();
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		await Collection(server, null).UpsertAsync(["a", "a"], [New, Same]);
+		var expected = server.Body("upsert").ToString();
+		server.Bodies.Clear();
+		await Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings).UpsertAsync(["a", "a"], [New, Same]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a", "upsert a,a" }));
+		Assert.That(server.Body("upsert").ToString(), Is.EqualTo(expected));
+	}
+
 	static ChromaCollectionClient Collection(HttpMessageHandler handler, ChromaUpsertStrategy? strategy, int? maxBatchSize = null, ChromaConfigurationOptions? options = null)
 	{
 		options ??= new ChromaConfigurationOptions("http://localhost:8000");

@@ -793,9 +793,12 @@ public class ChromaCollectionClient
 		var unchangedDocuments = new List<string?>();
 		var unchangedUris = new List<string?>();
 		var others = new List<int>();
+		// An id given more than once goes with the others, in the order given: Chroma applies the writes in order, and the last one stays.
+		var repeated = new HashSet<string>(records.Ids.GroupBy(id => id).Where(group => group.Count() > 1).Select(group => group.Key));
 		for (var i = 0; i < records.Ids.Count; i++)
 		{
-			if (stored.TryGetValue(records.Ids[i], out var entry) && entry.Embedding is { } embedding && SameEmbedding(embedding.Span, records.Embeddings![i].Span, _collection.Space == ChromaSpace.Cosine))
+			if (!repeated.Contains(records.Ids[i]) && stored.TryGetValue(records.Ids[i], out var entry) && entry.Embedding is { } embedding
+				&& SameEmbedding(embedding.Span, records.Embeddings![i].Span, _collection.Space == ChromaSpace.Cosine))
 			{
 				unchanged.Add(i);
 				// Chroma 0.6.3 takes a null document of an update as a deletion.
