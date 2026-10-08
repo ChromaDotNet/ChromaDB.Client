@@ -777,7 +777,6 @@ public class ChromaCollectionClient
 		};
 	}
 
-	// A list of metadata that are all null goes as no metadata.
 	// Works around KD-49 (docs/COMPATIBILITY.md)
 	// A strategy other than the upsert of the server, for writes with embeddings: on Chroma 0.x, which has not the defect, the writes go
 	// as they are, and its older versions do not read the URIs that the strategies read.
@@ -899,6 +898,7 @@ public class ChromaCollectionClient
 			};
 		}, cancellationToken);
 
+	// A list of metadata that are all null goes as no metadata.
 	private static IReadOnlyList<IReadOnlyDictionary<string, object>?>? MetadatasOrNone(IReadOnlyList<IReadOnlyDictionary<string, object>?>? metadatas)
 		=> metadatas?.Any(metadata => metadata is not null) == true ? metadatas : null;
 
