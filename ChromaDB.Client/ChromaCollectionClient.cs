@@ -819,9 +819,14 @@ public class ChromaCollectionClient
 				await SendWrite(Pick(records, others), upsert ? "upsert" : "update", base64, requestParams, cancellationToken);
 			}
 		}
-		catch (ChromaException ex) when (written && !ex.PartlyDone)
+		catch (ChromaException ex) when (written)
 		{
-			throw new ChromaException(ex.Message, ex) { StatusCode = ex.StatusCode, ErrorType = ex.ErrorType, PartlyDone = true };
+			throw new ChromaException($"{unchanged.Count} of the {records.Ids.Count} records went before the error, and stay: {ex.Message}", ex)
+			{
+				StatusCode = ex.StatusCode,
+				ErrorType = ex.ErrorType,
+				PartlyDone = true,
+			};
 		}
 	}
 

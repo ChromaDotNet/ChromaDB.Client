@@ -138,7 +138,7 @@ public class UpsertStrategyTests
 		var collection = new ChromaClient(options, new HttpClient(server)).GetCollectionClient("c");
 		await collection.GetCollectionAsync();
 		server.GoneOnUpsert = true;
-		await Assert.ThatAsync(() => collection.UpsertAsync(["a", "b"], [Same, New]), Throws.InstanceOf<ChromaException>());
+		await Assert.ThatAsync(() => collection.UpsertAsync(["a", "b"], [Same, New]), Throws.InstanceOf<ChromaException>().With.Message.StartsWith("1 of the 2 records went before the error, and stay"));
 		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a,b", "update a", "upsert b" }));
 	}
 
