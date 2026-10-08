@@ -260,6 +260,25 @@ var options = new ChromaConfigurationOptions(uri: "https://api.trychroma.com").W
 
 `ChromaCloudQuotas` holds the default quotas of a Chroma Cloud tenant, as its documentation lists them: 300 records per request, 8,182 bytes per metadata value, 16,384 per document, 32 metadata keys of at most 36 bytes, 8 predicates per filter. A single Chroma server has none of them. Chroma Cloud creates a collection whose schema names a key beyond 36 bytes, and then rejects every write with that key, so on Chroma Cloud `CreateCollectionAsync` and `GetOrCreateCollectionAsync` throw an `ArgumentException` before the request.
 
+## Upsert strategies
+
+Chroma 1.0.21 to 1.5.9, installed on your own servers, may lose a record from the vector index after an `UpdateAsync` or an `UpsertAsync` with embeddings of records that exist, also with the embeddings they had. A query no longer finds it, not even with its own embedding, while `GetAsync` and `CountAsync` do. The record lost is often not one of those written. Chroma Cloud has not shown it. It is KD-49 in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
+
+`WithUpsertStrategy` on the options says how `UpdateAsync` and `UpsertAsync` write the embeddings of records that exist:
+
+```csharp
+var options = new ChromaConfigurationOptions("http://localhost:8000").WithUpsertStrategy(ChromaUpsertStrategy.SkipUnchangedEmbeddings);
+```
+
+| Strategy | What it protects | What it costs |
+|---|---|---|
+| `Server`, the default | nothing: the update and the upsert of the server | nothing more |
+| `SkipUnchangedEmbeddings` | the records written again with the same embedding, as with new metadata or a new document: they are updated without it, which does not touch the vector index | a get of the records first |
+
+With `SkipUnchangedEmbeddings` no record is deleted, so there is no risk of data loss. A record whose embedding changes still goes by the upsert of the server, and then the vector index can still lose a record, often another one. In a `cosine` collection, where Chroma 1.x gives an embedding back 1 or 2 ulp off (KD-8), values within 4 ulp count as the same; an embedding computed again by a model can differ by more, and then it goes as changed. A null document or URI of a record whose embedding does not change goes as the stored one, since Chroma 0.6.3 deletes a null document of an update. On Chroma 0.x, which has not the defect, the writes go as they are. A `Microsoft.Extensions.VectorData` store built on a `ChromaClient` with these options, which writes by upserts with the embeddings, gets it too.
+
+Turn it on for Chroma 1.0.21 to 1.5.9 installed on your own servers, where records are written again with the embeddings they had. Measured on Chroma 1.5.9, in a `cosine` collection of 60 records with random vectors, of which 20 are written again with the same vectors and new metadata, 300 runs: a query of all the records missed one in 28 runs with `Server`, and in none with `SkipUnchangedEmbeddings`. With 120 records of which 20 get new vectors, 200 runs, they missed one in 22 runs with `Server` and in 25 with `SkipUnchangedEmbeddings`, which cannot help there.
+
 ## Deleting records
 
 ```csharp
