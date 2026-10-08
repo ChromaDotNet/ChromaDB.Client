@@ -119,9 +119,11 @@ public class InputChecksTests
 		using var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(server));
 		try { await client.CreateCollectionAsync("abc"); } catch (ChromaException) { }
 		try { await client.GetOrCreateCollectionAsync("abc"); } catch (ChromaException) { }
-		var bodies = server.Bodies.Where(x => x.Path.EndsWith("/collections")).Select(x => x.Body.EnumerateObject().Select(p => p.Name).ToList()).ToList();
+		var bodies = server.Bodies.Where(x => x.Path.EndsWith("/collections")).Select(x => x.Body.EnumerateObject().ToList()).ToList();
 		Assert.That(bodies, Has.Count.EqualTo(2));
-		Assert.That(bodies, Has.All.Contains("get_or_create").And.All.Not.Contains("GetOrCreate"));
+		// Once in each body, false to create and true to get or create, and under no other name.
+		Assert.That(bodies.Select(body => body.Where(p => p.Name.Equals("get_or_create", StringComparison.OrdinalIgnoreCase) || p.Name == "GetOrCreate").Select(p => $"{p.Name}={p.Value.GetRawText()}")),
+			Is.EqualTo(new[] { new[] { "get_or_create=false" }, new[] { "get_or_create=true" } }));
 	}
 
 	// Keys with the same text, like 1 and "1", get an HttpClient each; a null key would register the client without a key.
