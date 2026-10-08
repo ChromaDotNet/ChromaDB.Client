@@ -118,6 +118,8 @@ Each defect has a number, KD-n, to refer to it. Reproduced with plain HTTP, with
 | KD-45 | The `max_batch_size` that `pre-flight-checks` declares is not enforced: a write of 5462 records goes | 1.0.15 – 1.5.9; up to 1.0.13 it fails | sends batches within the declared limit |
 | KD-46 | `$in` and `$nin` without values answer `500` | 0.4.10 – 0.5.16; `400` from 0.5.17 | sends no request for `In` without values, and no `where` for `NotIn` without values |
 | KD-47 | In the OpenAPI description the parameter of `GET` and `DELETE .../collections/{collection_id}` is named as an id, but the server reads a name: with an id it answers `404` (chroma-core/chroma#4456) | 0.5.16 – 1.5.9 | sends the name |
+| KD-48 | After the records of a collection are deleted and written again, a query returns wrong neighbors: in a `cosine` collection with three records deleted and added again, `n_results: 1` on the vector of one of them returns the farthest of the three, and `n_results: 2` misses the second nearest; `n_results: 3` returns all three in the right order | 1.0.0 – 1.0.5; right from 1.0.6 | — |
+| KD-49 | After an upsert of records that exist, a query can miss a record for good, while `get` and `count` find it: of 60 records with random vectors, after an upsert of 20 of them with new vectors, `n_results: 60` returns 59 in 9 runs of 400 on 1.5.9 with `cosine`, and a query with the vector of the missing record does not find it. Upstream: chroma-core/chroma#7758 | 1.0.21 – 1.5.9, with `l2`, `cosine` and `ip`; none in 100 runs on 0.6.3 | — |
 
 The query of KD-2 and KD-3 returned 3 records in every run on Chroma 0.5.20, 1.0.0 and 1.5.9, 10 runs each on a server just started.
 
