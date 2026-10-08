@@ -169,6 +169,18 @@ public class UpsertStrategyTests
 		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a", write }));
 	}
 
+	// A write that fails halfway says once how many records went, of all those given: the unchanged ones that went, and the others.
+	[TestCase("update 2", "1 of the 4 records went before the error, and stay: write failed")]
+	[TestCase("upsert 2", "3 of the 4 records went before the error, and stay: write failed")]
+	public async Task HowManyRecordsWent(string failAt, string message)
+	{
+		var server = new Server { FailAt = failAt };
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		server.Store("b", Same, """{"k":1}""", "doc b");
+		await Assert.ThatAsync(() => Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings, maxBatchSize: 1).UpsertAsync(["a", "b", "c", "d"], [Same, Same, New, New]),
+			Throws.InstanceOf<ChromaException>().With.Message.EqualTo(message));
+	}
+
 	static ChromaCollectionClient Collection(HttpMessageHandler handler, ChromaUpsertStrategy? strategy, int? maxBatchSize = null, ChromaConfigurationOptions? options = null)
 	{
 		options ??= new ChromaConfigurationOptions("http://localhost:8000");
@@ -177,7 +189,7 @@ public class UpsertStrategyTests
 	}
 
 	// Keeps the records it is given, answers a get of ids with them, and records the writes and their bodies. The collection c is read by
-	// name; with GoneOnUpsert an upsert finds it gone, and the name has another id from then on.
+	// name; with GoneOnUpsert an upsert finds it gone, and the name has another id from then on; FailAt makes one write answer 500.
 	internal sealed class Server : HttpMessageHandler
 	{
 		readonly Dictionary<string, (float[] Embedding, string Metadata, string? Document)> _stored = [];
@@ -185,6 +197,9 @@ public class UpsertStrategyTests
 		string? _gone;
 		public string Version { get; set; } = "1.0.0";
 		public bool GoneOnUpsert { get; set; }
+		// Like "update 2": the second update answers 500.
+		public string? FailAt { get; set; }
+		readonly Dictionary<string, int> _writes = [];
 		public List<(string Path, JsonElement Body)> Bodies { get; } = [];
 
 		public void Store(string id, ReadOnlyMemory<float> embedding, string metadata, string? document) => _stored[id] = (embedding.ToArray(), metadata, document);
@@ -215,6 +230,11 @@ public class UpsertStrategyTests
 			}
 			var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken)).RootElement.Clone();
 			Bodies.Add((path, body));
+			_writes[path] = _writes.TryGetValue(path, out var count) ? count + 1 : 1;
+			if (FailAt == $"{path} {_writes[path]}")
+			{
+				return Answer(HttpStatusCode.InternalServerError, """{"error":"InternalError","message":"write failed"}""");
+			}
 			if (path == "upsert" && GoneOnUpsert)
 			{
 				(_gone, _id, GoneOnUpsert) = (_id, "22222222-2222-2222-2222-222222222222", false);

@@ -804,27 +804,30 @@ public class ChromaCollectionClient
 				others.Add(i);
 			}
 		}
-		// Once a write went, a failure is partly done: a client made by name does not run the operation again.
-		var written = false;
+		// Once a write went, a failure is partly done: a client made by name does not run the operation again. The error says once how many
+		// records went, of all those given.
+		var went = 0;
 		try
 		{
 			if (unchanged.Count > 0)
 			{
 				await SendWrite(Pick(records, unchanged, embeddings: false), "update", base64, requestParams, cancellationToken);
-				written = true;
+				went = unchanged.Count;
 			}
 			if (others.Count > 0)
 			{
 				await SendWrite(Pick(records, others), upsert ? "upsert" : "update", base64, requestParams, cancellationToken);
 			}
 		}
-		catch (ChromaException ex) when (written)
+		catch (ChromaException ex) when (went + (ex.RecordsWent ?? 0) > 0)
 		{
-			throw new ChromaException($"{unchanged.Count} of the {records.Ids.Count} records went before the error, and stay: {ex.Message}", ex)
+			var error = ex.RecordsWent is not null && ex.InnerException is ChromaException inner ? inner : ex;
+			throw new ChromaException($"{went + (ex.RecordsWent ?? 0)} of the {records.Ids.Count} records went before the error, and stay: {error.Message}", error)
 			{
-				StatusCode = ex.StatusCode,
-				ErrorType = ex.ErrorType,
+				StatusCode = error.StatusCode,
+				ErrorType = error.ErrorType,
 				PartlyDone = true,
+				RecordsWent = went + (ex.RecordsWent ?? 0),
 			};
 		}
 	}
@@ -943,6 +946,7 @@ public class ChromaCollectionClient
 					StatusCode = ex.StatusCode,
 					ErrorType = ex.ErrorType,
 					PartlyDone = true,
+					RecordsWent = offset,
 				};
 			}
 		}

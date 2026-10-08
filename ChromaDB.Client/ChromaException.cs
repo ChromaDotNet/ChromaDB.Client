@@ -40,6 +40,9 @@ public class ChromaException : Exception
 	// Part of the operation went before the error, as the first batches of a write: it is not run again.
 	internal bool PartlyDone { get; init; }
 
+	// How many records of a write in batches went before the error, which is the inner exception.
+	internal int? RecordsWent { get; init; }
+
 	internal bool IsMissingCollection
 		=> StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError
 			&& (Message.Contains("does not exist") || ErrorType == "NotFoundError" && Message.StartsWith("Collection", StringComparison.Ordinal));
