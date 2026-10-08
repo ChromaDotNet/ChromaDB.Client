@@ -116,6 +116,16 @@ public class UpsertStrategyTests
 		Assert.That(server.Body("upsert").ToString(), Is.EqualTo(expected));
 	}
 
+	// The strategy reads the embeddings only: the other fields go as given.
+	[Test]
+	public async Task ReadsTheEmbeddingsOnly()
+	{
+		var server = new Server();
+		server.Store("a", Same, """{"k":1}""", "doc a");
+		await Collection(server, ChromaUpsertStrategy.SkipUnchangedEmbeddings).UpsertAsync(["a"], [Same]);
+		Assert.That(server.Body("get").GetProperty("include").EnumerateArray().Select(x => x.GetString()), Is.EqualTo(new[] { "embeddings" }));
+	}
+
 	static ChromaCollectionClient Collection(HttpMessageHandler handler, ChromaUpsertStrategy? strategy, int? maxBatchSize = null, ChromaConfigurationOptions? options = null)
 	{
 		options ??= new ChromaConfigurationOptions("http://localhost:8000");

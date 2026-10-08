@@ -846,8 +846,7 @@ public class ChromaCollectionClient
 		return true;
 	}
 
-	// The records with the ids, as they are stored, with their embeddings, and with the exact values of their metadata whatever the
-	// client reads, so that they are written back the same: with Inferred a date in text would come back a DateTime.
+	// The embeddings of the records with the ids.
 	private async Task<Dictionary<string, ChromaCollectionEntry>> ReadStored(IReadOnlyList<string> ids, CancellationToken cancellationToken)
 	{
 		var requestParams = new RequestQueryParams()
@@ -855,16 +854,15 @@ public class ChromaCollectionClient
 			.Insert("{database}", _database)
 			.Insert("{collection_id}", _collection.Id);
 		var size = Math.Max((_httpClient.BatchSplitting ? await BatchSize(cancellationToken) : null) ?? ids.Count, 1);
-		var exact = _httpClient.WithMetadataValues(ChromaMetadataValues.Exact);
 		var stored = new Dictionary<string, ChromaCollectionEntry>();
 		for (var i = 0; i < ids.Count; i += size)
 		{
 			var request = new CollectionGetRequest()
 			{
 				Ids = ids.Skip(i).Take(size).ToList(),
-				Include = (ChromaGetInclude.Embeddings | ChromaGetInclude.Metadatas | ChromaGetInclude.Documents | ChromaGetInclude.Uris).ToInclude(),
+				Include = ChromaGetInclude.Embeddings.ToInclude(),
 			};
-			var response = await exact.Post<CollectionGetRequest, CollectionEntriesGetResponse>(_httpClient.Routes.Collection + "/get", request, requestParams, cancellationToken);
+			var response = await _httpClient.Post<CollectionGetRequest, CollectionEntriesGetResponse>(_httpClient.Routes.Collection + "/get", request, requestParams, cancellationToken);
 			foreach (var entry in response.Map())
 			{
 				stored[entry.Id] = entry;
