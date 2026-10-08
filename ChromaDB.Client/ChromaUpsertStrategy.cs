@@ -17,7 +17,8 @@ public enum ChromaUpsertStrategy
 	/// <summary>
 	/// A record whose embedding does not change is updated without it, which does not touch the vector index; the other records go by
 	/// the update or the upsert of the server. No record is deleted, so there is no risk of data loss, but a record whose embedding
-	/// changes goes by the upsert of the server, and the vector index can still lose a record then, often another one. It costs a get of
+	/// changes goes by the upsert of the server, and the vector index can still lose a record then, often another one. So does an id given
+	/// more than once in the same write, in the order given, as Chroma applies the writes in order. It costs a get of
 	/// the records first. In a cosine collection, where Chroma 1.x gives an embedding back 1 or 2 ulp off, values within 4 ulp count as
 	/// the same; an embedding computed again by a model can differ by more, and then it goes as changed.
 	/// </summary>
