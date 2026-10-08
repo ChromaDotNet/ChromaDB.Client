@@ -36,7 +36,7 @@ public class UpsertStrategyTests
 	}
 
 	// SkipUnchangedEmbeddings: a keeps its embedding and is updated without it, which does not touch the vector index; b changes it
-	// and c is new, and they go by the upsert of the server. A null document goes as the stored one: Chroma 0.6.3 deletes it.
+	// and c is new, and they go by the upsert of the server. The fields go as given: without documents, the update sends none.
 	[Test]
 	public async Task SkipUnchangedEmbeddingsInAnUpsert()
 	{
@@ -52,7 +52,7 @@ public class UpsertStrategyTests
 		var update = server.Body("update");
 		Assert.That(update.TryGetProperty("embeddings", out var embeddings) && embeddings.ValueKind != JsonValueKind.Null, Is.False);
 		Assert.That(update.GetProperty("metadatas")[0].ToString(), Is.EqualTo("""{"k":2}"""));
-		Assert.That(update.GetProperty("documents")[0].GetString(), Is.EqualTo("doc a"));
+		Assert.That(update.TryGetProperty("documents", out var documents) && documents.ValueKind != JsonValueKind.Null, Is.False);
 		Assert.That(server.Body("upsert").GetProperty("embeddings")[0].EnumerateArray().Select(x => x.GetSingle()), Is.EqualTo(new[] { 1f, 1f }));
 	}
 

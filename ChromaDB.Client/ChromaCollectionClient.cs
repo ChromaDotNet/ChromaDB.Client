@@ -784,14 +784,12 @@ public class ChromaCollectionClient
 	private async Task<bool> WritesByStrategy(ChromaRecords records, CancellationToken cancellationToken)
 		=> _httpClient.UpsertStrategy != ChromaUpsertStrategy.Server && records.Embeddings is not null && !await _httpClient.IsChroma0(cancellationToken);
 
-	// The records are read first, as they are stored, with their embeddings. One whose embedding does not change is updated without it,
-	// with the stored document and URI for a null that keeps them; the others go as the strategy says.
+	// The embeddings of the records are read first. A record whose embedding does not change is updated without it, with its other
+	// fields as given; the others go by the update or the upsert of the server.
 	private async Task WriteByStrategy(ChromaRecords records, bool upsert, bool base64, RequestQueryParams requestParams, CancellationToken cancellationToken)
 	{
 		var stored = await ReadStored(records.Ids.Distinct().ToList(), cancellationToken);
 		var unchanged = new List<int>();
-		var unchangedDocuments = new List<string?>();
-		var unchangedUris = new List<string?>();
 		var others = new List<int>();
 		// An id given more than once goes with the others, in the order given: Chroma applies the writes in order, and the last one stays.
 		var repeated = new HashSet<string>(records.Ids.GroupBy(id => id).Where(group => group.Count() > 1).Select(group => group.Key));
@@ -801,9 +799,6 @@ public class ChromaCollectionClient
 				&& SameEmbedding(embedding.Span, records.Embeddings![i].Span, _collection.Space == ChromaSpace.Cosine))
 			{
 				unchanged.Add(i);
-				// Chroma 0.6.3 takes a null document of an update as a deletion.
-				unchangedDocuments.Add(records.Documents?[i] ?? entry.Document);
-				unchangedUris.Add(records.Uris?[i] ?? entry.Uri);
 			}
 			else
 			{
@@ -816,12 +811,7 @@ public class ChromaCollectionClient
 		{
 			if (unchanged.Count > 0)
 			{
-				await SendWrite(new ChromaRecords(unchanged.Select(i => records.Ids[i]).ToList())
-				{
-					Metadatas = records.Metadatas is { } metadatas ? unchanged.Select(i => metadatas[i]).ToList() : null,
-					Documents = unchangedDocuments.Any(document => document is not null) ? unchangedDocuments : null,
-					Uris = unchangedUris.Any(uri => uri is not null) ? unchangedUris : null,
-				}, "update", base64, requestParams, cancellationToken);
+				await SendWrite(Pick(records, unchanged, embeddings: false), "update", base64, requestParams, cancellationToken);
 				written = true;
 			}
 			if (others.Count > 0)
@@ -883,10 +873,10 @@ public class ChromaCollectionClient
 		return stored;
 	}
 
-	private static ChromaRecords Pick(ChromaRecords records, List<int> indexes)
+	private static ChromaRecords Pick(ChromaRecords records, List<int> indexes, bool embeddings = true)
 		=> new(indexes.Select(i => records.Ids[i]).ToList())
 		{
-			Embeddings = records.Embeddings is { } embeddings ? indexes.Select(i => embeddings[i]).ToList() : null,
+			Embeddings = embeddings && records.Embeddings is { } given ? indexes.Select(i => given[i]).ToList() : null,
 			Metadatas = records.Metadatas is { } metadatas ? indexes.Select(i => metadatas[i]).ToList() : null,
 			Documents = records.Documents is { } documents ? indexes.Select(i => documents[i]).ToList() : null,
 			Uris = records.Uris is { } uris ? indexes.Select(i => uris[i]).ToList() : null,
