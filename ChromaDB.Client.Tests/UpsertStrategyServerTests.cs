@@ -7,6 +7,8 @@ namespace ChromaDB.Client.Tests;
 [TestFixture]
 public class UpsertStrategyServerTests : ChromaTestsBase
 {
+	// With Server, what Chroma leaves; the strategy must leave the same.
+	[TestCase(ChromaUpsertStrategy.Server)]
 	[TestCase(ChromaUpsertStrategy.SkipUnchangedEmbeddings)]
 	public async Task UpsertLeavesWhatChromaWould(ChromaUpsertStrategy strategy)
 	{
