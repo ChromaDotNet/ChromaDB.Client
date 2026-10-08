@@ -537,6 +537,11 @@ public class ChromaCollectionClient
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
+			if (await WritesByStrategy(prepared, cancellationToken))
+			{
+				await WriteByStrategy(prepared, upsert: false, base64, requestParams, cancellationToken);
+				return;
+			}
 			await InBatches(prepared, async batch =>
 			{
 				var request = new CollectionUpdateRequest()
@@ -591,6 +596,11 @@ public class ChromaCollectionClient
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
 				.Insert("{collection_id}", _collection.Id);
+			if (await WritesByStrategy(prepared, cancellationToken))
+			{
+				await WriteByStrategy(prepared, upsert: true, base64, requestParams, cancellationToken);
+				return;
+			}
 			await InBatches(prepared, async batch =>
 			{
 				var request = new CollectionUpsertRequest()
@@ -768,6 +778,15 @@ public class ChromaCollectionClient
 	}
 
 	// A list of metadata that are all null goes as no metadata.
+	// Works around KD-49 (docs/COMPATIBILITY.md)
+	// A strategy other than the upsert of the server, for writes with embeddings: on Chroma 0.x, which has not the defect, the writes go
+	// as they are, and its older versions do not read the URIs that the strategies read.
+	private async Task<bool> WritesByStrategy(ChromaRecords records, CancellationToken cancellationToken)
+		=> _httpClient.UpsertStrategy != ChromaUpsertStrategy.Server && records.Embeddings is not null && !await _httpClient.IsChroma0(cancellationToken);
+
+	private Task WriteByStrategy(ChromaRecords records, bool upsert, bool base64, RequestQueryParams requestParams, CancellationToken cancellationToken)
+		=> throw new NotSupportedException($"The upsert strategy {_httpClient.UpsertStrategy} is not supported.");
+
 	private static IReadOnlyList<IReadOnlyDictionary<string, object>?>? MetadatasOrNone(IReadOnlyList<IReadOnlyDictionary<string, object>?>? metadatas)
 		=> metadatas?.Any(metadata => metadata is not null) == true ? metadatas : null;
 
