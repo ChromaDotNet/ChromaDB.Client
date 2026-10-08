@@ -85,6 +85,22 @@ public class UpsertStrategyTests
 		Assert.That(server.Writes(), Is.EqualTo(new[] { "update a" }));
 	}
 
+	// In a cosine collection Chroma 1.x gives an embedding back 1 or 2 ulp off (KD-8): the same embedding sent again is unchanged, and
+	// one that differs by more is not.
+	[Test]
+	public async Task CosineEmbeddingsReadBackOff()
+	{
+		var server = new Server();
+		server.Store("a", new([0.31594023f, 0.19201598f, 0.9178214f, -0.39999998f]), """{"k":1}""", "doc a");
+		var collection = new ChromaCollection("c") { Id = Guid.Empty, Metadata = new Dictionary<string, object> { ["hnsw:space"] = "cosine" } };
+		var client = new ChromaCollectionClient(collection, new ChromaConfigurationOptions("http://localhost:8000").WithUpsertStrategy(ChromaUpsertStrategy.SkipUnchangedEmbeddings), new HttpClient(server));
+		await client.UpsertAsync(["a"], [new([0.31594023f, 0.19201598f, 0.91782147f, -0.4f])]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a", "update a" }));
+		server.Bodies.Clear();
+		await client.UpsertAsync(["a"], [new([0.31594023f, 0.19201598f, 0.9178215f, -0.40001f])]);
+		Assert.That(server.Writes(), Is.EqualTo(new[] { "get a", "upsert a" }));
+	}
+
 	static ChromaCollectionClient Collection(HttpMessageHandler handler, ChromaUpsertStrategy? strategy, int? maxBatchSize = null, ChromaConfigurationOptions? options = null)
 	{
 		options ??= new ChromaConfigurationOptions("http://localhost:8000");

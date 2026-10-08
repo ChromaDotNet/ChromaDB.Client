@@ -795,7 +795,7 @@ public class ChromaCollectionClient
 		var others = new List<int>();
 		for (var i = 0; i < records.Ids.Count; i++)
 		{
-			if (stored.TryGetValue(records.Ids[i], out var entry) && entry.Embedding is { } embedding && embedding.Span.SequenceEqual(records.Embeddings![i].Span))
+			if (stored.TryGetValue(records.Ids[i], out var entry) && entry.Embedding is { } embedding && SameEmbedding(embedding.Span, records.Embeddings![i].Span, _collection.Space == ChromaSpace.Cosine))
 			{
 				unchanged.Add(i);
 				// Chroma 0.6.3 takes a null document of an update as a deletion.
@@ -830,6 +830,27 @@ public class ChromaCollectionClient
 		{
 			throw new ChromaException(ex.Message, ex) { StatusCode = ex.StatusCode, ErrorType = ex.ErrorType, PartlyDone = true };
 		}
+	}
+
+	// Works around KD-8 (docs/COMPATIBILITY.md)
+	// Whether the embedding written is the one stored. In a cosine collection Chroma 1.x gives an embedding back 1 or 2 ulp off, so there
+	// the values may differ by up to 4 ulp, far below any change of a vector that matters.
+	private static bool SameEmbedding(ReadOnlySpan<float> stored, ReadOnlySpan<float> given, bool cosine)
+	{
+		if (!cosine || stored.Length != given.Length)
+		{
+			return stored.SequenceEqual(given);
+		}
+		var storedBits = System.Runtime.InteropServices.MemoryMarshal.Cast<float, int>(stored);
+		var givenBits = System.Runtime.InteropServices.MemoryMarshal.Cast<float, int>(given);
+		for (var i = 0; i < stored.Length; i++)
+		{
+			if (stored[i] != given[i] && ((storedBits[i] < 0) != (givenBits[i] < 0) || Math.Abs((long)storedBits[i] - givenBits[i]) > 4))
+			{
+				return false;
+			}
+		}
+		return true;
 	}
 
 	// The records with the ids, as they are stored, with their embeddings, and with the exact values of their metadata whatever the
