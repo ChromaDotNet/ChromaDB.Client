@@ -70,11 +70,17 @@ public class WriteBatchPropertyTests
 		}
 	}
 
-	// An embedding as a list of numbers, or as a base64 string of float32 values in little-endian order.
+	// An embedding as a list of numbers, or as a base64 string of float32 values in little-endian order, whatever the order of the bytes
+	// of the machine.
 	internal static float[] Floats(JsonElement embedding)
-		=> embedding.ValueKind == JsonValueKind.String
-			? System.Runtime.InteropServices.MemoryMarshal.Cast<byte, float>(Convert.FromBase64String(embedding.GetString()!)).ToArray()
-			: embedding.EnumerateArray().Select(x => x.GetSingle() == 0 && x.GetRawText().StartsWith('-') ? -0f : x.GetSingle()).ToArray();
+	{
+		if (embedding.ValueKind != JsonValueKind.String)
+		{
+			return embedding.EnumerateArray().Select(x => x.GetSingle() == 0 && x.GetRawText().StartsWith('-') ? -0f : x.GetSingle()).ToArray();
+		}
+		var bytes = Convert.FromBase64String(embedding.GetString()!);
+		return Enumerable.Range(0, bytes.Length / 4).Select(i => System.Buffers.Binary.BinaryPrimitives.ReadSingleLittleEndian(bytes.AsSpan(i * 4))).ToArray();
+	}
 
 	internal sealed record Write(string Operation, List<string> Ids, int? CallerLimit, int? ServerLimit, bool Base64)
 	{
