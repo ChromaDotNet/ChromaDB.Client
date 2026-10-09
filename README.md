@@ -21,7 +21,7 @@ Website: [chromadotnet.org](https://chromadotnet.org)
 
 ## Used by
 
-- [CommunityToolkit.VectorData.Chroma](https://www.nuget.org/packages/CommunityToolkit.VectorData.Chroma), the Chroma provider for Microsoft.Extensions.VectorData in the AI Community Toolkit of the .NET Foundation, used by Semantic Kernel and Agent Framework.
+- [CommunityToolkit.VectorData.Chroma](https://www.nuget.org/packages/CommunityToolkit.VectorData.Chroma), the Chroma provider for Microsoft.Extensions.VectorData in the AI Community Toolkit of the .NET Foundation. It works with Semantic Kernel and Agent Framework.
 
 ## Compatibility
 
