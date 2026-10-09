@@ -17,6 +17,8 @@ permissions:
 env:
   CONFIGURATION: Release
   DOTNET_VERSION: 8.0.x
+  # The seed of the property tests, so that every run checks the same cases: without it, each run takes new ones.
+  FSCHECK_REPLAY: '(5123468595321266860,8907826574119387873)'
 
 jobs:
   ci:

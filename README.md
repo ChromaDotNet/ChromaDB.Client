@@ -665,6 +665,8 @@ With `CHROMA_TEST_URI`, the tests run against a server that is already running, 
 
 Each fixture deletes the collections and the databases its requests created, and nothing else. The tests that reset the server, create or look up other tenants and databases, or query an id that does not exist are skipped.
 
+The property tests, in the classes whose names end in `PropertyTests`, check random cases with [FsCheck](https://github.com/fscheck/FsCheck) and need no Chroma. Each run takes new cases. A failure prints the case and its seed, like `(5123468595321266860,8907826574119387873)`: `FSCHECK_REPLAY` with that seed runs the same cases again. The CI sets one, so that its runs check the same cases.
+
 ## Migrating from ChromaDB.Client 1.x
 
 - Replace the `ChromaDB.Client` package reference with `ChromaDotNet.Client`.
