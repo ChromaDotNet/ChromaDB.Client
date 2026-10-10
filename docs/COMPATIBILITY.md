@@ -213,6 +213,8 @@ A BM25 search, `SparseKnn` of a text on an index with `chroma_bm25`, ranks the r
 
 An embedding has at most 4,096 dimensions: one of 4,097 gets `422` "Quota exceeded: 'Embedding dimension' exceeded quota limit for action 'Add': current usage of 4097 exceeds limit of 4096", with this client and with the Python client 1.5.9 (checked on 10 October 2026).
 
+An id and the name of a collection have at most 128 bytes: 129 get `422` with "'ID size (bytes)'" and "'Name size (bytes)'", with this client and with the Python client 1.5.9 (checked on 10 October 2026). The name of a database is not verified yet.
+
 ## Versions tested in the CI
 
 Every change runs the whole suite against:
