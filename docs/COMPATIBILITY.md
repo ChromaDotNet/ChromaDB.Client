@@ -188,6 +188,8 @@ The strategies of the client: [upsert-strategies.md](upsert-strategies.md).
 
 A single Chroma server from 1.0.17 accepts `UpdateTenantAsync` but does not keep the name. On 1.5.9 the update answers `200`, and the tenant comes back with a null `resource_name`, with this client and in plain HTTP, as the Python client 1.5.9 has no such call (checked on 10 October 2026).
 
+Two single servers 1.5.9 on the same data start without an error, and each reads what the other writes: in Docker, two containers on one volume, with this client and with the Python client 1.5.9 (checked on 10 October 2026).
+
 ## Chroma Cloud
 
 Checked on 4 October 2026 against `api.trychroma.com`: the key goes in `X-Chroma-Token`, the default of `WithChromaToken`, since `Authorization: Bearer` gets `401`. `pre-flight-checks` declares a `max_batch_size` of 1000 and `supports_base64_encoding`, but a write of more than 300 records gets `422` with `Quota exceeded`, the default quota; `WithBatchSplitting(maxBatchSize: 300)` writes and deletes 301 records in two batches. Embeddings sent in base64 read back identical. A missing collection gets `404` with `NotFoundError`.
