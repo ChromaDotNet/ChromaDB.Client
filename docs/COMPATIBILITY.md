@@ -217,6 +217,8 @@ An id and the name of a collection have at most 128 bytes: 129 get `422` with "'
 
 Queries at once on one collection can get `429` "Too many requests; backoff and try again": 9 of 30 with the Python client 1.5.9, 2 of 60 and 3 of 100 with this client, which does not retry; 30 adds at once all went (checked on 10 October 2026).
 
+The metadata of a collection has at most 16 keys and 256 bytes for a value: 17 keys and a value of 257 bytes get `422` when the collection is created, with this client and with the Python client 1.5.9 (checked on 10 October 2026).
+
 ## Versions tested in the CI
 
 Every change runs the whole suite against:
