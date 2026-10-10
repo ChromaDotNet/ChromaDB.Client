@@ -221,6 +221,8 @@ The metadata of a collection has at most 16 keys and 256 bytes for a value: 17 k
 
 A tenant or a database that does not exist gets `403` "Permission denied.", not `404`, with this client and with the Python client 1.5.9 (checked on 10 October 2026).
 
+The resource name of a tenant that has one cannot be set again: `UpdateTenantAsync` gets `409` "Failed to set resource name", also with the same name, with this client and in plain HTTP, as the Python client 1.5.9 has no such call (checked on 10 October 2026).
+
 ## Versions tested in the CI
 
 Every change runs the whole suite against:
