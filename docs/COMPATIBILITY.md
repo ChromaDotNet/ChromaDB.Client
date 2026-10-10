@@ -132,7 +132,6 @@ Each defect has a number, KD-n, to refer to it. Reproduced with plain HTTP, with
 | KD-28 | In the image `chromadb/chroma:1.5.9`, `chroma --version` answers `chroma 1.4.4` | the image of 1.5.9, the same as `latest`; verified on 10 October 2026 | — |
 | KD-29 | The v1 API fails with "cannot unpack non-iterable coroutine object" | 0.6.x; verified on 10 October 2026 on 0.6.3 in plain HTTP, where the list of the collections gets `400` with that message | use the v2 API there |
 | KD-30 | With `CHROMA_ALLOW_RESET=TRUE` the server stops at the start, "expected a boolean"; `ALLOW_RESET=TRUE` is ignored. Only `CHROMA_ALLOW_RESET=true` enables the reset | 1.5.9; verified on 10 October 2026 with this client and with the Python client 1.5.9 | — |
-| KD-31 | Updates answer `500` "Error in compaction", and are applied all the same | 1.0.0; not 0.5.20, 0.6.3 and 1.5.9 | — |
 | KD-32 | Right after an add, the count is 0 and the peek empty, without an error | 1.0.0; not 0.5.20, 0.6.3 and 1.5.9 | — |
 | KD-33 | Embeddings of different dimensions in the same request are accepted | 0.5.16 – 0.5.18; rejected from 0.5.20; verified on 10 October 2026 on 0.5.16, 0.5.18 and 0.5.20, with this client and with the Python client of the same version | — |
 | KD-34 | The Docker images do not start: they install NumPy 2.2.6, and the server exits with "np.float_ was removed in the NumPy 2.0 release" | images 0.4.16 – 0.4.22; verified on 10 October 2026 on the images 0.4.16 and 0.4.22 | — |
