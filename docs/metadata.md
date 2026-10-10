@@ -1,0 +1,41 @@
+# Metadata values
+
+By default, with `ChromaMetadataValues.Exact`:
+
+- strings stay strings;
+- lists come back as `List<object>` of `string`, `long`, `double` and `bool`, like single values;
+- a `double`, `float` or `decimal` comes back as a `double`, also when it is whole. The client writes `2.0`, as the Python client does, and Chroma keeps it a float.
+
+Values that earlier versions of this client wrote as `2` stay integers in Chroma, so `LessThan("d", 2.2)` does not find them until they are written again.
+
+With `ChromaMetadataValues.Inferred`, as in earlier versions, a string that looks like a date comes back as a `DateTime`, and a list as a `JsonElement`:
+
+```csharp
+var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithMetadataValues(ChromaMetadataValues.Inferred);
+```
+
+A list in metadata, written and filtered:
+
+```csharp
+await collectionClient.AddAsync(new ChromaRecords(["a"]) { Embeddings = [new([1f, 0.5f, 0f])], Metadatas = [new Dictionary<string, object> { ["tags"] = new[] { "red", "blue" } }] });
+var tagged = await collectionClient.GetAsync(where: ChromaWhereOperator.Contains("tags", "red"));
+```
+
+In `UpdateAsync` and `UpsertAsync`, a null value or an empty list deletes the key on every tested Chroma, with the sparse vectors the client computes from its text. The type does not allow null, so write `null!`. The client sends a deletion only to a record that has the key, so it reads those records first: Chroma Cloud counts a null against its quota of keys, and a new record has nothing to delete. The keys the metadata does not have stay, as in Chroma. A null document keeps the stored one, as in Chroma; with `NullDocumentsDelete = true` in `ChromaRecords` it deletes it, which Chroma cannot do, so the client writes an empty document, read back as an empty string, or as null with a document copy key. `AddAsync` throws an `ArgumentException` for a null value or an empty list: Chroma 0.x would drop the key, and 1.x rejects the request. A record without metadata keys comes back with an empty `Metadata`, which Chroma sends as null; `Metadata` is null when the read does not include the metadatas. A metadata without keys throws an `ArgumentException` in `AddAsync`, `UpdateAsync` and `UpsertAsync`, as in the Python client: null is a record without metadata. So does a list that holds values of more than one type, like a string and a number, which Chroma rejects with an error that does not say what is wrong. In `ChromaRecords` a record can have null metadata or a null document, and a list of metadata that are all null goes as no metadata.
+
+`WithDocumentCopyKey(key)` of a collection client returns a client of the same collection that copies each document into the metadata key, so that a `where` filter can compare the whole text, which `where_document` cannot. A document deleted with `NullDocumentsDelete` loses its copy, so the client reads an empty document without its copy as null: a document comes back as it was written, empty or null. For that it reads the metadata with the documents, and leaves it out of the results that do not ask for it. On Chroma Cloud, which takes a metadata value of at most 8,182 bytes, a longer document goes without its copy, and an update or an upsert deletes the copy it had; on a single server every document has its copy.
+
+`ChromaMetadataConvert` converts .NET values to metadata values and back, always in the same form: `ToMetadataValue` writes a `DateTimeOffset` as round-trip text in UTC, so that equal instants are equal text, a `DateTime` as round-trip text with its `Kind`, a `DateOnly` as `yyyy-MM-dd`, and a sequence as a list; null and an empty sequence give null, no value. `FromMetadataValue(value, type)` reads a value of `ChromaMetadataValues.Exact` as the type, also arrays and lists, and throws an `InvalidCastException` for a value that does not convert. A filter with a converted value finds the values converted the same way. `ToMetadata(values)` builds the metadata of a record from keys and .NET values, each converted with `ToMetadataValue`; a value that converts to null stays as null, which deletes the key in `UpdateAsync` and `UpsertAsync`. The client does not convert the values of a metadata dictionary by itself.
+
+[docs/COMPATIBILITY.md](COMPATIBILITY.md) lists the versions that store lists in metadata, and what the client does on the others. The client asks the server for its version once, and only when a record has a list.
+
+Chroma 1.5 keeps the lists of the records of a deleted collection or database, and gives them to the next records it stores, in any collection: delete them with `deleteRecordsFirst: true`, as [Collections and records](collections.md#collections-and-records) says. Every Chroma 1.x reports the same version, so the records go first on all of them.
+
+An existing `ChromaClient`, for example one from dependency injection, gives a client that reads values the other way. That client shares the `HttpClient`, the options and what was learned about the server. `Options` returns the options of a client:
+
+```csharp
+var inferred = client.WithMetadataValues(ChromaMetadataValues.Inferred);
+Console.WriteLine(inferred.Options.MetadataValues); // Inferred
+```
+
+`WithMetadataValues` of a collection client does the same for one collection.
