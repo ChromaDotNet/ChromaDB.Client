@@ -131,7 +131,7 @@ Each defect has a number, KD-n, to refer to it. Reproduced with plain HTTP, with
 | KD-26 | `GET /api/v2/collections/{crn}` answers `403` "Permission denied." with a key of the database and with one of the whole tenant, also for a malformed CRN | Chroma Cloud, with this client and in plain HTTP, as the Python client 1.5.9 has no such call (checked on 10 October 2026) | reports the error of the server |
 | KD-27 | Attaching a function the tenant has not enabled answers `429` "Too many requests", also on the first call; detaching too | Chroma Cloud; verified on 10 October 2026 with this client and with the Python client 1.5.9 | reports the error of the server, without retrying |
 | KD-28 | In the image `chromadb/chroma:1.5.9`, `chroma --version` answers `chroma 1.4.4` | the image of 1.5.9, the same as `latest`; verified on 10 October 2026 | — |
-| KD-29 | The v1 API fails with "cannot unpack non-iterable coroutine object" | 0.6.x | use the v2 API there |
+| KD-29 | The v1 API fails with "cannot unpack non-iterable coroutine object" | 0.6.x; verified on 10 October 2026 on 0.6.3 in plain HTTP, where the list of the collections gets `400` with that message | use the v2 API there |
 | KD-30 | With `CHROMA_ALLOW_RESET=TRUE` the server stops at the start, "expected a boolean"; `ALLOW_RESET=TRUE` is ignored. Only `CHROMA_ALLOW_RESET=true` enables the reset | 1.5.9 | — |
 | KD-31 | Updates answer `500` "Error in compaction", and are applied all the same | 1.0.0; not 0.5.20, 0.6.3 and 1.5.9 | — |
 | KD-32 | Right after an add, the count is 0 and the peek empty, without an error | 1.0.0; not 0.5.20, 0.6.3 and 1.5.9 | — |
