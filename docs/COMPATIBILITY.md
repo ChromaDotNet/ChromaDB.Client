@@ -89,7 +89,7 @@ The `max_batch_size` of `pre-flight-checks` is 41666 on Chroma 0.4.12 – 0.6.3 
 
 All the servers on this page reject `$in` and `$nin` without values (`400` or `500`), so `ChromaWhereOperator.In` without values is `None`, which sends no request, and `NotIn` without values is `All`, which sends no `where`. `$ne` and `$nin` match the records without the key on 0.5.15, and on the v2 API of 0.6.3, 1.0.0 and 1.5.9; 0.4.10 to 0.4.23 leave them out. `$lte` leaves them out on all of them, as `ChromaWhereOperator.Not` describes. A request on the id of a deleted collection gets `500` "coroutine raised StopIteration" from Chroma 0.4.23, without "does not exist", so a collection client made by name compares the ids to find a collection created again.
 
-The v1 API of Chroma 0.6.3 fails on most requests, and Chroma 1.0.0 – 1.5.9 answer it with `410 Gone`: use the v2 API there.
+The v1 API of Chroma 0.6.3 fails on most requests, and Chroma 1.0.0 – 1.5.9 answer it with `410 Gone`: use the v2 API there. On 1.5.9 the creation of a collection on the v1 API gets `405 Method Not Allowed` instead, and the reads `410`, with this client and in plain HTTP (checked on 10 October 2026).
 
 ## Known defects of the servers
 
