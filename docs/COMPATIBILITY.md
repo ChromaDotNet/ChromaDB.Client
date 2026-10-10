@@ -173,6 +173,8 @@ Checked on 4 October 2026 against `api.trychroma.com`: the key goes in `X-Chroma
 
 A metadata value has at most 8,182 bytes, and a document 16,384: a value of 8,183 bytes gets `422` with `Quota exceeded`, and so does every write of a metadata key beyond 36 bytes, also when a collection whose schema names that key was created without an error (checked on 6 October 2026).
 
+The metadata of a record has at most 32 keys, and a null value counts as a key: an add with 33 keys, and an upsert with 32 values and a null, get `422` "Quota exceeded: 'Number of metadata dictionary keys' exceeded quota limit for action 'Upsert': current usage of 33 exceeds limit of 32", with this client and with the Python client 1.5.9 (checked on 10 October 2026).
+
 A filter has at most 8 predicates, the default quota of a tenant: a `where` with 9, nested ones included, gets `422` with `Quota exceeded: 'Number of where clause predicates'`, and a link to ask for more; the values of an `In` do not count (checked on 5 October 2026).
 
 | Chroma server | API | Tested |
