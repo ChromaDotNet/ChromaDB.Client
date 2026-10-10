@@ -223,6 +223,8 @@ A tenant or a database that does not exist gets `403` "Permission denied.", not 
 
 The resource name of a tenant that has one cannot be set again: `UpdateTenantAsync` gets `409` "Failed to set resource name", also with the same name, with this client and in plain HTTP, as the Python client 1.5.9 has no such call (checked on 10 October 2026).
 
+The filter of a search is the where clause itself, as the Python client sends it: `{"where_clause": ...}`, as the OpenAPI description has it, gets `422` "Failed to deserialize the JSON body into the target type: searches[0].filter: Invalid where clause", in plain HTTP (checked on 10 October 2026).
+
 ## Versions tested in the CI
 
 Every change runs the whole suite against:
