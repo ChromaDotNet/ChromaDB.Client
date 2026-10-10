@@ -192,7 +192,7 @@ Right after a write, a count that reads only the index (`CountAsync(ChromaReadLe
 
 | Chroma server | API | Tested |
 |---|---|---|
-| Chroma Cloud | v2 | the tests pass, except the operations an API key cannot run, like `CreateTenantAsync` and `ResetAsync`; see [Chroma Cloud](chroma-cloud.md) |
+| Chroma Cloud | v2 | the tests pass, except the operations an API key cannot run, like `CreateTenantAsync` and `ResetAsync`, which get `403` "Permission denied.", also with the Python client 1.5.9 (checked on 10 October 2026); see [Chroma Cloud](chroma-cloud.md) |
 
 Chroma Cloud declares 1000, but takes 300 records per write and answers at most 300 records per read, unless the quota is raised: a get without a limit returns 300 of 350 records, without an error, a get with a limit of 350 gets `422` "Quota exceeded: 'Limit value'", and an add of 301 records gets `422` and writes none of them, with this client without batch splitting and with the Python client 1.5.9 (checked on 10 October 2026). With batch splitting, `GetAsync` reads the 350 records in pages.
 
