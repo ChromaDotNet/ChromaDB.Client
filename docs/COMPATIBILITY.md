@@ -204,6 +204,8 @@ Chroma Cloud keeps the other SPANN settings fixed: the RNG factors at 1, `initia
 
 Only Chroma Cloud serves the Search API of Chroma; a single Chroma server answers `501`: 1.5.9 answers "Error executing plan: Not implemented: Search operation is not implemented for local executor", with this client and with the Python client 1.5.9 (checked on 10 October 2026); the other versions not verified yet.
 
+A BM25 search, `SparseKnn` of a text on an index with `chroma_bm25`, ranks the records without the terms of the text too, among its `limit`, with the score 1: in a collection of `apple pie`, `banana bread`, `cherry tart` and `apple cider`, a search of `apple` returns `banana bread` and `cherry tart` with 1, with this client and with the Python client 1.5.9 (checked on 10 October 2026).
+
 ## Versions tested in the CI
 
 Every change runs the whole suite against:
