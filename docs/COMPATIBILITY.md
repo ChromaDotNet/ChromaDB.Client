@@ -48,6 +48,7 @@ Differences between these servers, seen in the tests:
 | Takes an HNSW index with fewer than 2 neighbors (`max_neighbors`, `hnsw:M`) | 1.5.9 crashes on the first write with 0 and misses the nearest records with 1, also after `ModifyConfigurationAsync`: the client throws an `ArgumentException` before the request |
 | Sends the dimension and the version of a collection (`ChromaCollection.Dimension` and `Version`) | 0.5.16 – 1.5.9, and on the v1 API from 0.5.1; the log position (`LogPosition`) from 0.5.9 |
 | Forks a collection and counts its forks (`ForkAsync`, `ForkCountAsync`), and reports the indexing status (`GetIndexingStatusAsync`) | Chroma Cloud, with this client and with the Python client 1.5.9; 1.5.9 answers `501` "Collection forking is unsupported for local chroma" and "Count forks is unsupported for local chroma", and `500` to the indexing status (KD-37), with the two clients; the other versions not verified yet |
+| Answers the identity of the key (`GetUserIdentityAsync`): with a key of a database, the tenant and that database; with a key of the whole tenant, the tenant and no database | Chroma Cloud, with this client and with the Python client 1.5.9; 1.5.9 answers `default_tenant` and `default_database`, with the two clients; the other versions not verified yet |
 
 ## v1 API (`ChromaApiVersion.V1`)
 
