@@ -78,7 +78,7 @@ Each defect has a number, KD-n, to refer to it. Reproduced with plain HTTP, with
 | KD-1 | `$contains` and `$not_contains` on documents read `_` and `%` as SQL wildcards: `ChromaWhereDocumentOperator.Contains("a_b")` also finds `xacby` and `a b`, `Contains("50%")` also finds `sale 500 off`, and `NotContains("a_b")` leaves them out. On 1.0.0 – 1.0.12 a text with `%` between spaces, like `" 50% "`, finds nothing. The server puts the text in an SQLite `LIKE` without an escape character, so the client cannot escape them | all the tested versions from 0.4.10 to 1.0.12; right from 1.0.13 | — |
 | KD-2 | While 24 threads add, update and delete records of their own, a query with `n_results` 3 and a `where` filter on a thread's records returns 4 of them, on a server just started | 0.4.24, in 5 runs out of 10 | — |
 | KD-3 | The same query returns no record | 0.6.3, in 1 run out of 10 | — |
-| KD-4 | A list of `$and` or `$or` becomes an SQLite expression as deep as the list: from 988 filters in one list Chroma 1.5.9 answers `500`, and from about 4,400 it crashes. The client splits long lists, as the README says; beyond 8,167 filters Chroma 1.5.9 answers `500` with `too many SQL variables` | single servers 1.0.0 – 1.5.9; 0.6.3 answers `500` from about 490 filters however they go | — |
+| KD-4 | A list of `$and` or `$or` becomes an SQLite expression as deep as the list: from 988 filters in one list Chroma 1.5.9 answers `500`, and from about 4,400 it crashes. The client splits long lists, as [queries-and-filters.md](queries-and-filters.md#very-long-filters) says; beyond 8,167 filters Chroma 1.5.9 answers `500` with `too many SQL variables` | single servers 1.0.0 – 1.5.9; 0.6.3 answers `500` from about 490 filters however they go | — |
 | KD-5 | `$contains` and `$not_contains` on documents do not see the text after a NUL character (`\u0000`): `Contains("after")` does not find `"before\u0000after"`, which comes back whole | all the tested versions from 0.4.24 to 1.5.9 | — |
 | KD-6 | A float compared with int metadata is truncated: `GreaterThanOrEqual("a", 2.25)` also finds `a = 2`, and `GreaterThan("a", -1.5)` leaves out `a = -1` | 1.0.0 – 1.5.9; right on 0.4.24 – 0.6.3 | — |
 | KD-7 | Some doubles are read with an error in the last digit: `-95.41757424465169`, the shortest text of the double, comes back `-95.41757424465168`, and `1e-28` comes back `9.999999999999999e-29`; `Equal("x", 1e-30)` does not find the record stored with `1e-30`. The client sends the shortest text that reads back as the same double | 1.0.0 – 1.5.9; right on 0.4.24 – 0.6.3 | — |
@@ -119,11 +119,47 @@ Each defect has a number, KD-n, to refer to it. Reproduced with plain HTTP, with
 | KD-46 | `$in` and `$nin` without values answer `500` | 0.4.10 – 0.5.16; `400` from 0.5.17 | sends no request for `In` without values, and no `where` for `NotIn` without values |
 | KD-47 | In the OpenAPI description the parameter of `GET` and `DELETE .../collections/{collection_id}` is named as an id, but the server reads a name: with an id it answers `404` (chroma-core/chroma#4456) | 0.5.16 – 1.5.9 | sends the name |
 | KD-48 | After the records of a collection are deleted and written again, a query returns wrong neighbors: in a `cosine` collection with three records deleted and added again, `n_results: 1` on the vector of one of them returns the farthest of the three, and `n_results: 2` misses one of the two nearest, and which one changes from run to run; `n_results: 3` returns all three in the right order | 1.0.0 – 1.0.5; right from 1.0.6 | — |
-| KD-49 | After an upsert or an update with embeddings of records that exist, also with the embeddings they had, a query can miss a record for good, while `get` and `count` find it: of 60 records with random vectors, after an upsert of 20 of them with new vectors, `n_results: 60` returns 59 in 9 runs of 400 on 1.5.9 with `cosine`, and a query with the vector of the missing record does not find it. Upstream: chroma-core/chroma#7758 | 1.0.21 – 1.5.9, with `l2`, `cosine` and `ip`; none in 100 runs on 0.6.3 | on the server, the environment variable `RAYON_NUM_THREADS=1` made it lose no record in our measurements on 1.5.9; in the client, `WithUpsertStrategy(ChromaUpsertStrategy.SkipUnchangedEmbeddings)` updates without the embedding a record whose embedding does not change, and a record whose embedding changes stays exposed. See the README |
+| KD-49 | After an upsert or an update with embeddings of records that exist, also with the embeddings they had, a query can miss a record for good, while `get` and `count` find it: of 60 records with random vectors, after an upsert of 20 of them with new vectors, `n_results: 60` returns 59 in 9 runs of 400 on 1.5.9 with `cosine`, and a query with the vector of the missing record does not find it. Upstream: chroma-core/chroma#7758 | 1.0.21 – 1.5.9, with `l2`, `cosine` and `ip`; none in 100 runs on 0.6.3 | on the server, the environment variable `RAYON_NUM_THREADS=1` made it lose no record in our measurements on 1.5.9; in the client, `WithUpsertStrategy(ChromaUpsertStrategy.SkipUnchangedEmbeddings)` updates without the embedding a record whose embedding does not change, and a record whose embedding changes stays exposed. See [Records lost after an update of their embeddings](#records-lost-after-an-update-of-their-embeddings) |
 | KD-50 | A collection created without a space and one created with `configuration.hnsw.space` come back the same: no metadata, and `hnsw_configuration.space` `l2`. The first uses `l2`, the second its space: a query of `[0, 0.1]` on `[3, 4]` gives the distance 24.21 in the first and 0.2 in a `cosine` one | 1.0.0 – 1.0.5; right from 1.0.6 | `Space` is null for a collection without the `hnsw:space` metadata, and `ExpectedSpace` lets it pass, without an exception: use Chroma 1.0.6 or later. The collections the client creates have the metadata, so their space is known |
 | KD-51 | After some upserts with the same embeddings, a query with `n_results` equal to the count of the records returns one less, while `get` and `count` find it; after the next write it comes back. On 0.6.3, in a `cosine` collection of 60 records, records were missing in 28 queries of 300 and in 25 of 150, two series of runs; a single upsert, 30 runs with plain HTTP, missed none | 0.5.15, 0.5.16, 0.5.20 and 0.6.3, on the v2 and the v1 API; not on 0.4.10, 0.4.15 and 0.4.23 | — the same with every upsert strategy |
 
 The query of KD-2 and KD-3 returned 3 records in every run on Chroma 0.5.20, 1.0.0 and 1.5.9, 10 runs each on a server just started.
+
+## Records lost after an update of their embeddings
+
+Chroma 1.0.21 to 1.5.9, installed on your own servers, may lose a record from the vector index after an `UpdateAsync` or an `UpsertAsync` with embeddings of records that exist, also with the embeddings they had. A query no longer finds it, not even with its own embedding, while `GetAsync` and `CountAsync` do. The record lost is often not one of those written. Chroma applies the records of a write to the vector index in parallel, and the update of a record in place can leave another one without links. Chroma Cloud has not shown it, and Chroma 0.x has not the defect. It is KD-49 in [docs/COMPATIBILITY.md](#known-defects-of-the-servers).
+
+### On the server: `RAYON_NUM_THREADS=1`
+
+With the environment variable `RAYON_NUM_THREADS=1` on the server, the parallel work of Chroma runs on one thread, and no record was lost in our measurements, whatever the client does. It costs time on upserts of records that exist:
+
+```bash
+docker run -e RAYON_NUM_THREADS=1 -p 8000:8000 chromadb/chroma:1.5.9
+```
+
+Measured on Chroma 1.5.9, in a `cosine` collection, two containers started the same way, with and without the variable:
+
+| Case | Without | With `RAYON_NUM_THREADS=1` |
+|---|---|---|
+| 120 records, 20 written again with new vectors | 23 runs of 200 miss a record | 0 of 200, and 0 of 600 more |
+| 60 records, 20 written again with the same vectors and new metadata | 27 runs of 300 | 0 of 300 |
+| add of 5,000 records of 384 dimensions | 0.70 to 1.35 s | 1.29 to 1.69 s |
+| upsert of the same 5,000 records with new vectors | 1.34 to 2.06 s | 7.32 to 7.79 s |
+| 100 queries of 10 results | 0.23 to 0.35 s | 0.23 to 0.35 s |
+
+The times are of 6 runs each. One thread makes the defect much rarer, but it may not remove it all: with the code of Chroma changed to apply the records in sequence, another measurement lost a record in 1 run of 600, with 60 records. Not measured yet: a long run of many updates, and the versions from 1.0.21 to 1.5.0. Writing the records one per request from the client does not help: the runs that miss a record stay the same.
+
+The strategies of the client: [upsert-strategies.md](upsert-strategies.md).
+
+## Other behaviors of the servers
+
+**Very long filters.** A single Chroma server turns a list of filters into an SQLite expression as deep as the list, and SQLite stops at 1000. Chroma 1.5.9 takes 987 to 994 filters in one list, depending on the operator. Split this way, Chroma 1.5.9 takes up to 8,167 filters, and Chroma 1.0.0 about 4,090. Beyond that, SQLite answers "too many SQL variables", the client throws a `ChromaException`, and the server stays up. That limit counts the values of the query, not the filters: on Chroma 1.5.9 an `In` or a `NotIn` takes about 16,000 values.
+
+Chroma 1.5 gives the lists in the metadata of the records of a deleted collection or database to the next records it stores, in other collections too.
+
+Chroma 1.x servers have no built-in authentication.
+
+A single Chroma server from 1.0.17 accepts `UpdateTenantAsync` but does not keep the name.
 
 ## Chroma Cloud
 
@@ -132,6 +168,20 @@ Checked on 4 October 2026 against `api.trychroma.com`: the key goes in `X-Chroma
 A metadata value has at most 8,182 bytes, and a document 16,384: a value of 8,183 bytes gets `422` with `Quota exceeded`, and so does every write of a metadata key beyond 36 bytes, also when a collection whose schema names that key was created without an error (checked on 6 October 2026).
 
 A filter has at most 8 predicates, the default quota of a tenant: a `where` with 9, nested ones included, gets `422` with `Quota exceeded: 'Number of where clause predicates'`, and a link to ask for more; the values of an `In` do not count (checked on 5 October 2026).
+
+| Chroma server | API | Tested |
+|---|---|---|
+| Chroma Cloud | v2 | the tests pass, except the operations an API key cannot run, like `CreateTenantAsync` and `ResetAsync`; see [Chroma Cloud](chroma-cloud.md) |
+
+Chroma Cloud declares 1000, but takes 300 records per write and answers at most 300 records per read, without an error, unless the quota is raised.
+
+Chroma Cloud keeps the other SPANN settings fixed: the RNG factors at 1, `initial_lambda` at 100, and the quantization, which users cannot set.
+
+`QueryAsync` with more than 300 results, `Offset` included, gets the quota error of Chroma Cloud, "'Number of results' exceeded quota limit", unless the quota is raised. `GetAsync` reads in pages, and `SearchAsync` returns more than 300 results.
+
+`GetCollectionByCrnAsync` is there as in the JavaScript client of Chroma, but the operation is hidden in the OpenAPI description of Chroma and missing from its documentation.
+
+Only Chroma Cloud serves the Search API of Chroma; a single Chroma server answers `501`.
 
 ## Versions tested in the CI
 
