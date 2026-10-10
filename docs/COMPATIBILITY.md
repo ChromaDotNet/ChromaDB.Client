@@ -113,7 +113,7 @@ Each defect has a number, KD-n, to refer to it. Reproduced with plain HTTP, with
 | KD-23 | In a `cosine` collection of 1000 nearly parallel vectors, a query with `n_results: 1000` returns 998 records in 4 runs of 5, and pages of 10 repeat some records and miss others; `ef_search` 1000 or 2000 does not help, `l2` returns all | 1.5.9 | — |
 | KD-24 | A query whose ids include one without a record answers `500` "Error finding id" | 1.0.0 and 1.5.9; Chroma Cloud leaves the id out | asks again with the ids that have a record |
 | KD-25 | A change of the configuration with `hnsw` settings answers `500` "failed to merge config into schema" | Chroma Cloud, whose index is SPANN | throws a `ChromaException` before sending `Hnsw` settings to Chroma Cloud |
-| KD-26 | `GET /api/v2/collections/{crn}` answers `403` "Permission denied." with a key of the database and with one of the whole tenant, also for a malformed CRN | Chroma Cloud | reports the error of the server |
+| KD-26 | `GET /api/v2/collections/{crn}` answers `403` "Permission denied." with a key of the database and with one of the whole tenant, also for a malformed CRN | Chroma Cloud, with this client and in plain HTTP, as the Python client 1.5.9 has no such call (checked on 10 October 2026) | reports the error of the server |
 | KD-27 | Attaching a function the tenant has not enabled answers `429` "Too many requests", also on the first call; detaching too | Chroma Cloud | reports the error of the server, without retrying |
 | KD-28 | In the image `chromadb/chroma:1.5.9`, `chroma --version` answers `chroma 1.4.4` | the image of 1.5.9, the same as `latest` | — |
 | KD-29 | The v1 API fails with "cannot unpack non-iterable coroutine object" | 0.6.x | use the v2 API there |
