@@ -219,6 +219,8 @@ Queries at once on one collection can get `429` "Too many requests; backoff and 
 
 The metadata of a collection has at most 16 keys and 256 bytes for a value: 17 keys and a value of 257 bytes get `422` when the collection is created, with this client and with the Python client 1.5.9 (checked on 10 October 2026).
 
+A tenant or a database that does not exist gets `403` "Permission denied.", not `404`, with this client and with the Python client 1.5.9 (checked on 10 October 2026).
+
 ## Versions tested in the CI
 
 Every change runs the whole suite against:
