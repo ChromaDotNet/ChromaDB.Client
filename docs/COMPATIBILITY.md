@@ -47,6 +47,7 @@ Differences between these servers, seen in the tests:
 | Applies the indexes of a schema turned on or off (`ChromaCollectionSchema.WithIndex` and `WithoutIndex`), and rejects a filter on a key without its index ("indexing is disabled") | 1.3.0 – 1.5.9, but the full-text search index of the documents only from 1.5.1: 1.3.0 – 1.5.0 keep it on; 1.0.0 – 1.2.2 create the collection without the schema |
 | Takes an HNSW index with fewer than 2 neighbors (`max_neighbors`, `hnsw:M`) | 1.5.9 crashes on the first write with 0 and misses the nearest records with 1, also after `ModifyConfigurationAsync`: the client throws an `ArgumentException` before the request |
 | Sends the dimension and the version of a collection (`ChromaCollection.Dimension` and `Version`) | 0.5.16 – 1.5.9, and on the v1 API from 0.5.1; the log position (`LogPosition`) from 0.5.9 |
+| Forks a collection and counts its forks (`ForkAsync`, `ForkCountAsync`), and reports the indexing status (`GetIndexingStatusAsync`) | Chroma Cloud, with this client and with the Python client 1.5.9; 1.5.9 answers `501` "Collection forking is unsupported for local chroma" and "Count forks is unsupported for local chroma", and `500` to the indexing status (KD-37), with the two clients; the other versions not verified yet |
 
 ## v1 API (`ChromaApiVersion.V1`)
 
@@ -118,7 +119,7 @@ Each defect has a number, KD-n, to refer to it. Reproduced with plain HTTP, with
 | KD-34 | The Docker images do not start: they install NumPy 2.2.6, and the server exits with "np.float_ was removed in the NumPy 2.0 release" | images 0.4.16 – 0.4.22 | — |
 | KD-35 | The Docker image does not start: "Path 'log_config.yml' does not exist" | image 0.4.11 | — |
 | KD-36 | A query ignores its ids, without an error, and searches the whole collection | 0.5.16 – 0.6.3 on the v2 API, and every version on the v1 API; 1.0.0 – 1.5.9 apply them | throws a `ChromaException` when a result falls outside the ids |
-| KD-37 | `indexing_status` answers `500` "Method scout_logs is not implemented", while the other operations of Chroma Cloud only answer `501` | 1.5.9 single server | reports the error of the server |
+| KD-37 | `indexing_status` answers `500` "Method scout_logs is not implemented", while the other operations of Chroma Cloud only answer `501` | 1.5.9 single server, with this client and with the Python client 1.5.9 | reports the error of the server |
 | KD-38 | An add to a collection of a tenant or database other than the default ones answers that the collection does not exist | 0.4.15 on the v1 API; right from 0.4.23 | — |
 | KD-39 | Collections come back without tenant and database | 0.4.15 on the v1 API; right from 0.4.23 | — |
 | KD-40 | The list of the collections ignores `limit` and `offset` and returns every collection | 0.4.10 and 0.4.12 – 0.4.15 on the v1 API; right from 0.4.23 | — |
