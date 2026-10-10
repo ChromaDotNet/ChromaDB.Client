@@ -16,7 +16,7 @@ Differences between these servers, seen in the tests:
 |---|---|
 | Rejects embeddings of different dimensions in the same request | 0.5.20 – 1.5.9; 0.5.16 – 0.5.18 accept them |
 | Requires embeddings in `AddAsync` and `UpsertAsync` | 1.0.16 – 1.5.9; the earlier versions accept records without embeddings |
-| Built-in authentication: token in `X-Chroma-Token` or `Authorization: Bearer`, and basic | 0.5.16 – 0.6.3; Chroma 1.5.9 accepts requests without credentials |
+| Built-in authentication: token in `X-Chroma-Token` or `Authorization: Bearer`, and basic | 0.5.16 – 0.6.3; Chroma 1.0.0 – 1.5.9 accept requests without credentials, also with the token authentication of 0.x configured |
 | Lists and deletes databases (`ListDatabasesAsync`, `DeleteDatabaseAsync`) | 0.6.3 – 1.5.9; 0.5.16 – 0.6.2 answer `405 Method Not Allowed` |
 | Gets a collection by its id (`GetCollectionByIdAsync`) | 1.5.7 – 1.5.9; 0.5.16 – 1.5.6 answer `404 Not Found` |
 | Stores lists in metadata, and filters them with `ChromaWhereOperator.Contains` and `NotContains` | 1.5.0 – 1.5.9; 1.0.0 – 1.4.1 reject the lists with `422`; 0.5.16 – 0.6.3 drop the lists without an error, so the client throws a `ChromaException` before sending them, and reject `$contains` |
@@ -67,7 +67,7 @@ The `max_batch_size` of `pre-flight-checks` is 41666 on Chroma 0.4.12 – 0.6.3 
 
 All the servers on this page reject `$in` and `$nin` without values (`400` or `500`), so `ChromaWhereOperator.In` without values is `None`, which sends no request, and `NotIn` without values is `All`, which sends no `where`. `$ne` and `$nin` match the records without the key on 0.5.15, and on the v2 API of 0.6.3, 1.0.0 and 1.5.9; 0.4.10 to 0.4.23 leave them out. `$lte` leaves them out on all of them, as `ChromaWhereOperator.Not` describes. A request on the id of a deleted collection gets `500` "coroutine raised StopIteration" from Chroma 0.4.23, without "does not exist", so a collection client made by name compares the ids to find a collection created again.
 
-The v1 API of Chroma 0.6.3 fails on most requests, and Chroma 1.5.9 answers it with `410 Gone`: use the v2 API there.
+The v1 API of Chroma 0.6.3 fails on most requests, and Chroma 1.0.0 – 1.5.9 answer it with `410 Gone`: use the v2 API there.
 
 ## Known defects of the servers
 
@@ -156,8 +156,6 @@ The strategies of the client: [upsert-strategies.md](upsert-strategies.md).
 **Very long filters.** A single Chroma server turns a list of filters into an SQLite expression as deep as the list, and SQLite stops at 1000. Chroma 1.5.9 takes 987 to 994 filters in one list, depending on the operator. Split this way, Chroma 1.5.9 takes up to 8,167 filters, and Chroma 1.0.0 about 4,090. Beyond that, SQLite answers "too many SQL variables", the client throws a `ChromaException`, and the server stays up. That limit counts the values of the query, not the filters: on Chroma 1.5.9 an `In` or a `NotIn` takes about 16,000 values.
 
 Chroma 1.5 gives the lists in the metadata of the records of a deleted collection or database to the next records it stores, in other collections too.
-
-Chroma 1.x servers have no built-in authentication.
 
 A single Chroma server from 1.0.17 accepts `UpdateTenantAsync` but does not keep the name.
 
