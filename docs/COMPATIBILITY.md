@@ -137,7 +137,7 @@ Each defect has a number, KD-n, to refer to it. Reproduced with plain HTTP, with
 | KD-32 | Right after an add, the count is 0 and the peek empty, without an error | 1.0.0; not 0.5.20, 0.6.3 and 1.5.9 | — |
 | KD-33 | Embeddings of different dimensions in the same request are accepted | 0.5.16 – 0.5.18; rejected from 0.5.20; verified on 10 October 2026 on 0.5.16, 0.5.18 and 0.5.20, with this client and with the Python client of the same version | — |
 | KD-34 | The Docker images do not start: they install NumPy 2.2.6, and the server exits with "np.float_ was removed in the NumPy 2.0 release" | images 0.4.16 – 0.4.22; verified on 10 October 2026 on the images 0.4.16 and 0.4.22 | — |
-| KD-35 | The Docker image does not start: "Path 'log_config.yml' does not exist" | image 0.4.11 | — |
+| KD-35 | The Docker image does not start: "Path 'log_config.yml' does not exist" | image 0.4.11; verified on 10 October 2026 | — |
 | KD-36 | A query ignores its ids, without an error, and searches the whole collection | 0.5.16 – 0.6.3 on the v2 API, and every version on the v1 API; 1.0.0 – 1.5.9 apply them | throws a `ChromaException` when a result falls outside the ids |
 | KD-37 | `indexing_status` answers `500` "Method scout_logs is not implemented", while the other operations of Chroma Cloud only answer `501` | 1.5.9 single server, with this client and with the Python client 1.5.9 | reports the error of the server |
 | KD-38 | An add to a collection of a tenant or database other than the default ones answers that the collection does not exist | 0.4.15 on the v1 API; right from 0.4.23 | — |
