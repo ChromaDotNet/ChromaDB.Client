@@ -176,7 +176,7 @@ The strategies of the client: [upsert-strategies.md](upsert-strategies.md).
 
 **Very long filters.** A single Chroma server turns a list of filters into an SQLite expression as deep as the list, and SQLite stops at 1000. Chroma 1.5.9 takes 987 to 994 filters in one list, depending on the operator. Split this way, Chroma 1.5.9 takes up to 8,167 filters, and Chroma 1.0.0 about 4,090. Beyond that, SQLite answers "too many SQL variables", the client throws a `ChromaException`, and the server stays up. That limit counts the values of the query, not the filters: on Chroma 1.5.9 an `In` or a `NotIn` takes about 16,000 values.
 
-A single Chroma server from 1.0.17 accepts `UpdateTenantAsync` but does not keep the name.
+A single Chroma server from 1.0.17 accepts `UpdateTenantAsync` but does not keep the name. On 1.5.9 the update answers `200`, and the tenant comes back with a null `resource_name`, with this client and in plain HTTP, as the Python client 1.5.9 has no such call (checked on 10 October 2026).
 
 ## Chroma Cloud
 
