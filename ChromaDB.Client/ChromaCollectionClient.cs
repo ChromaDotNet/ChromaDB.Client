@@ -1042,11 +1042,12 @@ public class ChromaCollectionClient
 
 	/// <summary>
 	/// Deletes the records with the ids, the ones the filters match, or both, at most <c>delete.Limit</c> of them.
-	/// Returns how many records were deleted when the server says it, from Chroma 1.5.3; null otherwise.
+	/// Returns the count the server answers, from Chroma 1.5.3: for a delete by ids, the number of ids given, also those
+	/// without a record; null otherwise.
 	/// </summary>
 	/// <param name="delete">What to delete: ids, filters and a limit.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
-	/// <returns>How many records were deleted, from Chroma 1.5.3; null from the earlier servers.</returns>
+	/// <returns>The count the server answers, from Chroma 1.5.3, which for a delete by ids is the number of ids given; null from the earlier servers.</returns>
 	public virtual Task<int?> DeleteAsync(ChromaDelete delete, CancellationToken cancellationToken = default)
 		=> Operation("delete", cancellationToken, async () =>
 		{
