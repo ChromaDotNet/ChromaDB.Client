@@ -198,7 +198,7 @@ Chroma Cloud keeps the other SPANN settings fixed: the RNG factors at 1, `initia
 
 `GetCollectionByCrnAsync` is there as in the JavaScript client of Chroma, but the operation is hidden in the OpenAPI description of Chroma and missing from its documentation.
 
-Only Chroma Cloud serves the Search API of Chroma; a single Chroma server answers `501`.
+Only Chroma Cloud serves the Search API of Chroma; a single Chroma server answers `501`: 1.5.9 answers "Error executing plan: Not implemented: Search operation is not implemented for local executor", with this client and with the Python client 1.5.9 (checked on 10 October 2026); the other versions not verified yet.
 
 ## Versions tested in the CI
 
