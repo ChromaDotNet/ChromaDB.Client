@@ -21,6 +21,7 @@ Differences between these servers, seen in the tests:
 | Rejects a null value in the metadata of an add, with `422` "Failed to deserialize the JSON body into the target type: metadatas[0].x: data did not match any variant of untagged enum MetadataValue" | 1.5.9 and Chroma Cloud, with the Python client 1.5.9; this client throws an `ArgumentException` before the request; the other versions not verified yet |
 | Sends null metadata for a record whose metadata has no keys left | 1.5.9 and Chroma Cloud: the Python client 1.5.9 reads `None`, and this client an empty `Metadata`; the other versions not verified yet |
 | Keeps the type of a number in the metadata: `2.0` reads back as a float and `2` as an integer | 1.5.9 and Chroma Cloud, with this client and with the Python client 1.5.9; the other versions not verified yet |
+| Matches the records without the key with `$not_contains` on a list, as with `$ne` and `$nin` | 1.5.9 and Chroma Cloud, with this client and with the Python client 1.5.9; the other versions not verified yet; for `$ne` and `$nin` on the other versions see below |
 | Built-in authentication: token in `X-Chroma-Token` or `Authorization: Bearer`, and basic | 0.5.16 – 0.6.3; Chroma 1.0.0 – 1.5.9 accept requests without credentials, also with the token authentication of 0.x configured |
 | Lists and deletes databases (`ListDatabasesAsync`, `DeleteDatabaseAsync`) | 0.6.3 – 1.5.9; 0.5.16 – 0.6.2 answer `405 Method Not Allowed` |
 | Gets a collection by its id (`GetCollectionByIdAsync`) | 1.5.7 – 1.5.9; 0.5.16 – 1.5.6 answer `404 Not Found` |
