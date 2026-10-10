@@ -27,16 +27,13 @@ Website: [chromadotnet.org](https://chromadotnet.org)
 
 | Chroma server | API | Tested |
 |---|---|---|
-| 0.5.16 – 1.5.9 | v2, the default | all tests pass on each tested release |
-| 0.5.1 – 0.5.15 | v1, with `ChromaApiVersion.V1` | all tests pass on each tested release |
-| 0.4.10 – 0.5.0 | v1, with `ChromaApiVersion.V1` | collections and records work on each tested release; some of these servers lack tenants, `CountCollectionsAsync` or the `$not_contains` filter |
 | Chroma Cloud | v2 | the tests pass, except the operations an API key cannot run, like `CreateTenantAsync` and `ResetAsync`; see [Chroma Cloud](#chroma-cloud) |
 
 [docs/COMPATIBILITY.md](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/COMPATIBILITY.md) lists every tested release, the differences between them and the versions the CI runs.
 
 The [compatibility table](https://chromadotnet.org/compatibility/) shows every check of the latest release on Chroma 1.5.9 and on Chroma Cloud, on each .NET runtime and platform.
 
-Chroma 1.0.16 and later require embeddings in `AddAsync` and `UpsertAsync`. The client does not compute them, so pass them yourself.
+The client does not compute embeddings, so pass them yourself.
 
 The package has three builds: .NET 8, .NET Framework 4.6.2 and .NET Standard 2.0. The tests run the .NET 8 build on every tested Chroma version, and the .NET Standard 2.0 build on Chroma 1.5.9. The .NET Framework 4.6.2 build has the code of the .NET Standard 2.0 one, and also advises the buckets of the histogram, as the .NET 8 build does. It is built against the assemblies that .NET Framework applications ship, so it runs next to OpenTelemetry without binding redirects.
 
@@ -109,7 +106,7 @@ var identity = await client.GetUserIdentityAsync();    // UserId, Tenant, Databa
 var database = await client.GetDatabaseAsync("my_database");
 ```
 
-`ModifyAsync` changes the name or the metadata of a collection. `PeekAsync` returns its first records. `DeleteCollectionIfExistsAsync` takes a missing collection as deleted already: each server tells it in its own way, which the client recognizes as `CollectionExistsAsync` does.
+`ModifyAsync` changes the name or the metadata of a collection. `PeekAsync` returns its first records. `DeleteCollectionIfExistsAsync` takes a missing collection as deleted already, which the client recognizes as `CollectionExistsAsync` does (KD-43 in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)).
 
 `DeleteCollectionAsync`, `DeleteCollectionIfExistsAsync` and `DeleteDatabaseAsync` send one request, as Chroma does. Chroma 1.5 gives the lists in the metadata of the records of a deleted collection or database to the next records it stores, in other collections too. If your records have lists in their metadata, pass `deleteRecordsFirst: true`: on Chroma 1.x, except Chroma Cloud, the client then deletes the records first, in batches. That takes about two requests for every 5,461 records, about 370 for a million. If it stops halfway, the collection keeps part of its records or none of them: delete it again. If the server returns records after their delete, the client throws a `ChromaException` and keeps the collection, instead of deleting it with them.
 
@@ -144,7 +141,7 @@ var results = await collectionClient.QueryAsync(new ReadOnlyMemory<float>([1f, 0
 var same = await collectionClient.QueryAsync(new ChromaQuery([new([1f, 0.5f, 0f])]) { Ids = ["a", "c"], NResults = 1 });
 ```
 
-`ChromaQuery` holds the query embeddings, the number of results, the filters, what to include and the ids to search among, and the offset: Chroma has no offset in queries, so the client asks for the skipped records too and leaves them out. Chroma 1.0.0 and later search only the records with those ids. An id without a record is left out, as Chroma Cloud does: Chroma 1.x fails on it, so `QueryAsync` asks again with the ids that have one. Chroma 0.x ignores the ids and searches all the records, so when a result falls outside the ids, `QueryAsync` throws a `ChromaException` instead of returning it. With `ExpectedSpace`, `QueryAsync` throws an `InvalidOperationException` before the query when the collection has another space, whose distances would not be the expected ones.
+`ChromaQuery` holds the query embeddings, the number of results, the filters, what to include and the ids to search among, and the offset: Chroma has no offset in queries, so the client asks for the skipped records too and leaves them out. An id without a record is left out: `QueryAsync` asks again with the ids that have one (KD-24 in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)). When a result falls outside the ids, `QueryAsync` throws a `ChromaException` instead of returning it (KD-36). With `ExpectedSpace`, `QueryAsync` throws an `InvalidOperationException` before the query when the collection has another space, whose distances would not be the expected ones.
 
 ## Metadata values
 
@@ -175,7 +172,7 @@ In `UpdateAsync` and `UpsertAsync`, a null value or an empty list deletes the ke
 
 `ChromaMetadataConvert` converts .NET values to metadata values and back, always in the same form: `ToMetadataValue` writes a `DateTimeOffset` as round-trip text in UTC, so that equal instants are equal text, a `DateTime` as round-trip text with its `Kind`, a `DateOnly` as `yyyy-MM-dd`, and a sequence as a list; null and an empty sequence give null, no value. `FromMetadataValue(value, type)` reads a value of `ChromaMetadataValues.Exact` as the type, also arrays and lists, and throws an `InvalidCastException` for a value that does not convert. A filter with a converted value finds the values converted the same way. `ToMetadata(values)` builds the metadata of a record from keys and .NET values, each converted with `ToMetadataValue`; a value that converts to null stays as null, which deletes the key in `UpdateAsync` and `UpsertAsync`. The client does not convert the values of a metadata dictionary by itself.
 
-Chroma 1.5.0 and later store lists in metadata and filter them with `Contains` and `NotContains`. Chroma 1.0.0 to 1.4.1 reject them. Chroma 0.x accepts them but drops them without an error, so `AddAsync`, `UpdateAsync` and `UpsertAsync` throw a `ChromaException` before sending them. The client asks the server for its version once, and only when a record has a list.
+[docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) lists the versions that store lists in metadata, and what the client does on the others. The client asks the server for its version once, and only when a record has a list.
 
 Chroma 1.5 keeps the lists of the records of a deleted collection or database, and gives them to the next records it stores, in any collection: delete them with `deleteRecordsFirst: true`, as [Collections and records](#collections-and-records) says. Every Chroma 1.x reports the same version, so the records go first on all of them.
 
@@ -204,7 +201,7 @@ if (!await client.CollectionExistsAsync("my_collection"))
 
 When a 0.x server rejects a request with validation errors, the message lists them, like `body.n_results: Input should be a valid integer`.
 
-`CollectionExistsAsync` tells a missing collection apart from other errors on every tested server. Chroma 1.x answers `404`, the 0.x servers `400` or `500`, always with "does not exist" in the message. Any other error, like a bare `404` from a wrong address, throws.
+`CollectionExistsAsync` tells a missing collection apart from other errors on every tested server (KD-43 in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)). Any other error, like a bare `404` from a wrong address, throws.
 
 ## Mocks in tests
 
@@ -232,11 +229,11 @@ Console.WriteLine(where); // {"$and":[{"year":{"$eq":2026}},{"lang":{"$in":["en"
 - A chain of the same operator, like `a & b & c` or one built in a loop, goes as one list, `{"$and":[a,b,c]}`, as the Python client writes it.
 - `Not` negates a filter. Chroma has no `$not`, so the negation goes into the operators: `$eq` becomes `$ne`, `$gt` becomes `$lte`, `$in` becomes `$nin`, `$contains` becomes `$not_contains`, `$regex` becomes `$not_regex`, and `$and` becomes `$or` of the negations. `$ne`, `$nin` and `$not_contains` match the records without the key, `$ne` and `$nin` from Chroma 0.5.15, and a comparison like `$lte` does not: `Not(GreaterThan("k", 5))` leaves out the records without `k`, as `GreaterThan("k", 5)` does.
 - `ChromaWhereOperator` also filters the ids, with `Equal` and `In` on `ChromaSearchKeys.Id`, and the documents, with `Document(filter)`, as the where clause of the Search API does. Get, query and delete take neither in their `where`: the client sends them as the ids and the `where_document` of the request, which takes them only joined to the other conditions with `&`, and throws a `NotSupportedException` otherwise, like for an id inside an `|`.
-- `ChromaWhereOperator.All` matches every record and `None` no record, which Chroma has no filter for: the client sends no `where` for `All`, and no request for `None`, so a read with it returns nothing and a delete deletes nothing. `&` and `|` simplify with them, and each is a single instance, which `Not` also returns. `In` without values is `None`, and `NotIn` without values `All`: every tested Chroma rejects `$in` and `$nin` without values.
+- `ChromaWhereOperator.All` matches every record and `None` no record, which Chroma has no filter for: the client sends no `where` for `All`, and no request for `None`, so a read with it returns nothing and a delete deletes nothing. `&` and `|` simplify with them, and each is a single instance, which `Not` also returns. `In` without values is `None`, and `NotIn` without values `All` (KD-46 in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)).
 
 **Very long filters.** A single Chroma server turns a list of filters into an SQLite expression as deep as the list, and SQLite stops at 1000. Chroma 1.5.9 takes 987 to 994 filters in one list, depending on the operator. Beyond that it answers 500, and from about 4,400 it crashes. So the client counts that depth, the length of the lists along the deepest path of the filter. Beyond 900, it splits each list of n filters into ⌈√n⌉ lists with the same meaning. Split this way, Chroma 1.5.9 takes up to 8,167 filters, and Chroma 1.0.0 about 4,090. Beyond that, SQLite answers "too many SQL variables", the client throws a `ChromaException`, and the server stays up. That limit counts the values of the query, not the filters: on Chroma 1.5.9 an `In` or a `NotIn` takes about 16,000 values. Chroma 0.6.3 counts every filter of the query, however they are nested, and answers 500 from about 490.
 
-`ChromaWhereDocumentOperator.Regex` and `NotRegex` filter the documents with a regular expression, from Chroma 1.0.12. Earlier versions fail on them.
+`ChromaWhereDocumentOperator.Regex` and `NotRegex` filter the documents with a regular expression; [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) lists the versions.
 
 ```csharp
 var apples = await collectionClient.GetAsync(whereDocument: ChromaWhereDocumentOperator.Regex("^apple"));
@@ -244,7 +241,7 @@ var apples = await collectionClient.GetAsync(whereDocument: ChromaWhereDocumentO
 
 ## Large writes
 
-By default, `AddAsync`, `UpdateAsync`, `UpsertAsync` and `DeleteAsync` send their records in batches of the server's `max_batch_size`, one request after the other. The client asks `pre-flight-checks` once. Before the first batch, the client checks that the embeddings, metadatas, documents and URIs are as many as the ids, and that the embeddings hold finite numbers, and throws an `ArgumentException` otherwise. If a batch fails, the earlier ones stay written, and the `ChromaException` says how many records went. A collection client made by name then does not run the write again on a collection created again under the name. Chroma 0.4.10 has no `pre-flight-checks`, so it gets the records in one request, and so does a server whose answer the client cannot read. `WithBatchSplitting(false)` sends them in one request, as earlier versions did. Up to Chroma 1.0.13 a request beyond the limit fails; later versions accept it.
+By default, `AddAsync`, `UpdateAsync`, `UpsertAsync` and `DeleteAsync` send their records in batches of the server's `max_batch_size`, one request after the other. The client asks `pre-flight-checks` once. Before the first batch, the client checks that the embeddings, metadatas, documents and URIs are as many as the ids, and that the embeddings hold finite numbers, and throws an `ArgumentException` otherwise. If a batch fails, the earlier ones stay written, and the `ChromaException` says how many records went. A collection client made by name then does not run the write again on a collection created again under the name. A server without `pre-flight-checks` ([docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)) gets the records in one request, and so does a server whose answer the client cannot read. `WithBatchSplitting(false)` sends them in one request, as earlier versions did.
 
 ```csharp
 var options = new ChromaConfigurationOptions(uri: "http://localhost:8000").WithBatchSplitting(false);
@@ -320,7 +317,7 @@ var deleted = await collectionClient.DeleteAsync(new ChromaDelete { WhereDocumen
 
 ## Embeddings in base64
 
-Where `pre-flight-checks` declares `supports_base64_encoding`, from Chroma 1.0.13, `AddAsync`, `UpdateAsync` and `UpsertAsync` send the embeddings as base64 strings of their float32 values, about half the size of the numbers. The server stores the same values. Queries always send numbers, because the servers reject base64 there. Elsewhere, or when `pre-flight-checks` does not answer, the embeddings go as numbers.
+Where `pre-flight-checks` declares `supports_base64_encoding`, `AddAsync`, `UpdateAsync` and `UpsertAsync` send the embeddings as base64 strings of their float32 values, about half the size of the numbers. Queries always send numbers. Elsewhere, or when `pre-flight-checks` does not answer, the embeddings go as numbers. [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) lists the versions.
 
 ## Tenants and databases
 
@@ -339,7 +336,7 @@ var page = await client.ListDatabasesAsync(limit: 10, offset: 20, tenant: "my_te
 await client.DeleteDatabaseAsync("my_database", tenant: "my_tenant");
 ```
 
-`ListDatabasesAsync` and `DeleteDatabaseAsync` need the v2 API of Chroma 0.6.3 or later. Older servers answer `405 Method Not Allowed`.
+[docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) lists the servers that have `ListDatabasesAsync` and `DeleteDatabaseAsync`.
 
 ## Collections by id
 
@@ -347,7 +344,7 @@ await client.DeleteDatabaseAsync("my_database", tenant: "my_tenant");
 var collection = await client.GetCollectionByIdAsync(id);
 ```
 
-`GetCollectionByIdAsync` looks for the id in the tenant and database of the options, or in the ones you pass. It needs the v2 API of Chroma 1.5.7 or later; older servers answer `404 Not Found`.
+`GetCollectionByIdAsync` looks for the id in the tenant and database of the options, or in the ones you pass. [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) lists the servers that have it.
 
 A `ChromaClient` hands out the clients for the records of its collections, with its options and `HttpClient`, without sending a request. The id and the name are enough:
 
@@ -360,7 +357,7 @@ var byName = client.GetCollectionClient("my_collection");   // whichever collect
 var standalone = new ChromaCollectionClient(collectionId, "my_collection", options, httpClient);
 ```
 
-A collection client made by name reads the collection before its first request, which `GetCollectionAsync` returns. When a request fails on that id, it reads the collection again: if the name has another id, as when the collection was deleted and created again elsewhere, the operation runs again, once, on that collection, and otherwise the failure stands. The servers tell a collection gone in their own ways, like Chroma 0.4 with `500` "coroutine raised StopIteration", so the client compares the ids.
+A collection client made by name reads the collection before its first request, which `GetCollectionAsync` returns. When a request fails on that id, it reads the collection again: if the name has another id, as when the collection was deleted and created again elsewhere, the operation runs again, once, on that collection, and otherwise the failure stands. The servers tell a collection gone in their own ways ([docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)), so the client compares the ids.
 
 ## Distance of a collection
 
@@ -372,7 +369,7 @@ var collection = await client.CreateCollectionAsync(new ChromaCollectionDefiniti
 Console.WriteLine(collection.Space);
 ```
 
-`ChromaSpace` is `L2` (Chroma's default), `Cosine` or `InnerProduct`. The client sends it as the `hnsw:space` metadata, which every tested Chroma applies. `GetOrCreateCollectionAsync` takes a `ChromaCollectionDefinition` too. A collection that exists keeps its space, so `GetOrCreateCollectionAsync` throws a `ChromaException` when it has another space than the definition asks for. Chroma 0.4.23 would write the asked space into the metadata of that collection, whose index keeps its own, so on the 0.x servers the client reads the collection first and throws before the request.
+`ChromaSpace` is `L2` (Chroma's default), `Cosine` or `InnerProduct`. The client sends it as the `hnsw:space` metadata (KD-44 in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)). `GetOrCreateCollectionAsync` takes a `ChromaCollectionDefinition` too. A collection that exists keeps its space, so `GetOrCreateCollectionAsync` throws a `ChromaException` when it has another space than the definition asks for; [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) says how on the 0.x servers.
 
 `ChromaCollection.Space` reads the space back from that metadata, or from the configuration that Chroma 1.0.6 and later and Chroma Cloud send. On Chroma 0.x, which keeps the space only in that metadata, a collection without it uses `l2`, the default of Chroma, and `Space` is `L2`: the client asks the version of the server for that. It is null for a collection created without the `hnsw:space` metadata on Chroma 1.0.0 to 1.0.5, which report `l2` also for the ones that use another space (KD-50 in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)): there the space checks let it pass, so use Chroma 1.0.6 or later. `ChromaCollection.ConfigurationJson` holds the configuration as the server sends it.
 
@@ -389,21 +386,21 @@ var cloud = await cloudClient.CreateCollectionAsync(new ChromaCollectionDefiniti
 });
 ```
 
-- **`Hnsw`**, the index of a single Chroma server: `EfConstruction`, `EfSearch`, `MaxNeighbors`, `ResizeFactor`, `SyncThreshold`, `BatchSize` and `NumThreads`. They go as `hnsw:` metadata, like the space, which every tested Chroma applies. Chroma 1.0.6 and later report them in the configuration.
-  - `MaxNeighbors` must be at least 2, here, in the `hnsw:M` metadata and in `ModifyConfigurationAsync`. Chroma 1.5.9 crashes on the first write with 0 and misses the nearest records with 1, so the client throws an `ArgumentException` for them.
+- **`Hnsw`**, the index of a single Chroma server: `EfConstruction`, `EfSearch`, `MaxNeighbors`, `ResizeFactor`, `SyncThreshold`, `BatchSize` and `NumThreads`. They go as `hnsw:` metadata, like the space, which every tested Chroma applies.
+  - `MaxNeighbors` must be at least 2, here, in the `hnsw:M` metadata and in `ModifyConfigurationAsync`: the client throws an `ArgumentException` for 0 and 1 ([docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)).
   - In the metadata, `hnsw:M`, `hnsw:construction_ef`, `hnsw:search_ef`, `hnsw:num_threads`, `hnsw:batch_size` and `hnsw:sync_threshold` are integers. Chroma rejects `100.0` for them, so the client sends a whole `double`, `float` or `decimal` as an integer and throws an `ArgumentException` for any other number.
 - **`Spann`**, the index of Chroma Cloud:
   - `SearchNprobe`, `WriteNprobe`, `EfConstruction`, `EfSearch`, `MaxNeighbors`, `SplitThreshold`, `MergeThreshold` and `ReassignNeighborCount` go in the `configuration` of the request, with the space, because Chroma ignores the `hnsw:space` metadata next to SPANN settings.
   - `SearchRngEpsilon`, `WriteRngEpsilon`, `NreplicaCount`, `NumSamplesKmeans`, `NumCentersToMergeTo` and `CenterDriftThreshold` go in a schema, the only place Chroma takes them.
   - Chroma Cloud keeps the other SPANN settings fixed: the RNG factors at 1, `initial_lambda` at 100, and the quantization, which users cannot set.
-- **`EmbeddingFunction`** goes in the `configuration` of the request, which Chroma 1.0.0 and later take. Chroma 1.0.6 and later report it.
+- **`EmbeddingFunction`** goes in the `configuration` of the request; [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) lists the versions that take it and report it.
 - **What the client checks:**
   - A collection has one vector index. `Hnsw` and `Spann` together throw an `ArgumentException`, as Chroma rejects them.
   - Chroma Cloud ignores `Hnsw`, and a single server ignores `Spann`. Then `CreateCollectionAsync` deletes the collection and throws a `ChromaException`, and `GetOrCreateCollectionAsync` throws and keeps it. Chroma 1.0.0 to 1.0.5 report no configuration, so there the client cannot tell.
-  - Chroma 0.x fails on the `configuration` of the request or ignores it. With `Spann` or `EmbeddingFunction`, the client throws a `ChromaException` before sending it.
+  - With `Spann` or `EmbeddingFunction`, the client throws a `ChromaException` before sending the `configuration` to the servers that fail on it or ignore it ([docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)).
 - **With a schema**, every setting goes in the schema, on the vector index of `#embedding`, as `create_index(VectorIndexConfig(...))` of the Python client writes them.
 
-`ChromaCollection.Dimension` is the number of dimensions of the embeddings, set by the first write. `Version` and `LogPosition` are the version of the collection and its position in the log, as the server reports them. Chroma 0.5.0 and earlier send no dimension and no version, and 0.5.7 and earlier no log position.
+`ChromaCollection.Dimension` is the number of dimensions of the embeddings, set by the first write. `Version` and `LogPosition` are the version of the collection and its position in the log, as the server reports them; [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) lists the versions that send them.
 
 ## Settings of the index
 
@@ -432,7 +429,7 @@ var health = await client.HealthcheckAsync();
 Console.WriteLine(health.IsExecutorReady);
 ```
 
-`HealthcheckAsync` needs Chroma 1.0.0 or later; the 0.x servers answer `404 Not Found`. A server that is not ready answers `503`, and the client throws a `ChromaException`.
+[docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) lists the servers that have `HealthcheckAsync`. A server that is not ready answers `503`, and the client throws a `ChromaException`.
 
 ## Traces and metrics
 
@@ -587,7 +584,7 @@ var results = await collectionClient.SearchAsync(new ChromaSearch { Rank = Chrom
   - the index of the string, integer, floating-point or Boolean values (`ChromaSchemaIndex.StringInverted`, `IntInverted`, `FloatInverted`, `BoolInverted`) of a metadata key, or of every key without a setting of its own;
   - the full-text search index of the documents (`FullTextSearch`), on `#document` only.
 
-  They are all on by default. A filter on a key without its index fails with a `ChromaException`, "indexing is disabled". Chroma 1.3.0 to 1.5.0 keep the full-text search index also when the schema turns it off; 1.5.1 and later turn it off.
+  They are all on by default; [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) lists the versions that apply them.
 
   ```csharp
   var schema = new ChromaCollectionSchema()
