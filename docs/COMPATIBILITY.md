@@ -215,6 +215,8 @@ An embedding has at most 4,096 dimensions: one of 4,097 gets `422` "Quota exceed
 
 An id and the name of a collection have at most 128 bytes: 129 get `422` with "'ID size (bytes)'" and "'Name size (bytes)'", with this client and with the Python client 1.5.9 (checked on 10 October 2026). The name of a database is not verified yet.
 
+Queries at once on one collection can get `429` "Too many requests; backoff and try again": 9 of 30 with the Python client 1.5.9, 2 of 60 and 3 of 100 with this client, which does not retry; 30 adds at once all went (checked on 10 October 2026).
+
 ## Versions tested in the CI
 
 Every change runs the whole suite against:
