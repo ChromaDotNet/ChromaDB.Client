@@ -194,7 +194,7 @@ Chroma Cloud declares 1000, but takes 300 records per write and answers at most 
 
 Chroma Cloud keeps the other SPANN settings fixed: the RNG factors at 1, `initial_lambda` at 100, and the quantization, which users cannot set.
 
-`QueryAsync` with more than 300 results, `Offset` included, gets the quota error of Chroma Cloud, "'Number of results' exceeded quota limit", unless the quota is raised. `GetAsync` reads in pages, and `SearchAsync` returns more than 300 results.
+`QueryAsync` with more than 300 results, `Offset` included, gets the quota error of Chroma Cloud, "'Number of results' exceeded quota limit", unless the quota is raised. `GetAsync` reads in pages, and `SearchAsync` returns more than 300 results. Checked on 10 October 2026 with this client and with the Python client 1.5.9: a query of 300 results answers, one of 301 gets `422`, and so does `QueryAsync` of 299 results with an `Offset` of 2; a search with a limit of 350, also in its `Knn` ranking, returns 350 records.
 
 `GetCollectionByCrnAsync` is there as in the JavaScript client of Chroma, but the operation is hidden in the OpenAPI description of Chroma and missing from its documentation.
 
