@@ -18,6 +18,7 @@ Differences between these servers, seen in the tests:
 | Requires embeddings in `AddAsync` and `UpsertAsync` | 1.0.16 – 1.5.9; the earlier versions accept records without embeddings |
 | Keeps the stored document when an update or an upsert sends a null document | 1.0.0 – 1.5.9 and Chroma Cloud; every 0.x server deletes it, from 0.4.10 to 0.6.3 on the v1 and the v2 API, and the client sends the null as it is; on 0.5.20 and 0.6.3 also the upsert of the Python client 0.5.20 and 0.6.3, whose update rejects a null document before the request |
 | Deletes a key of the metadata when an update or an upsert gives it a null value | 1.5.9 and Chroma Cloud, with this client and with the Python client 1.5.9; the other versions not verified yet |
+| Rejects a null value in the metadata of an add, with `422` "Failed to deserialize the JSON body into the target type: metadatas[0].x: data did not match any variant of untagged enum MetadataValue" | 1.5.9 and Chroma Cloud, with the Python client 1.5.9; this client throws an `ArgumentException` before the request; the other versions not verified yet |
 | Built-in authentication: token in `X-Chroma-Token` or `Authorization: Bearer`, and basic | 0.5.16 – 0.6.3; Chroma 1.0.0 – 1.5.9 accept requests without credentials, also with the token authentication of 0.x configured |
 | Lists and deletes databases (`ListDatabasesAsync`, `DeleteDatabaseAsync`) | 0.6.3 – 1.5.9; 0.5.16 – 0.6.2 answer `405 Method Not Allowed` |
 | Gets a collection by its id (`GetCollectionByIdAsync`) | 1.5.7 – 1.5.9; 0.5.16 – 1.5.6 answer `404 Not Found` |
