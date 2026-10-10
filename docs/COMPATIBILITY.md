@@ -184,6 +184,8 @@ The metadata of a record has at most 32 keys, and a null value counts as a key: 
 
 A filter has at most 8 predicates, the default quota of a tenant: a `where` with 9, nested ones included, gets `422` with `Quota exceeded: 'Number of where clause predicates'`, and a link to ask for more; the values of an `In` do not count (checked on 5 October 2026).
 
+Right after a write, a count that reads only the index (`CountAsync(ChromaReadLevel.IndexOnly)`) can be lower than the number of the records: right after an add of 6 records it answered 0, and `CountAsync()` 6, with this client and with the Python client 1.5.9 (checked on 10 October 2026). A single Chroma server 1.5.9 answered 6 to both.
+
 | Chroma server | API | Tested |
 |---|---|---|
 | Chroma Cloud | v2 | the tests pass, except the operations an API key cannot run, like `CreateTenantAsync` and `ResetAsync`; see [Chroma Cloud](chroma-cloud.md) |
