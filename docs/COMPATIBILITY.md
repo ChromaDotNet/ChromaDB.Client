@@ -211,6 +211,8 @@ Only Chroma Cloud serves the Search API of Chroma; a single Chroma server answer
 
 A BM25 search, `SparseKnn` of a text on an index with `chroma_bm25`, ranks the records without the terms of the text too, among its `limit`, with the score 1: in a collection of `apple pie`, `banana bread`, `cherry tart` and `apple cider`, a search of `apple` returns `banana bread` and `cherry tart` with 1, with this client and with the Python client 1.5.9 (checked on 10 October 2026).
 
+An embedding has at most 4,096 dimensions: one of 4,097 gets `422` "Quota exceeded: 'Embedding dimension' exceeded quota limit for action 'Add': current usage of 4097 exceeds limit of 4096", with this client and with the Python client 1.5.9 (checked on 10 October 2026).
+
 ## Versions tested in the CI
 
 Every change runs the whole suite against:
