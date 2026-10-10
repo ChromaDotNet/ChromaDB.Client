@@ -23,7 +23,7 @@ Differences between these servers, seen in the tests:
 | Reports the space of a collection created without one (`ChromaCollection.Space`) | 1.0.6 – 1.5.9 report `L2`; 0.5.16 – 1.0.5 send `hnsw_configuration.space`, always "l2", so `Space` is null |
 | Rejects sparse vectors in metadata (only Chroma Cloud stores them) | 1.0.0 – 1.5.9; 1.0.21 – 1.1.1 then fail the next write on the server, also to another collection, with `Error sending message to compactor`, so the tests leave that write out there |
 | Searches only the records with the ids of `ChromaQuery.Ids` | 1.0.0 – 1.5.9, which answer `500` with `Error finding id` when one of the ids does not exist and the query has no filter: `QueryAsync` then asks again with the ids that exist; 0.5.16 – 0.6.3 ignore the ids: `QueryAsync` throws a `ChromaException` when a result falls outside them |
-| Keeps the lists in the metadata of the records of a deleted collection or database, and gives them to the next records it stores, in any collection and database | 1.5.9: with `deleteRecordsFirst: true`, `DeleteCollectionAsync`, `DeleteCollectionIfExistsAsync` and `DeleteDatabaseAsync` delete the records first on Chroma 1.x, which leaves no lists |
+| Keeps the lists in the metadata of the records of a deleted collection or database, and gives them to the next records it stores, in any collection and database | 1.5.0 – 1.5.9: with `deleteRecordsFirst: true`, `DeleteCollectionAsync`, `DeleteCollectionIfExistsAsync` and `DeleteDatabaseAsync` delete the records first on Chroma 1.x, which leaves no lists |
 | Has the healthcheck (`HealthcheckAsync`) | 1.0.0 – 1.5.9; 0.5.16 – 0.6.3 answer `404 Not Found` |
 | Applies a new configuration of the index (`ModifyConfigurationAsync`) | 1.0.6 – 1.5.9; the earlier versions answer without applying it, so the client throws a `ChromaException` |
 | Filters documents with `$regex` and `$not_regex` (`ChromaWhereDocumentOperator.Regex` and `NotRegex`) | 1.0.12 – 1.5.9; the earlier versions fail with a `ChromaException`: 1.0.0 – 1.0.6 reject them, 1.0.10 closes the connection |
@@ -85,7 +85,7 @@ Each defect has a number, KD-n, to refer to it. Reproduced with plain HTTP, with
 | KD-8 | The embeddings of a collection with the `cosine` space come back different in the last bit: `0.91782147` as `0.9178214`, `-0.4` as `-0.39999998` | 1.0.0 – 1.5.9; identical on 0.4.24 – 0.6.3, and with the other spaces | — |
 | KD-9, KD-10 | In a collection with the `cosine` space, an embedding beyond the range of a float, like `[float.MaxValue, float.MaxValue]`, comes back as `null`, which the client reads as `NaN`, and one near zero, like `[1e-30, 1e-30]`, comes back as `[0, 0]`, at a distance of `-0.4` from `[3, 4]`. In an `l2` or `ip` collection the distance to the first comes back as `null`, which the client reads as `NaN` | 1.0.0 and 1.5.9; 0.6.3 sends the values as they are, and the `l2` and `ip` distances as numbers beyond the range of a float, like `2.3e77` and `-2.38e39`, which the client reads as infinities | — |
 | KD-11 | `-0.0` in metadata comes back as `0.0`; in embeddings it keeps its sign | 0.6.3, 1.0.0 and 1.5.9 | — |
-| KD-12 | The lists in the metadata of the records of a deleted collection or database go to the records of the collections created after it: 6 records of 60 without the key came back with the lists of the deleted ones | 1.5.9 | with `deleteRecordsFirst: true` the deletions delete the records first, in batches |
+| KD-12 | The lists in the metadata of the records of a deleted collection or database go to the records of the collections created after it: 6 records of 60 without the key came back with the lists of the deleted ones | 1.5.0 – 1.5.9; a deleted database measured on 1.5.0 and 1.5.9 | with `deleteRecordsFirst: true` the deletions delete the records first, in batches |
 | KD-13 | A get with `limit: 0` returns every record, from the offset | 0.6.3; 1.0.21 and 1.5.9 return none | sends `limit: 0` as it is |
 | KD-14 | `/api/v2/version` answers `1.0.0`: the value is fixed in the server | every 1.x | tells 0.x from 1.x by the version, and the features of 1.x by `pre-flight-checks` and `openapi.json` |
 | KD-18 | A list in the metadata of a record is accepted, with `201`, and dropped: the record comes back with null metadata | 0.6.3; 1.0.0 rejects it with `422`, 1.5.9 keeps it | throws a `ChromaException` before sending a list to 0.5.16 – 0.6.3 |
@@ -154,8 +154,6 @@ The strategies of the client: [upsert-strategies.md](upsert-strategies.md).
 ## Other behaviors of the servers
 
 **Very long filters.** A single Chroma server turns a list of filters into an SQLite expression as deep as the list, and SQLite stops at 1000. Chroma 1.5.9 takes 987 to 994 filters in one list, depending on the operator. Split this way, Chroma 1.5.9 takes up to 8,167 filters, and Chroma 1.0.0 about 4,090. Beyond that, SQLite answers "too many SQL variables", the client throws a `ChromaException`, and the server stays up. That limit counts the values of the query, not the filters: on Chroma 1.5.9 an `In` or a `NotIn` takes about 16,000 values.
-
-Chroma 1.5 gives the lists in the metadata of the records of a deleted collection or database to the next records it stores, in other collections too.
 
 A single Chroma server from 1.0.17 accepts `UpdateTenantAsync` but does not keep the name.
 

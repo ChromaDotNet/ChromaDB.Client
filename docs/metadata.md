@@ -29,7 +29,7 @@ In `UpdateAsync` and `UpsertAsync`, a null value or an empty list deletes the ke
 
 [docs/COMPATIBILITY.md](COMPATIBILITY.md) lists the versions that store lists in metadata, and what the client does on the others. The client asks the server for its version once, and only when a record has a list.
 
-Chroma 1.5 keeps the lists of the records of a deleted collection or database, and gives them to the next records it stores, in any collection: delete them with `deleteRecordsFirst: true`, as [Collections and records](collections.md#collections-and-records) says. Every Chroma 1.x reports the same version, so the records go first on all of them.
+Chroma 1.5.0 to 1.5.9 keep the lists of the records of a deleted collection or database, and give them to the next records they store, in any collection (KD-12 in [COMPATIBILITY.md](COMPATIBILITY.md#known-defects-of-the-servers)): delete them with `deleteRecordsFirst: true`, as [Collections and records](collections.md#collections-and-records) says. Every Chroma 1.x reports the same version, so the records go first on all of them.
 
 An existing `ChromaClient`, for example one from dependency injection, gives a client that reads values the other way. That client shares the `HttpClient`, the options and what was learned about the server. `Options` returns the options of a client:
 
