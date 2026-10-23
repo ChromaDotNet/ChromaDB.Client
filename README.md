@@ -17,7 +17,7 @@ _ChromaDB.Client_, published on NuGet as `ChromaDotNet.Client`, is a .NET client
 - the Search API of Chroma Cloud, with hybrid BM25 search;
 - OpenTelemetry traces and metrics.
 
-> This is a community project, the continuation of [ssone95/ChromaDB.Client](https://github.com/ssone95/ChromaDB.Client), kept up to date with current Chroma versions. It is not affiliated with or endorsed by Chroma. See [About this fork](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/about-this-fork.md).
+> This is a community project, the continuation of [ssone95/ChromaDB.Client](https://github.com/ssone95/ChromaDB.Client), kept up to date with current Chroma versions. It is not affiliated with or endorsed by Chroma. The original [ChromaDB.Client](https://www.nuget.org/packages/ChromaDB.Client) package is deprecated on NuGet in favor of ChromaDotNet.Client. See [About this fork](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/about-this-fork.md).
 
 Website: [chromadotnet.org](https://chromadotnet.org)
 
