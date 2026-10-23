@@ -1,6 +1,6 @@
 # About this fork
 
-The original project was created by [ssone95](https://github.com/ssone95) and largely written by [cincuranet](https://github.com/cincuranet). Its last change dates from February 2025, and it still targets the Chroma v1 API, which Chroma 1.x no longer serves.
+The original project was created by [ssone95](https://github.com/ssone95) and largely written by [cincuranet](https://github.com/cincuranet). Its code last changed in February 2025, and it still targets the Chroma v1 API, which Chroma 1.x no longer serves. Its [ChromaDB.Client](https://www.nuget.org/packages/ChromaDB.Client) package is deprecated on NuGet in favor of ChromaDotNet.Client, and since pull request [85](https://github.com/ssone95/ChromaDB.Client/pull/85) its README says that the development continues here.
 
 This fork:
 
