@@ -9,3 +9,5 @@ This fork:
 - works through the issues reported upstream, one pull request each.
 
 The original commits of the upstream pull requests, which were squash-merged, are kept in the [`upstream-history`](https://github.com/ChromaDotNet/ChromaDB.Client/tree/upstream-history) branch.
+
+The repository started as a GitHub fork of [ssone95/ChromaDB.Client](https://github.com/ssone95/ChromaDB.Client) and left its fork network in October 2026. The history and the credits above are unchanged.
