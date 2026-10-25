@@ -23,7 +23,7 @@ env:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    name: ${{ github.event_name != 'schedule' && 'CI' || 'CI (schedule)' }} (Chroma ${{ matrix.chroma }})
+    name: ${{ github.event_name != 'schedule' && 'CI' || 'CI (schedule)' }} (${{ matrix.vecturadb && format('VecturaDB {0}', matrix.vecturadb) || format('Chroma {0}', matrix.chroma) }})
     strategy:
       fail-fast: false
       matrix:
@@ -43,9 +43,15 @@ jobs:
             api: v1
           - chroma: '1.5.9'
             pack: true
+          # VecturaDB, a single node with the features of Chroma Cloud, tested with the expectations of Chroma 1.5.9, which it is based on,
+          # and the features it declares in pre-flight-checks. A fixed preview: each new one comes with a pull request. A chroma value of
+          # its own, so that the entry is a job of its own and is not merged into the one of 1.5.9.
+          - chroma: 'vecturadb'
+            vecturadb: '1.0.0-preview.3'
+            expectations: '1.5.9'
     continue-on-error: ${{ matrix.chroma == 'latest' }}
     env:
-      CHROMA_IMAGE: chromadb/chroma:${{ matrix.chroma }}
+      CHROMA_IMAGE: chromadb/chroma:${{ matrix.expectations || matrix.chroma }}
       CHROMA_TEST_API_VERSION: ${{ matrix.api }}
       # An environment variable, so that the restore in the Build step reads it too:
       # pack --no-build takes the package id of the referenced client project from that restore.
@@ -70,10 +76,23 @@ jobs:
     - name: Build
       run: dotnet build -c ${{ env.CONFIGURATION }} --version-suffix '${{ env.VERSION_SUFFIX }}'
 
+    # The tests run against the server already running, in its default tenant and database, which they use as they are.
+    - name: Start VecturaDB
+      if: ${{ matrix.vecturadb }}
+      run: |
+        docker run -d --name vecturadb -p 127.0.0.1:8000:8000 'ghcr.io/vecturadb/vecturadb:${{ matrix.vecturadb }}'
+        for i in $(seq 1 60); do curl -sf -m 3 http://127.0.0.1:8000/api/v2/heartbeat && break; sleep 1; done
+        {
+          echo 'CHROMA_TEST_URI=http://127.0.0.1:8000'
+          echo 'CHROMA_TEST_TENANT=default_tenant'
+          echo 'CHROMA_TEST_DATABASE=default_database'
+        } >> $GITHUB_ENV
+
     - name: Test
       run: dotnet test -c ${{ env.CONFIGURATION }} --no-build --verbosity normal --logger 'GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true'
 
     - name: Test in a non-default tenant and database
+      if: ${{ !matrix.vecturadb }}
       run: dotnet test -c ${{ env.CONFIGURATION }} --no-build --verbosity normal --logger 'GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true'
       env:
         CHROMA_TEST_TENANT: test_tenant
