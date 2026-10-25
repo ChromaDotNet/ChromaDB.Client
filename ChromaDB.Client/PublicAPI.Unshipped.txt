@@ -72,3 +72,13 @@ virtual ChromaDB.Client.ChromaClient.GetCollectionClient(ChromaDB.Client.Models.
 virtual ChromaDB.Client.ChromaClient.GetCollectionClient(string! name, bool createIfMissing) -> ChromaDB.Client.ChromaCollectionClient!
 virtual ChromaDB.Client.ChromaClient.GetOrCreateCollectionClientAsync(ChromaDB.Client.Models.ChromaCollectionDefinition! definition, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.ChromaCollectionClient!>!
 virtual ChromaDB.Client.ChromaClient.GetOrCreateCollectionClientAsync(string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.ChromaCollectionClient!>!
+ChromaDB.Client.Models.ChromaPreFlightChecks.Server.get -> ChromaDB.Client.Models.ChromaPreFlightServer?
+ChromaDB.Client.Models.ChromaPreFlightChecks.Server.init -> void
+ChromaDB.Client.Models.ChromaPreFlightServer
+ChromaDB.Client.Models.ChromaPreFlightServer.ChromaPreFlightServer() -> void
+ChromaDB.Client.Models.ChromaPreFlightServer.Features.get -> System.Collections.Generic.IReadOnlyList<string!>?
+ChromaDB.Client.Models.ChromaPreFlightServer.Features.init -> void
+ChromaDB.Client.Models.ChromaPreFlightServer.Name.get -> string?
+ChromaDB.Client.Models.ChromaPreFlightServer.Name.init -> void
+ChromaDB.Client.Models.ChromaPreFlightServer.Version.get -> string?
+ChromaDB.Client.Models.ChromaPreFlightServer.Version.init -> void
