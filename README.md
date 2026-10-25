@@ -56,7 +56,7 @@ dotnet add package ChromaDotNet.Client
 
 `ChromaDotNet.Client.DependencyInjection` for `Microsoft.Extensions.DependencyInjection`: [Dependency injection](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/dependency-injection.md).
 
-To run Chroma on your machine without Docker: [ChromaDotNet.Local](https://www.nuget.org/packages/ChromaDotNet.Local).
+To run Chroma on your machine without Docker: [ChromaDotNet.Local.ChromaDB](https://www.nuget.org/packages/ChromaDotNet.Local.ChromaDB).
 
 To compute the embeddings as the Python client does: [ChromaDotNet.Embeddings](https://www.nuget.org/packages/ChromaDotNet.Embeddings), see [Embeddings](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/embeddings.md).
 
