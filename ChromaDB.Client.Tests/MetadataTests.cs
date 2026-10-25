@@ -246,7 +246,7 @@ public class MetadataTests : ChromaTestsBase
 	[Test]
 	public async Task AnEmptyTextReplacesItsVectorOnChromaCloud()
 	{
-		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has sparse vector indexes.");
+		Assume.That(SparseVectorIndexesSupported, Is.True, "Only Chroma Cloud and the servers that declare them have sparse vector indexes.");
 		var options = BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact);
 		var collection = await new ChromaClient(options, HttpClient).CreateCollectionAsync(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}")
 		{
