@@ -34,8 +34,8 @@ public sealed class ChromaCollectionSchema
 	/// A copy of the schema with a sparse vector index on the metadata key, which holds the sparse vectors of the records, like
 	/// their BM25 vectors. <c>sourceKey</c> is the key of the text they come from, like <c>ChromaSearchKeys.Document</c>; with
 	/// <c>bm25</c> the server applies the inverse document frequency of BM25 to them. <c>sourceKey</c> needs <c>embeddingFunction</c>, as
-	/// Chroma Cloud rejects one without the other: then it throws an <c>ArgumentException</c>. Only Chroma Cloud has sparse vector indexes:
-	/// a single server rejects them.
+	/// Chroma Cloud rejects one without the other: then it throws an <c>ArgumentException</c>. Chroma Cloud has sparse vector indexes, and so
+	/// do the servers that declare them in <c>pre-flight-checks</c>, like VecturaDB: Chroma on a single server rejects them.
 	/// </summary>
 	/// <param name="key">The metadata key that holds the sparse vectors.</param>
 	/// <param name="sourceKey">The key of the text the vectors come from, like <c>#document</c>, or null for none.</param>
@@ -49,9 +49,9 @@ public sealed class ChromaCollectionSchema
 	/// A copy of the schema with a BM25 index on the text of the source key, a metadata key or <c>ChromaSearchKeys.Document</c>, with
 	/// the <c>chroma_bm25</c> function, whose vectors the client computes as it writes the records. The index is on the metadata key
 	/// named after the source, like <c>title_bm25</c>, or <c>document_bm25</c> for the documents; a write that gives that key another
-	/// value than a sparse vector throws an <c>ArgumentException</c>. Only Chroma Cloud has sparse vector indexes: with <c>ifSupported</c>
-	/// the client leaves the index out on the other servers, which reject it, and on Chroma Cloud when its key is longer than
-	/// <c>ChromaCloudQuotas.MaxMetadataKeyBytes</c>.
+	/// value than a sparse vector throws an <c>ArgumentException</c>. Chroma Cloud has sparse vector indexes, and so do the servers that
+	/// declare them in <c>pre-flight-checks</c>, like VecturaDB: with <c>ifSupported</c> the client leaves the index out on the other
+	/// servers, which reject it, and on Chroma Cloud when its key is longer than <c>ChromaCloudQuotas.MaxMetadataKeyBytes</c>.
 	/// </summary>
 	/// <param name="sourceKey">The key of the text: a metadata key, or <c>ChromaSearchKeys.Document</c>.</param>
 	/// <param name="ifSupported">Whether the client leaves the index out where the server does not take it.</param>
@@ -200,6 +200,9 @@ public sealed class ChromaCollectionSchema
 
 	// The metadata keys the schema names.
 	internal IEnumerable<string> Keys => _keys.Keys;
+
+	// Whether the schema has indexes added with ifSupported.
+	internal bool HasIndexesIfSupported => _keysIfSupported.Count > 0;
 
 	// The schema without the indexes added with ifSupported whose keys are left out, or null when nothing else is in it.
 	internal ChromaCollectionSchema? WithoutIndexesIfSupported(Func<string, bool> leftOut)

@@ -179,6 +179,20 @@ internal sealed class ChromaHttpClient
 		}
 	}
 
+	// A server that declares sparse vector indexes in the server block of pre-flight-checks, like VecturaDB; Chroma and Chroma Cloud send
+	// no block. When the server cannot tell, it is taken as one without them.
+	public async Task<bool> DeclaresSparseVectorIndexes(CancellationToken cancellationToken)
+	{
+		try
+		{
+			return (await GetPreFlightChecks(cancellationToken))?.Server?.Features?.Contains("sparse_vector_index") == true;
+		}
+		catch (ChromaException)
+		{
+			return false;
+		}
+	}
+
 	// Chroma 1.5.3 and later apply the limit of a delete, and from that version the OpenAPI description of the server declares it;
 	// the earlier versions ignore it and delete every matching record. Asked like the version, only when a delete has a limit;
 	// a server without the description, or without the limit in it, is taken as one that ignores it.

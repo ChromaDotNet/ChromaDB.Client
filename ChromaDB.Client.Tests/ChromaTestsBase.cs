@@ -24,6 +24,17 @@ public abstract class ChromaTestsBase
 	protected static bool RunningServer => TestUri is not null;
 	protected static bool ChromaCloud => TestUri?.Contains(".trychroma.com") == true;
 
+	// The features the server declares in the server block of pre-flight-checks, like VecturaDB, read once: a server is expected to serve
+	// a feature it declares as Chroma Cloud does, without the quotas of Chroma Cloud. Chroma and Chroma Cloud send no block.
+	private static IReadOnlyList<string>? _declaredFeatures;
+	private static bool Declares(string feature) => _declaredFeatures?.Contains(feature) == true;
+	// Sparse vector indexes, with BM25 and sparse vectors in metadata.
+	protected static bool SparseVectorIndexesSupported => ChromaCloud || Declares("sparse_vector_index");
+	// The Search API.
+	protected static bool SearchSupported => ChromaCloud || Declares("search");
+	// Fork and its count.
+	protected static bool ForkSupported => ChromaCloud || Declares("fork");
+
 	// CHROMA_TEST_API_VERSION=v1 runs the tests with the v1 API, the only one of Chroma 0.5.15 and earlier.
 	protected static readonly ChromaApiVersion ApiVersion = Environment.GetEnvironmentVariable("CHROMA_TEST_API_VERSION") is "v1" ? ChromaApiVersion.V1 : ChromaApiVersion.V2;
 
@@ -60,6 +71,7 @@ public abstract class ChromaTestsBase
 			_baseConfigurationOptions = TestToken is not null ? _baseConfigurationOptions.WithChromaToken(TestToken) : _baseConfigurationOptions;
 			_baseConfigurationOptions = TestTenant is not null ? _baseConfigurationOptions.WithTenant(TestTenant) : _baseConfigurationOptions;
 			_baseConfigurationOptions = TestDatabase is not null ? _baseConfigurationOptions.WithDatabase(TestDatabase) : _baseConfigurationOptions;
+			_declaredFeatures ??= await DeclaredFeatures(_baseConfigurationOptions);
 			return;
 		}
 		_container = ConfigureContainer(new ChromaBuilder(ChromaImage.Name)).Build();
@@ -81,6 +93,19 @@ public abstract class ChromaTestsBase
 				await client.CreateDatabaseAsync(database, tenant: TestTenant);
 				_baseConfigurationOptions = _baseConfigurationOptions.WithDatabase(database);
 			}
+		}
+	}
+
+	// The features of the server block of pre-flight-checks, none when the server sends no block or cannot tell.
+	private async Task<IReadOnlyList<string>> DeclaredFeatures(ChromaConfigurationOptions options)
+	{
+		try
+		{
+			return (await new ChromaClient(options, HttpClient).GetPreFlightChecksAsync()).Server?.Features ?? [];
+		}
+		catch (ChromaException)
+		{
+			return [];
 		}
 	}
 

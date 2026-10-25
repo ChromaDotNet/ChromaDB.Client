@@ -139,21 +139,28 @@ public class ApiV2CompleteTests : ChromaTestsBase
 			: configuration.GetProperty("hnsw").GetProperty("ef_search").GetInt32(), Is.EqualTo(ChromaCloud ? 32 : 200));
 	}
 
-	// Fork, its count and the indexing status exist only on Chroma Cloud: a single server answers with an error.
+	// Fork and its count exist on Chroma Cloud and on the servers that declare them, the indexing status only on Chroma Cloud: a single
+	// server answers with an error.
 	[Test]
 	public async Task ForkAndIndexingStatus()
 	{
 		var collection = await Init();
-		if (!ChromaCloud)
+		if (!ForkSupported)
 		{
 			await Assert.ThatAsync(() => collection.ForkAsync($"collection{Random.Shared.Next()}"), Throws.InstanceOf<ChromaException>());
 			await Assert.ThatAsync(() => collection.ForkCountAsync(), Throws.InstanceOf<ChromaException>());
+		}
+		else
+		{
+			var fork = await collection.ForkAsync($"collection{Random.Shared.Next()}");
+			Assert.That(await new ChromaClient(BaseConfigurationOptions, HttpClient).GetCollectionClient(fork).CountAsync(), Is.EqualTo(4));
+			Assert.That(await collection.ForkCountAsync(), Is.EqualTo(1));
+		}
+		if (!ChromaCloud)
+		{
 			await Assert.ThatAsync(() => collection.GetIndexingStatusAsync(), Throws.InstanceOf<ChromaException>());
 			return;
 		}
-		var fork = await collection.ForkAsync($"collection{Random.Shared.Next()}");
-		Assert.That(await new ChromaClient(BaseConfigurationOptions, HttpClient).GetCollectionClient(fork).CountAsync(), Is.EqualTo(4));
-		Assert.That(await collection.ForkCountAsync(), Is.EqualTo(1));
 		Assert.That((await collection.GetIndexingStatusAsync()).TotalOps, Is.GreaterThanOrEqualTo(4));
 	}
 
@@ -171,7 +178,7 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		Assert.That(await client.ListCollectionsAsync(), Is.Not.Null);
 	}
 
-	// The Search API exists only on Chroma Cloud: a single server answers with an error (501 from Chroma 1.x).
+	// The Search API exists on Chroma Cloud and on the servers that declare it: a single server answers with an error (501 from Chroma 1.x).
 	[Test]
 	public async Task Search()
 	{
@@ -183,7 +190,7 @@ public class ApiV2CompleteTests : ChromaTestsBase
 			Limit = 3,
 			Select = [ChromaSearchKeys.Document, ChromaSearchKeys.Score],
 		};
-		if (!ChromaCloud)
+		if (!SearchSupported)
 		{
 			await Assert.ThatAsync(() => collection.SearchAsync(search), Throws.InstanceOf<ChromaException>());
 			return;
@@ -203,7 +210,7 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		Assert.That(two[1].Single().Id, Is.EqualTo("b"));
 	}
 
-	// Sparse vector indexes and sparse vectors in metadata exist only on Chroma Cloud. A single server rejects the schema from Chroma 1.3.0,
+	// Sparse vector indexes and sparse vectors in metadata exist on Chroma Cloud and on the servers that declare them. A single server rejects the schema from Chroma 1.3.0,
 	// and the earlier ones create the collection without it: then the client deletes it. Sparse vectors in metadata fail on a single
 	// server; Chroma 0.x would drop them, so the client rejects them first.
 	[Test]
@@ -221,7 +228,7 @@ public class ApiV2CompleteTests : ChromaTestsBase
 			Documents = ["apple pie", "banana split"],
 			Metadatas = [new Dictionary<string, object> { ["doc_bm25"] = new ChromaSparseVector([1, 5], [0.5f, 0.7f]) }, new Dictionary<string, object> { ["doc_bm25"] = new ChromaSparseVector([2], [0.9f]) }],
 		};
-		if (!ChromaCloud)
+		if (!SparseVectorIndexesSupported)
 		{
 			await Assert.ThatAsync(() => client.CreateCollectionAsync(definition), Throws.InstanceOf<ChromaException>());
 			Assert.That(await client.CollectionExistsAsync(name), Is.False);
@@ -270,7 +277,7 @@ public class ApiV2CompleteTests : ChromaTestsBase
 	[Test]
 	public async Task HybridSearchWithBm25()
 	{
-		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has sparse vector indexes.");
+		Assume.That(SparseVectorIndexesSupported, Is.True, "Only Chroma Cloud and the servers that declare them have sparse vector indexes.");
 		var bm25 = new ChromaBm25(k: 1.5);
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
 		// The space goes in the schema: Chroma Cloud rejects a configuration together with a schema.
@@ -323,7 +330,7 @@ public class ApiV2CompleteTests : ChromaTestsBase
 	[Test]
 	public async Task HybridRrfOnChromaCloud()
 	{
-		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has sparse vector indexes.");
+		Assume.That(SparseVectorIndexesSupported, Is.True, "Only Chroma Cloud and the servers that declare them have sparse vector indexes.");
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
 		var collection = client.GetCollectionClient(await client.CreateCollectionAsync(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}")
 		{

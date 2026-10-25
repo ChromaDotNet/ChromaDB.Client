@@ -37,7 +37,7 @@ public class WhereSplitServerTests : ChromaTestsBase
 	[Test]
 	public async Task SearchOnChromaCloud()
 	{
-		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has the Search API.");
+		Assume.That(SearchSupported, Is.True, "Only Chroma Cloud and the servers that declare it have the Search API.");
 		var collection = await Init();
 		var found = await collection.SearchAsync(new ChromaSearch { Where = ChromaWhereOperator.In(ChromaSearchKeys.Id, "b") | Pool, Select = [ChromaSearchKeys.Document] });
 		Assert.That(found.Select(x => x.Id), Is.EquivalentTo(new[] { "a", "b", "c" }));

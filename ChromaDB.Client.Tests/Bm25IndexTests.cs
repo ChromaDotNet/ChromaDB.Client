@@ -58,6 +58,62 @@ public class Bm25IndexTests
 		Assert.That(server.Schemas, Is.EqualTo(new[] { alone, withAnotherIndex, addedAgain, withDefaults, withCmek, alone }));
 	}
 
+	// A server that declares sparse vector indexes in the server block of pre-flight-checks, like VecturaDB, gets the indexes added
+	// with ifSupported, as Chroma Cloud does, also with a key beyond the quota of Chroma Cloud, which it does not have. Without the
+	// feature, without the block, or with an answer the client cannot read, they are left out as on any single server.
+	[TestCase(SparseVectorIndexes, "title_bm25", "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk_bm25")]
+	[TestCase("""{"max_batch_size":100,"server":{"name":"VecturaDB","version":"1.0.0-preview.3","features":["search","fork"]}}""", null, null)]
+	[TestCase("""{"max_batch_size":100,"server":{"name":"VecturaDB","version":"1.0.0-preview.3"}}""", null, null)]
+	[TestCase("""{"max_batch_size":100,"supports_base64_encoding":false}""", null, null)]
+	[TestCase("\"broken\"", null, null)]
+	[TestCase(null, null, null)]
+	public async Task IndexIfSupportedWhereTheServerDeclaresIt(string? preFlightChecks, string? schema, string? longKeySchema)
+	{
+		var server = new FakeServer(preFlightChecks);
+		var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(server));
+		await client.CreateCollectionAsync(new ChromaCollectionDefinition("c") { Schema = new ChromaCollectionSchema().WithBm25Index("title", ifSupported: true) });
+		await client.GetOrCreateCollectionAsync(new ChromaCollectionDefinition("c") { Schema = new ChromaCollectionSchema().WithBm25Index(new string('k', 32), ifSupported: true) });
+		Assert.That(server.Schemas, Is.EqualTo(new[] { schema, longKeySchema }));
+	}
+
+	// With API keys on, the server shows its block only to a valid key, and answers pre-flight-checks without it otherwise: the client
+	// sends its key there too, in either header, and gets the indexes added with ifSupported through only with the right one.
+	[TestCase("k", ChromaTokenTransportHeader.XChromaToken, "title_bm25")]
+	[TestCase("k", ChromaTokenTransportHeader.Authorization, "title_bm25")]
+	[TestCase("wrong", ChromaTokenTransportHeader.XChromaToken, null)]
+	[TestCase(null, ChromaTokenTransportHeader.XChromaToken, null)]
+	public async Task ServerBlockBehindTheApiKey(string? token, ChromaTokenTransportHeader header, string? schema)
+	{
+		var server = new FakeServer(SparseVectorIndexes, key: "k");
+		var options = new ChromaConfigurationOptions("http://localhost:8000");
+		var client = new ChromaClient(token is null ? options : options.WithChromaToken(token, header), new HttpClient(server));
+		await client.CreateCollectionAsync(new ChromaCollectionDefinition("c") { Schema = new ChromaCollectionSchema().WithBm25Index("title", ifSupported: true) });
+		Assert.That(server.Schemas, Is.EqualTo(new[] { schema }));
+	}
+
+	// The server block is asked only for a schema with indexes added with ifSupported: other collections cost no request more.
+	[Test]
+	public async Task NoPreFlightChecksWithoutIndexesIfSupported()
+	{
+		var server = new FakeServer(SparseVectorIndexes);
+		var client = new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(server));
+		await client.CreateCollectionAsync(new ChromaCollectionDefinition("c") { Schema = new ChromaCollectionSchema().WithBm25Index("title") });
+		await client.GetOrCreateCollectionAsync("c");
+		Assert.That(server.Paths, Has.None.EndsWith("/pre-flight-checks"));
+	}
+
+	// The server block as the client reads it.
+	[Test]
+	public async Task ServerOfThePreFlightChecks()
+	{
+		var checks = await new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(new FakeServer(SparseVectorIndexes))).GetPreFlightChecksAsync();
+		Assert.That((checks.Server?.Name, checks.Server?.Version, checks.Server?.Features), Is.EqualTo(("VecturaDB", "1.0.0-preview.3", new[] { "sparse_vector_index", "bm25" })));
+		var chroma = await new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000"), new HttpClient(new FakeServer())).GetPreFlightChecksAsync();
+		Assert.That(chroma.Server, Is.Null);
+	}
+
+	const string SparseVectorIndexes = """{"max_batch_size":100,"server":{"name":"VecturaDB","version":"1.0.0-preview.3","features":["sparse_vector_index","bm25"]}}""";
+
 	// On Chroma Cloud an index added with ifSupported whose key is beyond 36 bytes is left out: Chroma Cloud would reject every write
 	// with the key. Without ifSupported the client throws.
 	[Test]
@@ -81,15 +137,29 @@ public class Bm25IndexTests
 		=> "\"" + key + "\":{\"sparse_vector\":{\"sparse_vector_index\":{\"enabled\":true,\"config\":{\"source_key\":\"" + sourceKey + "\",\"bm25\":true,"
 			+ "\"embedding_function\":{\"type\":\"known\",\"name\":\"chroma_bm25\",\"config\":{\"k\":1.2,\"b\":0.75,\"avg_doc_length\":256,\"token_max_length\":40}}}}}}";
 
-	// Answers the version, pre-flight-checks with a batch size, a new collection with an empty schema, and the writes with nothing;
-	// records the keys of the schema of each new collection, or null without a schema.
-	sealed class FakeServer : HttpMessageHandler
+	// Answers the version, pre-flight-checks with a batch size or the given answer, 404 for null, a new collection with an empty schema,
+	// and the writes with nothing; records the paths, and the keys of the schema of each new collection, or null without a schema.
+	// With a key, pre-flight-checks gives the given answer only to a request with that key, and the plain one to the others.
+	sealed class FakeServer(string? preFlightChecks = FakeServer.PlainPreFlightChecks, string? key = null) : HttpMessageHandler
 	{
 		public List<string?> Schemas { get; } = [];
+
+		public List<string> Paths { get; } = [];
+
+		const string PlainPreFlightChecks = """{"max_batch_size":100,"supports_base64_encoding":false}""";
+
+		bool HasKey(HttpRequestMessage request)
+			=> request.Headers.TryGetValues("X-Chroma-Token", out var values) && values.Contains(key)
+				|| request.Headers.Authorization?.Parameter == key;
 
 		protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
 		{
 			var path = request.RequestUri!.AbsolutePath;
+			Paths.Add(path);
+			if (path.EndsWith("/pre-flight-checks") && preFlightChecks is null)
+			{
+				return new HttpResponseMessage(HttpStatusCode.NotFound) { Content = new StringContent("{}") };
+			}
 			if (path.EndsWith("/collections"))
 			{
 				var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken)).RootElement;
@@ -98,7 +168,7 @@ public class Bm25IndexTests
 					: null);
 			}
 			var answer = path.EndsWith("/version") ? "\"1.5.9\""
-				: path.EndsWith("/pre-flight-checks") ? """{"max_batch_size":100,"supports_base64_encoding":false}"""
+				: path.EndsWith("/pre-flight-checks") ? (key is null || HasKey(request) ? preFlightChecks! : PlainPreFlightChecks)
 				: path.EndsWith("/collections") ? """{"id":"11111111-2222-3333-4444-555555555555","name":"c","schema":{"defaults":{},"keys":{}}}"""
 				: "{}";
 			return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(answer) };

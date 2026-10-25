@@ -513,7 +513,7 @@ public class ChromaClient : IDisposable
 				.Insert("{tenant}", tenant)
 				.Insert("{database}", database);
 			definition.Validate();
-			definition = await WithDeclaredEmbeddingFunction(definition.ForServer(_httpClient.IsChromaCloud), cancellationToken);
+			definition = await WithDeclaredEmbeddingFunction(await ForServer(definition, cancellationToken), cancellationToken);
 			CheckKeysOnChromaCloud(definition);
 			// Chroma 0.5.4 to 0.6.3 fail on the configuration of the request, and 0.4.10 to 0.5.3 ignore it.
 			if (definition.SettingsInConfiguration && await _httpClient.IsChroma0(cancellationToken))
@@ -578,7 +578,7 @@ public class ChromaClient : IDisposable
 				.Insert("{tenant}", tenant)
 				.Insert("{database}", database);
 			definition.Validate();
-			definition = await WithDeclaredEmbeddingFunction(definition.ForServer(_httpClient.IsChromaCloud), cancellationToken);
+			definition = await WithDeclaredEmbeddingFunction(await ForServer(definition, cancellationToken), cancellationToken);
 			CheckKeysOnChromaCloud(definition);
 			// Chroma 0.5.4 to 0.6.3 fail on the configuration of the request, and 0.4.10 to 0.5.3 ignore it.
 			if (definition.SettingsInConfiguration && await _httpClient.IsChroma0(cancellationToken))
@@ -678,6 +678,12 @@ public class ChromaClient : IDisposable
 		}
 		await _httpClient.Delete(_httpClient.Routes.CollectionByName, requestParams, cancellationToken);
 	}
+
+	// The indexes added with ifSupported go to Chroma Cloud, within its quotas, and to a server that declares sparse vector indexes in
+	// pre-flight-checks, asked only for a schema with such indexes.
+	private async Task<ChromaCollectionDefinition> ForServer(ChromaCollectionDefinition definition, CancellationToken cancellationToken)
+		=> definition.ForServer(_httpClient.IsChromaCloud || definition.Schema?.HasIndexesIfSupported == true && await _httpClient.DeclaresSparseVectorIndexes(cancellationToken),
+			_httpClient.IsChromaCloud);
 
 	// Works around KD-12 (docs/COMPATIBILITY.md)
 	// Chroma 1.5 keeps the lists in the metadata of the records of a collection or a database it deletes, and gives them to the next

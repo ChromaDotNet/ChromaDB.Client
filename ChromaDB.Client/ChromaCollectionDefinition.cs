@@ -84,10 +84,10 @@ public class ChromaCollectionDefinition
 	}
 
 	// The definition as the server gets it, without the indexes added with ifSupported that it does not take: all of them on a server
-	// other than Chroma Cloud, and on Chroma Cloud the ones whose key is beyond its quota of bytes.
-	internal ChromaCollectionDefinition ForServer(bool chromaCloud)
+	// without sparse vector indexes, and on Chroma Cloud the ones whose key is beyond its quota of bytes.
+	internal ChromaCollectionDefinition ForServer(bool sparseVectorIndexes, bool chromaCloud)
 	{
-		var schema = Schema?.WithoutIndexesIfSupported(key => !chromaCloud || System.Text.Encoding.UTF8.GetByteCount(key) > ChromaCloudQuotas.MaxMetadataKeyBytes);
+		var schema = Schema?.WithoutIndexesIfSupported(key => !sparseVectorIndexes || chromaCloud && System.Text.Encoding.UTF8.GetByteCount(key) > ChromaCloudQuotas.MaxMetadataKeyBytes);
 		return schema == Schema ? this : new(Name)
 		{
 			Metadata = Metadata,
