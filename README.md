@@ -5,10 +5,10 @@
 [![NuGet](https://img.shields.io/nuget/v/ChromaDotNet.Client)](https://www.nuget.org/packages/ChromaDotNet.Client/)
 [![CI](https://img.shields.io/github/actions/workflow/status/ChromaDotNet/ChromaDB.Client/ci.yml?branch=main)](https://github.com/ChromaDotNet/ChromaDB.Client/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/ChromaDotNet/ChromaDB.Client)](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/LICENSE)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ChromaDotNet/ChromaDB.Client/badge)](https://scorecard.dev/viewer/?uri=github.com/ChromaDotNet/ChromaDB.Client)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15264/badge)](https://www.bestpractices.dev/projects/15264)
+[![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/ChromaDotNet/ChromaDB.Client?label=openssf%20scorecard)](https://scorecard.dev/viewer/?uri=github.com/ChromaDotNet/ChromaDB.Client)
+[![OpenSSF Best Practices](https://img.shields.io/cii/level/15264?label=openssf%20best%20practices)](https://www.bestpractices.dev/projects/15264)
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/ChromaDotNet/ChromaDB.Client?quickstart=1)
+[![Open in GitHub Codespaces](https://img.shields.io/badge/GitHub%20Codespaces-Open-blue?logo=github)](https://codespaces.new/ChromaDotNet/ChromaDB.Client?quickstart=1)
 
 _ChromaDB.Client_, published on NuGet as `ChromaDotNet.Client`, is a .NET client for Chroma and Chroma Cloud. It covers:
 
