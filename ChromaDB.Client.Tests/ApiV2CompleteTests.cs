@@ -139,8 +139,8 @@ public class ApiV2CompleteTests : ChromaTestsBase
 			: configuration.GetProperty("hnsw").GetProperty("ef_search").GetInt32(), Is.EqualTo(ChromaCloud ? 32 : 200));
 	}
 
-	// Fork and its count exist on Chroma Cloud and on the servers that declare them, the indexing status only on Chroma Cloud: a single
-	// server answers with an error.
+	// Fork and its count, and the indexing status, exist on Chroma Cloud and on the servers that declare them: any other single server
+	// answers with an error.
 	[Test]
 	public async Task ForkAndIndexingStatus()
 	{
@@ -156,7 +156,7 @@ public class ApiV2CompleteTests : ChromaTestsBase
 			Assert.That(await new ChromaClient(BaseConfigurationOptions, HttpClient).GetCollectionClient(fork).CountAsync(), Is.EqualTo(4));
 			Assert.That(await collection.ForkCountAsync(), Is.EqualTo(1));
 		}
-		if (!ChromaCloud)
+		if (!IndexingStatusSupported)
 		{
 			await Assert.ThatAsync(() => collection.GetIndexingStatusAsync(), Throws.InstanceOf<ChromaException>());
 			return;
