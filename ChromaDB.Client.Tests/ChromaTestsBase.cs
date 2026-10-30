@@ -34,6 +34,8 @@ public abstract class ChromaTestsBase
 	protected static bool SearchSupported => ChromaCloud || Declares("search");
 	// Fork and its count.
 	protected static bool ForkSupported => ChromaCloud || Declares("fork");
+	// The indexing status of a collection.
+	protected static bool IndexingStatusSupported => ChromaCloud || Declares("indexing_status");
 
 	// CHROMA_TEST_API_VERSION=v1 runs the tests with the v1 API, the only one of Chroma 0.5.15 and earlier.
 	protected static readonly ChromaApiVersion ApiVersion = Environment.GetEnvironmentVariable("CHROMA_TEST_API_VERSION") is "v1" ? ChromaApiVersion.V1 : ChromaApiVersion.V2;
