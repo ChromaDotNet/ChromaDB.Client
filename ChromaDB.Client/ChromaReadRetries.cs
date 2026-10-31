@@ -10,8 +10,9 @@ namespace ChromaDB.Client;
 /// pages of ids of <c>DeleteCollectionAsync</c> with <c>deleteRecordsFirst</c>. The errors that can pass are an answer <c>429</c>,
 /// <c>500</c>, <c>502</c>, <c>503</c> or <c>504</c>, other than a missing collection, a request that fails on the network, and an
 /// answer whose lists do not have one item for every record. After the last attempt the error stands: for such an answer, a
-/// <c>ChromaException</c> that says it. A timeout of the <c>HttpClient</c> does not go again. A write never goes again: one that
-/// failed may have gone.
+/// <c>ChromaException</c> that says it. A timeout of the <c>HttpClient</c> does not go again. A write does not go again with these: one
+/// that failed may have gone. Only after the refusal of a log that needs compaction, which distributed Chroma gives before it takes any
+/// record, a write goes again, with <c>ChromaWriteRetries</c>.
 /// </summary>
 public sealed class ChromaReadRetries
 {
@@ -92,11 +93,14 @@ public sealed class ChromaReadRetries
 	internal Func<double>? Jitter { get; init; }
 
 	// The delay before the attempt after the given number of attempts that went again, for a random number from 0 to 1.
-	internal TimeSpan Delay(int retry, double random)
+	internal TimeSpan Delay(int retry, double random) => Backoff(MinDelay, BaseDelay, MaxDelay, retry, random);
+
+	// The delay of the reads and of the writes (ChromaWriteRetries).
+	internal static TimeSpan Backoff(TimeSpan minDelay, TimeSpan baseDelay, TimeSpan maxDelay, int retry, double random)
 	{
 		// The base times 2 to the retry, up to the largest delay, without going beyond a long; never under the smallest delay, which is
 		// at most the base.
-		var bound = retry >= 62 || BaseDelay.Ticks > MaxDelay.Ticks >> retry ? MaxDelay.Ticks : BaseDelay.Ticks << retry;
-		return TimeSpan.FromTicks(MinDelay.Ticks + (long)((bound - MinDelay.Ticks) * random));
+		var bound = retry >= 62 || baseDelay.Ticks > maxDelay.Ticks >> retry ? maxDelay.Ticks : baseDelay.Ticks << retry;
+		return TimeSpan.FromTicks(minDelay.Ticks + (long)((bound - minDelay.Ticks) * random));
 	}
 }

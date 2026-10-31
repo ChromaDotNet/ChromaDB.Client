@@ -76,7 +76,7 @@ public class ChromaConfigurationOptions
 	/// <summary>
 	/// How a read goes again after an error that can pass, as an answer <c>500</c> of Chroma 1.5.9 to a get while other clients write and
 	/// delete the same records: <c>ChromaReadRetries.Default</c> by default, and <c>ChromaReadRetries.None</c> never goes again. A write
-	/// never goes again.
+	/// does not go again with these; only after the refusal of a log that needs compaction it goes again, with <c>WriteRetries</c>.
 	/// </summary>
 	public ChromaReadRetries ReadRetries
 	{
@@ -84,6 +84,17 @@ public class ChromaConfigurationOptions
 		init => _readRetries = value ?? throw new ArgumentNullException(nameof(ReadRetries));
 	}
 	private readonly ChromaReadRetries _readRetries = ChromaReadRetries.Default;
+	/// <summary>
+	/// How a write goes again after distributed Chroma refuses it with <c>429</c> "log needs compaction before accepting more writes",
+	/// before it takes any record: <c>ChromaWriteRetries.Default</c> by default, and <c>ChromaWriteRetries.None</c> never goes again.
+	/// After any other error a write does not go again.
+	/// </summary>
+	public ChromaWriteRetries WriteRetries
+	{
+		get => _writeRetries;
+		init => _writeRetries = value ?? throw new ArgumentNullException(nameof(WriteRetries));
+	}
+	private readonly ChromaWriteRetries _writeRetries = ChromaWriteRetries.Default;
 	private readonly int? _maxBatchSize;
 
 	/// <summary>
@@ -194,6 +205,7 @@ public class ChromaConfigurationOptions
 		UpsertStrategy = options.UpsertStrategy;
 		ReadsBeyondKeyQuota = options.ReadsBeyondKeyQuota;
 		ReadRetries = options.ReadRetries;
+		WriteRetries = options.WriteRetries;
 		_chromaCloud = options._chromaCloud;
 	}
 
@@ -291,6 +303,15 @@ public class ChromaConfigurationOptions
 	/// <returns>The new options; these do not change.</returns>
 	public ChromaConfigurationOptions WithReadRetries(ChromaReadRetries readRetries)
 		=> new(this) { ReadRetries = readRetries ?? throw new ArgumentNullException(nameof(readRetries)) };
+
+	/// <summary>
+	/// A copy of these options with the given attempts and delays of the writes that the log refuses because it needs compaction: see
+	/// <c>ChromaWriteRetries</c>.
+	/// </summary>
+	/// <param name="writeRetries">The attempts and the delays; <c>ChromaWriteRetries.None</c> never goes again.</param>
+	/// <returns>The new options; these do not change.</returns>
+	public ChromaConfigurationOptions WithWriteRetries(ChromaWriteRetries writeRetries)
+		=> new(this) { WriteRetries = writeRetries ?? throw new ArgumentNullException(nameof(writeRetries)) };
 
 	/// <summary>
 	/// A copy of these options with the given version of the Chroma API.
