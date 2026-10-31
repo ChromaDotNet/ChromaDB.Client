@@ -67,6 +67,18 @@ ChromaDB.Client.ChromaReadRetries.MaxDelay.get -> System.TimeSpan
 ChromaDB.Client.ChromaReadRetries.MinDelay.get -> System.TimeSpan
 static ChromaDB.Client.ChromaReadRetries.Default.get -> ChromaDB.Client.ChromaReadRetries!
 static ChromaDB.Client.ChromaReadRetries.None.get -> ChromaDB.Client.ChromaReadRetries!
+ChromaDB.Client.ChromaConfigurationOptions.WriteRetries.get -> ChromaDB.Client.ChromaWriteRetries!
+ChromaDB.Client.ChromaConfigurationOptions.WriteRetries.init -> void
+ChromaDB.Client.ChromaConfigurationOptions.WithWriteRetries(ChromaDB.Client.ChromaWriteRetries! writeRetries) -> ChromaDB.Client.ChromaConfigurationOptions!
+ChromaDB.Client.ChromaWriteRetries
+ChromaDB.Client.ChromaWriteRetries.BaseDelay.get -> System.TimeSpan
+ChromaDB.Client.ChromaWriteRetries.ChromaWriteRetries(int maxAttempts, System.TimeSpan baseDelay, System.TimeSpan maxDelay) -> void
+ChromaDB.Client.ChromaWriteRetries.ChromaWriteRetries(int maxAttempts, System.TimeSpan minDelay, System.TimeSpan baseDelay, System.TimeSpan maxDelay) -> void
+ChromaDB.Client.ChromaWriteRetries.MaxAttempts.get -> int
+ChromaDB.Client.ChromaWriteRetries.MaxDelay.get -> System.TimeSpan
+ChromaDB.Client.ChromaWriteRetries.MinDelay.get -> System.TimeSpan
+static ChromaDB.Client.ChromaWriteRetries.Default.get -> ChromaDB.Client.ChromaWriteRetries!
+static ChromaDB.Client.ChromaWriteRetries.None.get -> ChromaDB.Client.ChromaWriteRetries!
 virtual ChromaDB.Client.ChromaCollectionClient.DeleteAllAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
 virtual ChromaDB.Client.ChromaClient.GetCollectionClient(ChromaDB.Client.Models.ChromaCollectionDefinition! definition, bool createIfMissing) -> ChromaDB.Client.ChromaCollectionClient!
 virtual ChromaDB.Client.ChromaClient.GetCollectionClient(string! name, bool createIfMissing) -> ChromaDB.Client.ChromaCollectionClient!
