@@ -11,8 +11,9 @@ namespace ChromaDB.Client;
 /// number of the attempts that went again before. A refusal lasts until a compaction takes enough records of the log, which takes
 /// seconds, so the delays are longer than those of the reads, and a short refusal still goes again within the base delay. When the
 /// refusal carries a <c>Retry-After</c>, in seconds or as a date, the write waits that long instead, and up to a tenth more, so that the
-/// clients refused together do not come back together; at most 30 seconds, or <c>MaxDelay</c> when it is longer. Distributed Chroma
-/// sends none. After the last attempt the refusal stands, as a <c>ChromaException</c> with the status code <c>429</c>.
+/// clients refused together do not come back together; at most 30 seconds, or <c>MaxDelay</c> when it is longer. VecturaDB, from
+/// 1.0.0-preview.5, sends a <c>Retry-After</c> with this refusal; distributed Chroma does not. After the last attempt the refusal stands,
+/// as a <c>ChromaException</c> with the status code <c>429</c>.
 /// </summary>
 public sealed class ChromaWriteRetries
 {
