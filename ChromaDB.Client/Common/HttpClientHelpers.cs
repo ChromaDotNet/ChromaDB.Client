@@ -186,8 +186,16 @@ internal static partial class HttpClientHelpers
 			// Works around KD-41 (docs/COMPATIBILITY.md)
 			return new ChromaException($"{message ?? httpResponseMessage.StatusCode.ToString()}: {httpRequestMessage.Method} {httpRequestMessage.RequestUri?.AbsolutePath}") { StatusCode = httpResponseMessage.StatusCode, ErrorType = errorType };
 		}
-		return new ChromaException(message ?? $"Unexpected status code: {httpResponseMessage.StatusCode}.") { StatusCode = httpResponseMessage.StatusCode, ErrorType = errorType };
+		return new ChromaException(message ?? $"Unexpected status code: {httpResponseMessage.StatusCode}.") { StatusCode = httpResponseMessage.StatusCode, ErrorType = errorType, RetryAfter = RetryAfter(httpResponseMessage) };
 	}
+
+	// The Retry-After of an answer, in seconds or as a date, as a delay from now; a date gone is no delay.
+	private static TimeSpan? RetryAfter(HttpResponseMessage httpResponseMessage) => httpResponseMessage.Headers.RetryAfter switch
+	{
+		{ Delta: { } delta } => delta,
+		{ Date: { } date } => date - DateTimeOffset.UtcNow is var wait && wait > TimeSpan.Zero ? wait : TimeSpan.Zero,
+		_ => null,
+	};
 
 	private static (string? Message, string? ErrorType) ParseErrorMessageBody(string? errorMessageBody)
 	{

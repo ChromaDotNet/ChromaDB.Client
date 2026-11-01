@@ -46,6 +46,15 @@ public class ChromaException : Exception
 	// An answer to a read whose lists do not have one item for every record (AnswerChecks): the read goes again.
 	internal bool UnevenAnswer { get; init; }
 
+	// The Retry-After of the answer, as a delay from when it came; null without one.
+	internal TimeSpan? RetryAfter { get; init; }
+
+	// Distributed Chroma refuses a write to a collection whose log holds too many records not yet compacted, before it takes any of them:
+	// 429 with the message of PushLogsError::BackoffCompaction of its log, "log needs compaction before accepting more writes; please
+	// backoff exponentially and retry". The write goes again (ChromaCollectionClient.Write).
+	internal bool LogNeedsCompaction
+		=> (int?)StatusCode == 429 && Message.StartsWith("log needs compaction before accepting more writes", StringComparison.Ordinal);
+
 	internal bool IsMissingCollection
 		=> StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest or HttpStatusCode.InternalServerError
 			&& (Message.Contains("does not exist") || ErrorType == "NotFoundError" && Message.StartsWith("Collection", StringComparison.Ordinal));

@@ -154,7 +154,8 @@ public class ChromaCollectionClient
 	// same get right after goes. Before each new attempt it waits a random time up to the base delay times 2 to the attempts that went
 	// again before, and up to the largest delay: the full jitter of AWS, so that clients that failed together do not come back together.
 	// An answer whose lists do not have one item for every record goes again too (AnswerChecks). A missing collection is not an error
-	// that passes, and a write never goes again: one that failed may have gone. A read that went before, as the query of KD-24, counts
+	// that passes, and a write goes again only after the refusal of a log that needs compaction, with WriteRetries (Write): one that
+	// failed otherwise may have gone. A read that went before, as the query of KD-24, counts
 	// its attempts on from them, after the delay of the last one.
 	private async Task<T> Read<T>(Func<Task<T>> read, CancellationToken cancellationToken, Func<ChromaException, bool>? handledElsewhere = null, int attemptsBefore = 0)
 	{
@@ -180,6 +181,30 @@ public class ChromaCollectionClient
 		=> (int?)ex.StatusCode is 429 or 500 or 502 or 503 or 504 && !ex.IsMissingCollection
 			|| ex.StatusCode is null && ex.InnerException is HttpRequestException or IOException
 			|| ex.UnevenAnswer;
+
+	// A write goes once, as one that failed may have gone, but for one refusal: distributed Chroma answers 429 "log needs compaction
+	// before accepting more writes" when the log of the collection holds too many records not yet compacted, and its log service refuses
+	// the write before it takes any record. Then the same request goes again, with the attempts and the delays of WriteRetries, or the
+	// Retry-After of the refusal when it has one, until a compaction makes room; after the last attempt the refusal stands. Any other
+	// error of a write stands at once.
+	private async Task<T> Write<T>(Func<Task<T>> write, CancellationToken cancellationToken)
+	{
+		var retries = _httpClient.WriteRetries;
+		for (var attempt = 1; ; attempt++)
+		{
+			try
+			{
+				return await write();
+			}
+			catch (ChromaException ex) when (attempt < retries.MaxAttempts && ex.LogNeedsCompaction)
+			{
+				await Task.Delay(retries.Delay(attempt - 1, ex.RetryAfter, retries.Jitter?.Invoke() ?? Jitter()), cancellationToken);
+			}
+		}
+	}
+
+	private Task Write(Func<Task> write, CancellationToken cancellationToken)
+		=> Write(async () => { await write(); return true; }, cancellationToken);
 
 	private static readonly Random JitterSource = new();
 
@@ -608,7 +633,7 @@ public class ChromaCollectionClient
 				// any of them: the client keeps that limit and reads a smaller page.
 				try
 				{
-					await _httpClient.Post(_httpClient.Routes.Collection + "/delete", new CollectionDeleteRequest() { Ids = ids }, requestParams, cancellationToken);
+					await Write(() => _httpClient.Post(_httpClient.Routes.Collection + "/delete", new CollectionDeleteRequest() { Ids = ids }, requestParams, cancellationToken), cancellationToken);
 				}
 				catch (ChromaException ex) when (RecordsQuota(ex) is { } quota && quota < ids.Count)
 				{
@@ -882,7 +907,7 @@ public class ChromaCollectionClient
 					Documents = batch.Documents,
 					Uris = batch.Uris,
 				};
-				await _httpClient.Post(_httpClient.Routes.Collection + "/add", request, requestParams, cancellationToken);
+				await Write(() => _httpClient.Post(_httpClient.Routes.Collection + "/add", request, requestParams, cancellationToken), cancellationToken);
 			}, cancellationToken);
 		});
 	}
@@ -957,7 +982,7 @@ public class ChromaCollectionClient
 					Documents = batch.Documents,
 					Uris = batch.Uris,
 				};
-				await _httpClient.Post(_httpClient.Routes.Collection + "/update", request, requestParams, cancellationToken);
+				await Write(() => _httpClient.Post(_httpClient.Routes.Collection + "/update", request, requestParams, cancellationToken), cancellationToken);
 			}, cancellationToken);
 		});
 	}
@@ -1033,7 +1058,7 @@ public class ChromaCollectionClient
 					Documents = batch.Documents,
 					Uris = batch.Uris,
 				};
-				await _httpClient.Post(_httpClient.Routes.Collection + "/upsert", request, requestParams, cancellationToken);
+				await Write(() => _httpClient.Post(_httpClient.Routes.Collection + "/upsert", request, requestParams, cancellationToken), cancellationToken);
 			}, cancellationToken);
 		});
 	}
@@ -1454,11 +1479,11 @@ public class ChromaCollectionClient
 			var embeddings = batch.Embeddings is { } given ? new ChromaEmbeddings(given, base64) : null;
 			var metadatas = MetadatasOrNone(batch.Metadatas);
 			var path = _httpClient.Routes.Collection + "/" + endpoint;
-			return endpoint switch
+			return Write(() => endpoint switch
 			{
 				"upsert" => _httpClient.Post(path, new CollectionUpsertRequest() { Ids = batch.Ids, Embeddings = embeddings, Metadatas = metadatas, Documents = batch.Documents, Uris = batch.Uris }, requestParams, cancellationToken),
 				_ => _httpClient.Post(path, new CollectionUpdateRequest() { Ids = batch.Ids, Embeddings = embeddings, Metadatas = metadatas, Documents = batch.Documents, Uris = batch.Uris }, requestParams, cancellationToken),
-			};
+			}, cancellationToken);
 		}, cancellationToken);
 
 	// A list of metadata that are all null goes as no metadata.
@@ -1607,7 +1632,7 @@ public class ChromaCollectionClient
 					Where = ChromaWhereOperator.ToRequestWhere(split.Where),
 					WhereDocument = split.WhereDocument?.ToRequestWhereDocument(),
 				};
-				await _httpClient.Post(_httpClient.Routes.Collection + "/delete", request, requestParams, cancellationToken);
+				await Write(() => _httpClient.Post(_httpClient.Routes.Collection + "/delete", request, requestParams, cancellationToken), cancellationToken);
 			}, cancellationToken);
 		}));
 	}
@@ -1675,7 +1700,7 @@ public class ChromaCollectionClient
 					Limit = remaining,
 				};
 				// {"deleted": n} from Chroma 1.5.3; {} or null before, and a list of ids from some 0.x servers.
-				var response = await _httpClient.Post<CollectionDeleteRequest, System.Text.Json.JsonElement>(_httpClient.Routes.Collection + "/delete", request, requestParams, cancellationToken);
+				var response = await Write(() => _httpClient.Post<CollectionDeleteRequest, System.Text.Json.JsonElement>(_httpClient.Routes.Collection + "/delete", request, requestParams, cancellationToken), cancellationToken);
 				if (response.ValueKind == System.Text.Json.JsonValueKind.Object
 					&& response.TryGetProperty("deleted", out var count) && count.ValueKind == System.Text.Json.JsonValueKind.Number)
 				{
