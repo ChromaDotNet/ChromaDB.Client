@@ -57,6 +57,8 @@ public class CollectionSettingsServerTests : ChromaTestsBase
 		}
 	}
 
+	// The index comes from the answer of the server: a server that creates a SPANN index keeps the settings, as Chroma Cloud does; one
+	// that creates an HNSW index instead, as a single Chroma server does, makes the client refuse the collection and delete it.
 	[Test]
 	public async Task SpannSettings()
 	{
@@ -65,13 +67,70 @@ public class CollectionSettingsServerTests : ChromaTestsBase
 		var definition = new ChromaCollectionDefinition(name) { Configuration = new() { Space = ChromaSpace.Cosine, Spann = new() { SearchNprobe = 32, WriteNprobe = 16 } } };
 		if (ChromaCloud)
 		{
-			var spann = (await client.CreateCollectionAsync(definition)).ConfigurationJson!.Value.GetProperty("spann");
-			Assert.That((spann.GetProperty("space").GetString(), spann.GetProperty("search_nprobe").GetInt32(), spann.GetProperty("write_nprobe").GetInt32()), Is.EqualTo(("cosine", 32, 16)));
+			AssertSpannSettings(await client.CreateCollectionAsync(definition));
 			return;
 		}
 		Assume.That(IsChroma0 || NewConfigurationApplied, "Chroma 1.0.0 to 1.0.5 report no configuration: the client cannot tell that they ignore the SPANN settings.");
-		await Assert.ThatAsync(() => client.CreateCollectionAsync(definition), Throws.InstanceOf<ChromaException>().With.Message.Contains(IsChroma0 ? "1.0.0" : "HNSW"));
-		Assert.That(await client.CollectionExistsAsync(name), Is.False);
+		if (IsChroma0)
+		{
+			await Assert.ThatAsync(() => client.CreateCollectionAsync(definition), Throws.InstanceOf<ChromaException>().With.Message.Contains("1.0.0"));
+			Assert.That(await client.CollectionExistsAsync(name), Is.False);
+			return;
+		}
+		// Its own HttpClient, to read the answer: the collection it keeps is deleted here, not by the fixture.
+		var created = new CreatedIndex();
+		using var httpClient = new HttpClient(created);
+		var reading = new ChromaClient(BaseConfigurationOptions, httpClient);
+		ChromaCollection? collection = null;
+		ChromaException? refused = null;
+		try
+		{
+			collection = await reading.CreateCollectionAsync(definition);
+		}
+		catch (ChromaException ex)
+		{
+			refused = ex;
+		}
+		switch (created.Index)
+		{
+			case "spann":
+				Assert.That(refused, Is.Null);
+				await reading.DeleteCollectionAsync(name);
+				AssertSpannSettings(collection!);
+				break;
+			case "hnsw":
+				Assert.That(refused, Is.InstanceOf<ChromaException>().With.Message.Contains("HNSW"));
+				Assert.That(await reading.CollectionExistsAsync(name), Is.False);
+				break;
+			default:
+				Assert.Fail($"The server answered with no SPANN or HNSW index: {created.Index ?? "no collection"}.");
+				break;
+		}
+	}
+
+	static void AssertSpannSettings(ChromaCollection collection)
+	{
+		var spann = collection.ConfigurationJson!.Value.GetProperty("spann");
+		Assert.That((spann.GetProperty("space").GetString(), spann.GetProperty("search_nprobe").GetInt32(), spann.GetProperty("write_nprobe").GetInt32()), Is.EqualTo(("cosine", 32, 16)));
+	}
+
+	// The index of the configuration the server answers a new collection with: "spann", "hnsw", or what else it has.
+	sealed class CreatedIndex() : DelegatingHandler(new HttpClientHandler())
+	{
+		public string? Index { get; private set; }
+
+		protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+		{
+			var response = await base.SendAsync(request, cancellationToken);
+			if (request.Method == HttpMethod.Post && request.RequestUri!.AbsolutePath.TrimEnd('/').EndsWith("/collections", StringComparison.Ordinal) && response.IsSuccessStatusCode)
+			{
+				using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+				Index = body.RootElement.TryGetProperty("configuration_json", out var configuration) && configuration.ValueKind == JsonValueKind.Object
+					? string.Join(",", configuration.EnumerateObject().Where(x => x.Name is "spann" or "hnsw" && x.Value.ValueKind == JsonValueKind.Object).Select(x => x.Name))
+					: null;
+			}
+			return response;
+		}
 	}
 
 	[Test]
