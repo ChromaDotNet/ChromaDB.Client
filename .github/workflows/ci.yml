@@ -47,7 +47,7 @@ jobs:
           # and the features it declares in pre-flight-checks. A fixed preview: each new one comes with a pull request. A chroma value of
           # its own, so that the entry is a job of its own and is not merged into the one of 1.5.9.
           - chroma: 'vecturadb'
-            vecturadb: '1.0.0-preview.3'
+            vecturadb: '1.0.0-preview.5'
             expectations: '1.5.9'
     continue-on-error: ${{ matrix.chroma == 'latest' }}
     env:
