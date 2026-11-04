@@ -94,3 +94,33 @@ ChromaDB.Client.Models.ChromaPreFlightServer.Name.get -> string?
 ChromaDB.Client.Models.ChromaPreFlightServer.Name.init -> void
 ChromaDB.Client.Models.ChromaPreFlightServer.Version.get -> string?
 ChromaDB.Client.Models.ChromaPreFlightServer.Version.init -> void
+virtual ChromaDB.Client.ChromaCollectionClient.BeginConditionalTransaction() -> ChromaDB.Client.ChromaConditionalTransaction!
+virtual ChromaDB.Client.ChromaCollectionClient.RunConditionalTransactionAsync(System.Func<ChromaDB.Client.ChromaConditionalTransaction!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! operation, int maxRetries = 3, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+virtual ChromaDB.Client.ChromaCollectionClient.RunConditionalTransactionAsync<T>(System.Func<ChromaDB.Client.ChromaConditionalTransaction!, System.Threading.CancellationToken, System.Threading.Tasks.Task<T>!>! operation, int maxRetries = 3, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T>!
+ChromaDB.Client.ChromaConditionalTransaction
+ChromaDB.Client.ChromaConditionalTransaction.ChromaConditionalTransaction() -> void
+virtual ChromaDB.Client.ChromaConditionalTransaction.AddAsync(ChromaDB.Client.Models.ChromaRecords! records, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+virtual ChromaDB.Client.ChromaConditionalTransaction.AddAsync(System.Collections.Generic.IReadOnlyList<string!>! ids, System.Collections.Generic.IReadOnlyList<System.ReadOnlyMemory<float>>? embeddings = null, System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyDictionary<string!, object!>!>? metadatas = null, System.Collections.Generic.IReadOnlyList<string!>? documents = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+virtual ChromaDB.Client.ChromaConditionalTransaction.CommitAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaConditionalCommitResult!>!
+virtual ChromaDB.Client.ChromaConditionalTransaction.DeleteAsync(System.Collections.Generic.IReadOnlyList<string!>! ids, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+virtual ChromaDB.Client.ChromaConditionalTransaction.GetAsync(System.Collections.Generic.IReadOnlyList<string!>? ids = null, ChromaDB.Client.ChromaWhereOperator? where = null, ChromaDB.Client.ChromaWhereDocumentOperator? whereDocument = null, int? limit = null, int? offset = null, ChromaDB.Client.ChromaGetInclude? include = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ChromaDB.Client.Models.ChromaCollectionEntry!>!>!
+virtual ChromaDB.Client.ChromaConditionalTransaction.GetAsync(string! id, ChromaDB.Client.ChromaWhereOperator? where = null, ChromaDB.Client.ChromaWhereDocumentOperator? whereDocument = null, ChromaDB.Client.ChromaGetInclude? include = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Models.ChromaCollectionEntry?>!
+virtual ChromaDB.Client.ChromaConditionalTransaction.UpdateAsync(ChromaDB.Client.Models.ChromaRecords! records, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+virtual ChromaDB.Client.ChromaConditionalTransaction.UpdateAsync(System.Collections.Generic.IReadOnlyList<string!>! ids, System.Collections.Generic.IReadOnlyList<System.ReadOnlyMemory<float>>? embeddings = null, System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyDictionary<string!, object!>!>? metadatas = null, System.Collections.Generic.IReadOnlyList<string!>? documents = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+virtual ChromaDB.Client.ChromaConditionalTransaction.UpsertAsync(ChromaDB.Client.Models.ChromaRecords! records, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+virtual ChromaDB.Client.ChromaConditionalTransaction.UpsertAsync(System.Collections.Generic.IReadOnlyList<string!>! ids, System.Collections.Generic.IReadOnlyList<System.ReadOnlyMemory<float>>? embeddings = null, System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyDictionary<string!, object!>!>? metadatas = null, System.Collections.Generic.IReadOnlyList<string!>? documents = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ChromaDB.Client.Models.ChromaConditionalCommitResult
+ChromaDB.Client.Models.ChromaConditionalCommitResult.ChromaConditionalCommitResult() -> void
+ChromaDB.Client.Models.ChromaConditionalCommitResult.FirstInsertedRecordOffset.get -> long?
+ChromaDB.Client.Models.ChromaConditionalCommitResult.FirstInsertedRecordOffset.init -> void
+ChromaDB.Client.Models.ChromaConditionalCommitResult.RecordCount.get -> int
+ChromaDB.Client.Models.ChromaConditionalCommitResult.RecordCount.init -> void
+ChromaDB.Client.ChromaConditionalWriteConflictException
+ChromaDB.Client.ChromaConditionalWriteConflictException.ChromaConditionalWriteConflictException() -> void
+ChromaDB.Client.ChromaConditionalWriteConflictException.ChromaConditionalWriteConflictException(string? message) -> void
+ChromaDB.Client.ChromaConditionalWriteConflictException.ChromaConditionalWriteConflictException(string? message, System.Exception? inner) -> void
+ChromaDB.Client.ChromaStaleReadException
+ChromaDB.Client.ChromaStaleReadException.ChromaStaleReadException() -> void
+ChromaDB.Client.ChromaStaleReadException.ChromaStaleReadException(string? message) -> void
+ChromaDB.Client.ChromaStaleReadException.ChromaStaleReadException(string? message, System.Exception? inner) -> void
+virtual ChromaDB.Client.ChromaCollectionClient.AddFunctionInputAsync(string! name, System.Guid inputCollectionId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<(ChromaDB.Client.Models.ChromaAttachedFunction! AttachedFunction, bool Created)>!

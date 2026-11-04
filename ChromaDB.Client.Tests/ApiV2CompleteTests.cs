@@ -164,6 +164,26 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		Assert.That((await collection.GetIndexingStatusAsync()).TotalOps, Is.GreaterThanOrEqualTo(4));
 	}
 
+	// Another input collection for an asynchronous attached function, once; a synchronous function takes none.
+	[Test]
+	public async Task AddFunctionInput()
+	{
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var collection = client.GetCollectionClient(await client.CreateCollectionAsync($"collection{Random.Shared.Next()}"));
+		var input = await client.CreateCollectionAsync($"collection{Random.Shared.Next()}");
+		if (!AttachedFunctionsSupported)
+		{
+			await Assert.ThatAsync(() => collection.AddFunctionInputAsync("counter", input.Id), Throws.InstanceOf<ChromaException>());
+			return;
+		}
+		await collection.AttachFunctionAsync("dummy_async", "counter", $"output{Random.Shared.Next()}");
+		var (attached, created) = await collection.AddFunctionInputAsync("counter", input.Id);
+		Assert.That((attached.Name, attached.FunctionName, created), Is.EqualTo(("counter", "dummy_async", true)));
+		Assert.That((await collection.AddFunctionInputAsync("counter", input.Id)).Created, Is.False);
+		await collection.AttachFunctionAsync(ChromaFunctions.Statistics, "stats", $"output{Random.Shared.Next()}");
+		await Assert.ThatAsync(() => collection.AddFunctionInputAsync("stats", input.Id), Throws.InstanceOf<ChromaException>());
+	}
+
 	// On Chroma Cloud the tenant and the database of the API key; a single server, also one already running, always answers
 	// with the default ones.
 	[Test]

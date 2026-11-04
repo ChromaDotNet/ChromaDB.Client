@@ -5,6 +5,8 @@ A failed request throws a `ChromaException`, with the original exception as `Inn
 - `StatusCode` is the HTTP status of the answer, or null when there was no answer, like on a timeout.
 - `ErrorType` is the kind of error the server names: `NotFoundError` or `InvalidArgumentError` from Chroma 1.x, `InvalidCollection` from Chroma 0.5 and 0.6, `ValueError` from the v1 API of Chroma 0.4, or null when it names none.
 
+The conflict and the stale read of a [conditional transaction](conditional-transactions.md) are `ChromaException`s of their own: `ChromaConditionalWriteConflictException` (`409`) and `ChromaStaleReadException` (`412`).
+
 ```csharp
 if (!await client.CollectionExistsAsync("my_collection"))
 {

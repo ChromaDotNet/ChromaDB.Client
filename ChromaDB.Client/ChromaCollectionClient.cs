@@ -877,21 +877,14 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task AddAsync(ChromaRecords records, CancellationToken cancellationToken = default)
 	{
-		records = WithoutEmptyMetadatas(records);
 		// Before the collection of a client made by name is read: records that cannot go send no request.
-		ChromaRequestChecks.SameLengths(records, nameof(records));
-		ChromaRequestChecks.MetadataValues(records.Metadatas, nameof(records));
-		CheckGeneratedDocumentKey(records, update: false);
-		CheckDocumentsToEmbed(records);
+		records = CheckedRecords(records, update: false);
 		// The embeddings are computed once: a client made by name that runs the operation again on another collection keeps them.
 		Task<ChromaRecords>? withEmbeddings = null;
 		return Operation("add", cancellationToken, async () =>
 		{
-			var embedded = await (withEmbeddings ??= WithEmbeddings(records, cancellationToken));
-			ChromaRequestChecks.NoNullValues(records.Metadatas, nameof(records));
 			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
-			var prepared = WithSparseVectors(WithDocumentCopies(embedded, update: false));
-			await CheckListsInMetadata(prepared, cancellationToken);
+			var prepared = await PreparedAdd(records, await (withEmbeddings ??= WithEmbeddings(records, cancellationToken)), cancellationToken);
 			var base64 = prepared.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -946,22 +939,14 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task UpdateAsync(ChromaRecords records, CancellationToken cancellationToken = default)
 	{
-		records = WithoutEmptyMetadatas(records);
 		// Before the collection of a client made by name is read: records that cannot go send no request.
-		ChromaRequestChecks.SameLengths(records, nameof(records));
-		ChromaRequestChecks.MetadataValues(records.Metadatas, nameof(records));
-		CheckDocumentDeletions(records);
-		CheckGeneratedDocumentKey(records, update: true);
-		CheckDocumentsToEmbed(records);
+		records = CheckedRecords(records, update: true);
 		// The embeddings are computed once: a client made by name that runs the operation again on another collection keeps them.
 		Task<ChromaRecords>? withEmbeddings = null;
 		return Operation("update", cancellationToken, async () =>
 		{
-			var embedded = await (withEmbeddings ??= WithEmbeddings(records, cancellationToken));
 			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
-			// The sparse vectors before the deletions, which count every key that goes against the quota of Chroma Cloud.
-			var prepared = await WithDeletions(WithSparseVectors(WithDocumentMarks(WithDocumentCopies(embedded, update: true))), cancellationToken);
-			await CheckListsInMetadata(prepared, cancellationToken);
+			var prepared = await PreparedUpdate(await (withEmbeddings ??= WithEmbeddings(records, cancellationToken)), inTransaction: false, cancellationToken);
 			var base64 = prepared.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -1022,22 +1007,14 @@ public class ChromaCollectionClient
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	public virtual Task UpsertAsync(ChromaRecords records, CancellationToken cancellationToken = default)
 	{
-		records = WithoutEmptyMetadatas(records);
 		// Before the collection of a client made by name is read: records that cannot go send no request.
-		ChromaRequestChecks.SameLengths(records, nameof(records));
-		ChromaRequestChecks.MetadataValues(records.Metadatas, nameof(records));
-		CheckDocumentDeletions(records);
-		CheckGeneratedDocumentKey(records, update: true);
-		CheckDocumentsToEmbed(records);
+		records = CheckedRecords(records, update: true);
 		// The embeddings are computed once: a client made by name that runs the operation again on another collection keeps them.
 		Task<ChromaRecords>? withEmbeddings = null;
 		return Operation("upsert", cancellationToken, async () =>
 		{
-			var embedded = await (withEmbeddings ??= WithEmbeddings(records, cancellationToken));
 			// A local copy: a collection client made by name may run the operation again on another collection, from the records given.
-			// The sparse vectors before the deletions, which count every key that goes against the quota of Chroma Cloud.
-			var prepared = await WithDeletions(WithSparseVectors(WithDocumentMarks(WithDocumentCopies(embedded, update: true))), cancellationToken);
-			await CheckListsInMetadata(prepared, cancellationToken);
+			var prepared = await PreparedUpdate(await (withEmbeddings ??= WithEmbeddings(records, cancellationToken)), inTransaction: false, cancellationToken);
 			var base64 = prepared.Embeddings is not null && await _httpClient.SupportsBase64Embeddings(cancellationToken);
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -1061,6 +1038,39 @@ public class ChromaCollectionClient
 				await Write(() => _httpClient.Post(_httpClient.Routes.Collection + "/upsert", request, requestParams, cancellationToken), cancellationToken);
 			}, cancellationToken);
 		});
+	}
+
+	// The checks of the records of AddAsync, UpdateAsync and UpsertAsync, and of the writes of a conditional transaction, before any request.
+	private ChromaRecords CheckedRecords(ChromaRecords records, bool update)
+	{
+		records = WithoutEmptyMetadatas(records);
+		ChromaRequestChecks.SameLengths(records, nameof(records));
+		ChromaRequestChecks.MetadataValues(records.Metadatas, nameof(records));
+		if (update)
+		{
+			CheckDocumentDeletions(records);
+		}
+		CheckGeneratedDocumentKey(records, update);
+		CheckDocumentsToEmbed(records);
+		return records;
+	}
+
+	// The records of an add as they go, from the records given and their embeddings: AddAsync, and the add of a conditional transaction.
+	private async Task<ChromaRecords> PreparedAdd(ChromaRecords records, ChromaRecords embedded, CancellationToken cancellationToken)
+	{
+		ChromaRequestChecks.NoNullValues(records.Metadatas, nameof(records));
+		var prepared = WithSparseVectors(WithDocumentCopies(embedded, update: false));
+		await CheckListsInMetadata(prepared, cancellationToken);
+		return prepared;
+	}
+
+	// The records of an update or an upsert as they go, from the records given with their embeddings: UpdateAsync and UpsertAsync, and those
+	// of a conditional transaction. The sparse vectors before the deletions, which count every key that goes against the quota of Chroma Cloud.
+	private async Task<ChromaRecords> PreparedUpdate(ChromaRecords embedded, bool inTransaction, CancellationToken cancellationToken)
+	{
+		var prepared = await WithDeletions(WithSparseVectors(WithDocumentMarks(WithDocumentCopies(embedded, update: true))), inTransaction, cancellationToken);
+		await CheckListsInMetadata(prepared, cancellationToken);
+		return prepared;
 	}
 
 	// With a generator, records without embeddings get them from their documents, so each needs a document: a null one, which keeps the
@@ -1226,8 +1236,9 @@ public class ChromaCollectionClient
 	// deletion key or empty document deletions gets here (CheckDocumentDeletions); with a copy or a mark it reads that empty document as
 	// none. Chroma Cloud counts a null against its quota of keys, and a sparse vector too: when the values, the sparse vectors that
 	// WithSparseVectors computed and the nulls would take the metadata of a record beyond it, the write throws before it goes, or with
-	// ReadsBeyondKeyQuota the client reads that record first and sends the nulls only to the keys it has.
-	private async Task<ChromaRecords> WithDeletions(ChromaRecords records, CancellationToken cancellationToken)
+	// ReadsBeyondKeyQuota the client reads that record first and sends the nulls only to the keys it has; a conditional transaction reads
+	// only with its own reads, so there the write throws.
+	private async Task<ChromaRecords> WithDeletions(ChromaRecords records, bool inTransaction, CancellationToken cancellationToken)
 	{
 		var count = records.Ids.Count;
 		var indexes = _collection.SparseVectorIndexes.Where(index => index.SourceKey is not null && index.EmbeddingFunction is not null).ToList();
@@ -1259,9 +1270,10 @@ public class ChromaCollectionClient
 			var keyCount = keys is null ? 0 : (metadata?.Count(pair => !keys.Contains(pair.Key)) ?? 0) + keys.Count;
 			if (_httpClient.IsChromaCloud && keyCount > ChromaCloudQuotas.MaxMetadataKeys)
 			{
-				if (!_httpClient.ReadsBeyondKeyQuota)
+				if (inTransaction || !_httpClient.ReadsBeyondKeyQuota)
 				{
-					throw new ArgumentException($"Record \"{records.Ids[i]}\" would take {keyCount} metadata keys to Chroma Cloud, beyond its quota of {ChromaCloudQuotas.MaxMetadataKeys}: its values and nulls, with the keys that the client adds, like the copy of the document, the mark of a deleted document and the BM25 sparse vectors. Send fewer keys or fewer nulls, or use ChromaConfigurationOptions.WithReadsBeyondKeyQuota() in the options of the ChromaClient: it reads the record first and sends only the nulls of the keys it has, but then two writes of the same record at the same time can mix.", nameof(records));
+					throw new ArgumentException($"Record \"{records.Ids[i]}\" would take {keyCount} metadata keys to Chroma Cloud, beyond its quota of {ChromaCloudQuotas.MaxMetadataKeys}: its values and nulls, with the keys that the client adds, like the copy of the document, the mark of a deleted document and the BM25 sparse vectors. Send fewer keys or fewer nulls"
+						+ (inTransaction ? ": in a conditional transaction the client does not read the record first." : ", or use ChromaConfigurationOptions.WithReadsBeyondKeyQuota() in the options of the ChromaClient: it reads the record first and sends only the nulls of the keys it has, but then two writes of the same record at the same time can mix."), nameof(records));
 				}
 				keysRead[i] = true;
 			}
@@ -1719,6 +1731,206 @@ public class ChromaCollectionClient
 			return deleted;
 		}));
 	}
+
+	/// <summary>
+	/// Begins a conditional transaction on the records of the collection: its reads go at once, and its writes wait until its
+	/// <c>CommitAsync</c>, which the server applies only if no record that the transaction read or writes changed after its reads. It
+	/// sends no request. <c>RunConditionalTransactionAsync</c> runs a transaction, commits it, and runs it again after a conflict. Chroma
+	/// Cloud has conditional transactions; Chroma 1.5.9 does not.
+	/// </summary>
+	/// <returns>The transaction.</returns>
+	public virtual ChromaConditionalTransaction BeginConditionalTransaction()
+		=> new(this);
+
+	/// <summary>
+	/// Runs the operation in a new conditional transaction and commits it, as <c>collection.conditional().run()</c> of the Python and
+	/// JavaScript clients of Chroma. After a <c>ChromaConditionalWriteConflictException</c>, a <c>ChromaStaleReadException</c> or a
+	/// <c>429</c> <c>Backoff</c>, of the commit or of an operation of the transaction that the operation throws on, it runs the operation
+	/// again in a new transaction, at once, up to <c>maxRetries</c> times; then the error stands. Any other error stands at once, and
+	/// none of the writes goes. The operation cannot commit the transaction.
+	/// </summary>
+	/// <typeparam name="T">The type of the result of the operation.</typeparam>
+	/// <param name="operation">The reads and the writes of the transaction, with the token that cancels them.</param>
+	/// <param name="maxRetries">How many times the operation runs again at most: 0 runs it once.</param>
+	/// <param name="cancellationToken">The token that cancels the operation.</param>
+	/// <returns>The result of the operation, once the transaction is committed.</returns>
+	public virtual Task<T> RunConditionalTransactionAsync<T>(Func<ChromaConditionalTransaction, CancellationToken, Task<T>> operation, int maxRetries = 3, CancellationToken cancellationToken = default)
+	{
+		if (operation is null)
+		{
+			throw new ArgumentNullException(nameof(operation));
+		}
+		if (maxRetries < 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(maxRetries), "The retries of a conditional transaction cannot be negative.");
+		}
+		return RunConditionalTransaction(operation, maxRetries, cancellationToken);
+	}
+
+	/// <summary>
+	/// Runs the operation in a new conditional transaction and commits it, as <c>RunConditionalTransactionAsync&lt;T&gt;</c> does, for an
+	/// operation without a result.
+	/// </summary>
+	/// <param name="operation">The reads and the writes of the transaction, with the token that cancels them.</param>
+	/// <param name="maxRetries">How many times the operation runs again at most: 0 runs it once.</param>
+	/// <param name="cancellationToken">The token that cancels the operation.</param>
+	public virtual Task RunConditionalTransactionAsync(Func<ChromaConditionalTransaction, CancellationToken, Task> operation, int maxRetries = 3, CancellationToken cancellationToken = default)
+	{
+		if (operation is null)
+		{
+			throw new ArgumentNullException(nameof(operation));
+		}
+		return RunConditionalTransactionAsync(async (transaction, token) =>
+		{
+			await operation(transaction, token);
+			return true;
+		}, maxRetries, cancellationToken);
+	}
+
+	// As the Python client of Chroma: the operation runs again after an error of an operation of the transaction only when it throws that
+	// same error on, and after a refused commit.
+	private async Task<T> RunConditionalTransaction<T>(Func<ChromaConditionalTransaction, CancellationToken, Task<T>> operation, int maxRetries, CancellationToken cancellationToken)
+	{
+		for (var attempt = 0; ; attempt++)
+		{
+			var transaction = BeginConditionalTransaction();
+			T result;
+			transaction.CommitBlockedByRun = true;
+			try
+			{
+				result = await operation(transaction, cancellationToken);
+			}
+			catch (ChromaException ex) when (attempt < maxRetries && ReferenceEquals(ex, transaction.RetryableError))
+			{
+				continue;
+			}
+			finally
+			{
+				transaction.CommitBlockedByRun = false;
+			}
+			try
+			{
+				await transaction.CommitAsync(cancellationToken);
+			}
+			catch (ChromaException ex) when (attempt < maxRetries && ChromaConditionalTransaction.IsRetryable(ex))
+			{
+				continue;
+			}
+			return result;
+		}
+	}
+
+	// A read of a conditional transaction: one request to conditional/get with the read token of the transaction, without the pages and
+	// the batches of GetAsync, as the clients of Chroma read in a transaction; the records are read as GetAsync reads them, with a document
+	// copy key or a document deletion key.
+	internal Task<IReadOnlyList<ChromaCollectionEntry>> ConditionalGet(ChromaConditionalTransaction transaction, IReadOnlyList<string>? ids, ChromaWhereOperator? where, ChromaWhereDocumentOperator? whereDocument, int? limit, int? offset, ChromaGetInclude? include, CancellationToken cancellationToken)
+	{
+		if (limit < 0 || offset < 0)
+		{
+			throw new ArgumentOutOfRangeException(limit < 0 ? nameof(limit) : nameof(offset), "The limit and the offset of a get cannot be negative.");
+		}
+		var split = ChromaWhereOperator.Split(where, whereDocument, ids);
+		CheckDocumentFilters(() => split.WhereDocument?.ToRequestWhereDocument(), document: true, nameof(whereDocument));
+		if (split.Where == ChromaWhereOperator.None)
+		{
+			return Task.FromResult<IReadOnlyList<ChromaCollectionEntry>>([]);
+		}
+		transaction.CheckRead(split.Ids, limit);
+		// As GetAsync, no more records than the ids: a limit beyond them, like 1000, goes over the quota of 300 of Chroma Cloud.
+		var asked = split.Ids is { Count: > 0 } given && limit > given.Count ? given.Count : limit;
+		return WithRegexQuota(() => [(split.WhereDocument?.ToRequestWhereDocument(), true)], Operation<IReadOnlyList<ChromaCollectionEntry>>("conditional_get", cancellationToken, async () =>
+		{
+			transaction.Scope(_collection.Id);
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			var included = include ?? ChromaGetInclude.Metadatas | ChromaGetInclude.Documents;
+			var copy = ReadsDocuments(included.HasFlag(ChromaGetInclude.Documents), included.HasFlag(ChromaGetInclude.Metadatas));
+			var request = new ConditionalGetRequest()
+			{
+				Ids = split.Ids,
+				Where = ChromaWhereOperator.ToRequestWhere(split.Where),
+				WhereDocument = split.WhereDocument?.ToRequestWhereDocument(),
+				Limit = asked,
+				Offset = offset,
+				Include = (copy.ReadsMetadata ? included | ChromaGetInclude.Metadatas : included).ToInclude(),
+				ReadToken = transaction.ReadToken,
+			};
+			var response = await Read(async () =>
+			{
+				var answer = await _httpClient.Post<ConditionalGetRequest, ConditionalGetResponse>(_httpClient.Routes.Collection + "/conditional/get", request, requestParams, cancellationToken);
+				answer.Checked("get");
+				return answer;
+			}, cancellationToken);
+			// The answer has every record of the ids only without filters, without an offset and without a limit below their number.
+			var complete = request.Where is not { Count: > 0 } && request.WhereDocument is not { Count: > 0 } && offset is null or 0
+				&& (request.Limit is null || request.Limit >= request.Ids?.Distinct().Count());
+			transaction.RecordRead(_collection.Id, request.Ids, complete, response.Ids, response.ReadToken);
+			return response.Map(copy);
+		}));
+	}
+
+	// A write of a conditional transaction: the records go through the checks and the preparation of AddAsync, UpdateAsync or UpsertAsync,
+	// without the reads of ReadsBeyondKeyQuota and of UpsertStrategy, and wait for the commit as the request that the write would send, with
+	// the embeddings as numbers, as the Python client of Chroma sends them in a transaction.
+	internal Task ConditionalWrite(ChromaConditionalTransaction transaction, string operation, ChromaRecords records, CancellationToken cancellationToken)
+	{
+		var update = operation != "add";
+		records = CheckedRecords(records, update);
+		transaction.CheckWrite(operation, records.Ids, nameof(records));
+		// The embeddings are computed once: a client made by name that runs the operation again keeps them.
+		Task<ChromaRecords>? withEmbeddings = null;
+		return Operation($"conditional_{operation}", cancellationToken, async () =>
+		{
+			transaction.Scope(_collection.Id);
+			// The writes of a transaction go in one request, its commit: a write beyond the records that the server takes in one request
+			// throws, as in the Python client of Chroma. Those are the max_batch_size of the server, the quota of Chroma Cloud and the quota
+			// it enforced, not the batch size of the caller, which only splits the writes outside a transaction.
+			if (new[] { _httpClient.IsChromaCloud ? ChromaCloudQuotas.MaxRecordsPerRequest : (int?)null, await _httpClient.GetMaxBatchSize(cancellationToken), _httpClient.RecordsLimit }.Min() is { } size
+				&& records.Ids.Count > size)
+			{
+				throw new ArgumentException($"The {operation} has {records.Ids.Count} records, beyond the {size} that the server takes in one request: the writes of a conditional transaction go in one request.", nameof(records));
+			}
+			var embedded = await (withEmbeddings ??= WithEmbeddings(records, cancellationToken));
+			var prepared = update ? await PreparedUpdate(embedded, inTransaction: true, cancellationToken) : await PreparedAdd(records, embedded, cancellationToken);
+			var embeddings = prepared.Embeddings is { } given ? new ChromaEmbeddings(given, base64: false) : null;
+			var metadatas = MetadatasOrNone(prepared.Metadatas);
+			var payload = operation switch
+			{
+				"add" => Serialize(new CollectionAddRequest() { Ids = prepared.Ids, Embeddings = embeddings, Metadatas = metadatas, Documents = prepared.Documents, Uris = prepared.Uris }),
+				"update" => Serialize(new CollectionUpdateRequest() { Ids = prepared.Ids, Embeddings = embeddings, Metadatas = metadatas, Documents = prepared.Documents, Uris = prepared.Uris }),
+				_ => Serialize(new CollectionUpsertRequest() { Ids = prepared.Ids, Embeddings = embeddings, Metadatas = metadatas, Documents = prepared.Documents, Uris = prepared.Uris }),
+			};
+			transaction.Buffer(_collection.Id, operation, records.Ids, payload, nameof(records));
+		});
+	}
+
+	// A delete of a conditional transaction waits for the commit as the request of DeleteAsync with the ids only.
+	internal Task ConditionalDelete(ChromaConditionalTransaction transaction, IReadOnlyList<string> ids, CancellationToken cancellationToken)
+		=> Operation("conditional_delete", cancellationToken, () =>
+		{
+			transaction.Scope(_collection.Id);
+			transaction.Buffer(_collection.Id, "delete", ids, Serialize(new CollectionDeleteRequest() { Ids = ids }), nameof(ids));
+			return Task.CompletedTask;
+		});
+
+	// The commit of a conditional transaction: one request to conditional/commit, which goes once, as in the clients of Chroma; after a
+	// conflict, a stale read or a Backoff, RunConditionalTransactionAsync runs the transaction again.
+	internal Task<ChromaConditionalCommitResult> ConditionalCommit(ChromaConditionalTransaction transaction, ConditionalCommitRequest request, CancellationToken cancellationToken)
+		=> Operation("conditional_commit", cancellationToken, async () =>
+		{
+			transaction.Scope(_collection.Id);
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id);
+			return await _httpClient.Post<ConditionalCommitRequest, ChromaConditionalCommitResult>(_httpClient.Routes.Collection + "/conditional/commit", request, requestParams, cancellationToken);
+		});
+
+	// The request of a write, as it would go, for the commit of a conditional transaction.
+	private static System.Text.Json.JsonElement Serialize<T>(T request)
+		=> System.Text.Json.JsonSerializer.SerializeToElement(request, HttpClientHelpers.PostJsonSerializerOptions.TypeInfo<T>());
 
 	/// <summary>
 	/// Counts the records of the collection.
@@ -2180,6 +2392,31 @@ public class ChromaCollectionClient
 				DeleteOutput = deleteOutputCollection,
 			};
 			return (await _httpClient.Post<DetachFunctionRequest, DetachFunctionResponse>(_httpClient.Routes.Collection + "/attached_functions/{function_name}/detach", request, requestParams, cancellationToken)).Success;
+		});
+
+	/// <summary>
+	/// Adds the collection with the id as another input of the asynchronous function attached to this collection under the name, as
+	/// <c>AttachedFunction.add_input</c> of the Python client of Chroma: the function runs on the records of both. The server rejects it for
+	/// a synchronous function. <c>Created</c> is false when the collection was an input of the function already. Chroma Cloud only.
+	/// </summary>
+	/// <param name="name">The name of the attached function.</param>
+	/// <param name="inputCollectionId">The id of the collection to add as an input.</param>
+	/// <param name="cancellationToken">The token that cancels the operation.</param>
+	/// <returns>The attached function as the server answers, and whether the input was added now.</returns>
+	public virtual Task<(ChromaAttachedFunction AttachedFunction, bool Created)> AddFunctionInputAsync(string name, Guid inputCollectionId, CancellationToken cancellationToken = default)
+		=> Operation("add_attached_function_input", cancellationToken, async () =>
+		{
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id)
+				.Insert("{function_name}", name);
+			var request = new AddFunctionInputRequest()
+			{
+				InputCollectionId = inputCollectionId,
+			};
+			var response = await _httpClient.Post<AddFunctionInputRequest, AttachFunctionResponse>(_httpClient.Routes.Collection + "/attached_functions/{function_name}/add_input", request, requestParams, cancellationToken);
+			return (response.AttachedFunction, response.Created ?? true);
 		});
 
 	/// <summary>

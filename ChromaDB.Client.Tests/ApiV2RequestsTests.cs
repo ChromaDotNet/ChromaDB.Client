@@ -271,6 +271,21 @@ public class ApiV2RequestsTests
 		Assert.That(server.Requests.Single().Body.GetProperty("delete_output").GetBoolean(), Is.True);
 	}
 
+	[TestCase(""","created":true""", true)]
+	[TestCase(""","created":false""", false)]
+	[TestCase("", true)]
+	public async Task AddFunctionInput(string created, bool expected)
+	{
+		var input = Guid.Parse("22222222-2222-3333-4444-555555555555");
+		var server = new FakeServer(_ => (HttpStatusCode.OK, $$"""{"attached_function":{"id":"33333333-2222-3333-4444-555555555555","name":"counter","function_name":"dummy_async","input_collection_id":"{{Id}}","output_collection":"counts"}{{created}}}"""));
+		var (attached, added) = await CollectionClient(server).AddFunctionInputAsync("counter", input);
+		var request = server.Requests.Single();
+		Assert.That(request.Line, Is.EqualTo($"POST {CollectionPath}/attached_functions/counter/add_input"));
+		Assert.That(request.Body.GetRawText(), Is.EqualTo("""{"input_collection_id":"22222222-2222-3333-4444-555555555555"}"""));
+		Assert.That((attached.Name, attached.FunctionName, attached.InputCollectionId, attached.OutputCollection, added), Is.EqualTo(("counter", "dummy_async", (Guid?)Id, "counts", expected)));
+		Assert.That(ChromaDB.Client.Common.ChromaJsonContext.Default.GetTypeInfo(typeof(Models.Requests.AddFunctionInputRequest)), Is.Not.Null, "generated, for trimming and NativeAOT");
+	}
+
 	// Like the CloudClient of the Python client of Chroma: the tenant unless it is "*", the database only when there is exactly one.
 	[TestCase("""{"tenant":"t1","databases":["d1"]}""", "t1", "d1")]
 	[TestCase("""{"tenant":"t1","databases":["d1","d1"]}""", "t1", "d1")]

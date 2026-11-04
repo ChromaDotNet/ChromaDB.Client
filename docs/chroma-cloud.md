@@ -41,6 +41,14 @@ await collectionClient.DetachFunctionAsync("my_stats", deleteOutputCollection: t
 The functions of Chroma Cloud, `ChromaFunctions.Statistics` and `ChromaFunctions.RecordCounter`, run on the records of a collection and write their results to an output collection.
 
 ```csharp
+var (function, added) = await collectionClient.AddFunctionInputAsync("my_async_function", otherCollection.Id);
+```
+
+`AddFunctionInputAsync` adds another input collection to an asynchronous function, as `AttachedFunction.add_input` of the Python client: the function then runs on the records of both. `added` is false when the collection was an input already. A synchronous function, like `ChromaFunctions.Statistics`, takes no other input.
+
+[Conditional transactions](conditional-transactions.md) exist on Chroma Cloud too.
+
+```csharp
 await client.UpdateTenantAsync("my_tenant", resourceName: "my_org");
 var collection = await client.GetCollectionByCrnAsync("my_org:my_database:my_collection");
 ```

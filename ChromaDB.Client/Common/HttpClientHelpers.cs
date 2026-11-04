@@ -186,7 +186,17 @@ internal static partial class HttpClientHelpers
 			// Works around KD-41 (docs/COMPATIBILITY.md)
 			return new ChromaException($"{message ?? httpResponseMessage.StatusCode.ToString()}: {httpRequestMessage.Method} {httpRequestMessage.RequestUri?.AbsolutePath}") { StatusCode = httpResponseMessage.StatusCode, ErrorType = errorType };
 		}
-		return new ChromaException(message ?? $"Unexpected status code: {httpResponseMessage.StatusCode}.") { StatusCode = httpResponseMessage.StatusCode, ErrorType = errorType, RetryAfter = RetryAfter(httpResponseMessage) };
+		var text = message ?? $"Unexpected status code: {httpResponseMessage.StatusCode}.";
+		// A conflict and a stale read of a conditional transaction, as the JavaScript client of Chroma tells them: Chroma Cloud names a
+		// conflict ChromaError, with the message "conditional write conflict".
+		return (int)httpResponseMessage.StatusCode switch
+		{
+			409 when errorType == "ConditionalWriteConflictError" || message == "conditional write conflict"
+				=> new ChromaConditionalWriteConflictException(text) { StatusCode = httpResponseMessage.StatusCode, ErrorType = errorType, RetryAfter = RetryAfter(httpResponseMessage) },
+			412 when errorType == "StaleReadError"
+				=> new ChromaStaleReadException(text) { StatusCode = httpResponseMessage.StatusCode, ErrorType = errorType, RetryAfter = RetryAfter(httpResponseMessage) },
+			_ => new ChromaException(text) { StatusCode = httpResponseMessage.StatusCode, ErrorType = errorType, RetryAfter = RetryAfter(httpResponseMessage) },
+		};
 	}
 
 	// The Retry-After of an answer, in seconds or as a date, as a delay from now; a date gone is no delay.
