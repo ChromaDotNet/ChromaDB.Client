@@ -34,6 +34,7 @@ namespace ChromaDB.Client.Common;
 [JsonSerializable(typeof(AttachFunctionResponse))]
 [JsonSerializable(typeof(GetAttachedFunctionResponse))]
 [JsonSerializable(typeof(DetachFunctionResponse))]
+[JsonSerializable(typeof(AddFunctionInputRequest))]
 [JsonSerializable(typeof(ConditionalGetRequest))]
 [JsonSerializable(typeof(ConditionalGetResponse))]
 [JsonSerializable(typeof(ConditionalCommitRequest))]

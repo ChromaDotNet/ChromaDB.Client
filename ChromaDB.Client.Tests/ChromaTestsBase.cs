@@ -38,6 +38,8 @@ public abstract class ChromaTestsBase
 	protected static bool IndexingStatusSupported => ChromaCloud || Declares("indexing_status");
 	// The conditional transactions.
 	protected static bool ConditionalTransactionsSupported => ChromaCloud || Declares("conditional_transactions");
+	// The attached functions, with more inputs for an asynchronous one.
+	protected static bool AttachedFunctionsSupported => ChromaCloud || Declares("attached_functions");
 
 	// CHROMA_TEST_API_VERSION=v1 runs the tests with the v1 API, the only one of Chroma 0.5.15 and earlier.
 	protected static readonly ChromaApiVersion ApiVersion = Environment.GetEnvironmentVariable("CHROMA_TEST_API_VERSION") is "v1" ? ChromaApiVersion.V1 : ChromaApiVersion.V2;

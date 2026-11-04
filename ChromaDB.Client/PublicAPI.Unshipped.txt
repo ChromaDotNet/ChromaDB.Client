@@ -123,3 +123,4 @@ ChromaDB.Client.ChromaStaleReadException
 ChromaDB.Client.ChromaStaleReadException.ChromaStaleReadException() -> void
 ChromaDB.Client.ChromaStaleReadException.ChromaStaleReadException(string? message) -> void
 ChromaDB.Client.ChromaStaleReadException.ChromaStaleReadException(string? message, System.Exception? inner) -> void
+virtual ChromaDB.Client.ChromaCollectionClient.AddFunctionInputAsync(string! name, System.Guid inputCollectionId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<(ChromaDB.Client.Models.ChromaAttachedFunction! AttachedFunction, bool Created)>!

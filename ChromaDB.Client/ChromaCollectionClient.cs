@@ -2395,6 +2395,31 @@ public class ChromaCollectionClient
 		});
 
 	/// <summary>
+	/// Adds the collection with the id as another input of the asynchronous function attached to this collection under the name, as
+	/// <c>AttachedFunction.add_input</c> of the Python client of Chroma: the function runs on the records of both. The server rejects it for
+	/// a synchronous function. <c>Created</c> is false when the collection was an input of the function already. Chroma Cloud only.
+	/// </summary>
+	/// <param name="name">The name of the attached function.</param>
+	/// <param name="inputCollectionId">The id of the collection to add as an input.</param>
+	/// <param name="cancellationToken">The token that cancels the operation.</param>
+	/// <returns>The attached function as the server answers, and whether the input was added now.</returns>
+	public virtual Task<(ChromaAttachedFunction AttachedFunction, bool Created)> AddFunctionInputAsync(string name, Guid inputCollectionId, CancellationToken cancellationToken = default)
+		=> Operation("add_attached_function_input", cancellationToken, async () =>
+		{
+			var requestParams = new RequestQueryParams()
+				.Insert("{tenant}", _tenant)
+				.Insert("{database}", _database)
+				.Insert("{collection_id}", _collection.Id)
+				.Insert("{function_name}", name);
+			var request = new AddFunctionInputRequest()
+			{
+				InputCollectionId = inputCollectionId,
+			};
+			var response = await _httpClient.Post<AddFunctionInputRequest, AttachFunctionResponse>(_httpClient.Routes.Collection + "/attached_functions/{function_name}/add_input", request, requestParams, cancellationToken);
+			return (response.AttachedFunction, response.Created ?? true);
+		});
+
+	/// <summary>
 	/// Gets up to <c>limit</c> records of the collection, with a get that sets only the limit.
 	/// </summary>
 	/// <param name="limit">How many records to return.</param>
