@@ -40,6 +40,8 @@ await collectionClient.DetachFunctionAsync("my_stats", deleteOutputCollection: t
 
 The functions of Chroma Cloud, `ChromaFunctions.Statistics` and `ChromaFunctions.RecordCounter`, run on the records of a collection and write their results to an output collection.
 
+[Conditional transactions](conditional-transactions.md) exist on Chroma Cloud too.
+
 ```csharp
 await client.UpdateTenantAsync("my_tenant", resourceName: "my_org");
 var collection = await client.GetCollectionByCrnAsync("my_org:my_database:my_collection");

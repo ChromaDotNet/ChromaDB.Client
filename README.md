@@ -112,6 +112,7 @@ The [compatibility table](https://chromadotnet.org/compatibility/) shows every c
 - [Upsert strategies](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/upsert-strategies.md): `Server` and `SkipUnchangedEmbeddings`.
 - [Index settings](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/index-settings.md): the distance, the HNSW and SPANN settings, `ModifyConfigurationAsync`.
 - [Errors](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/errors.md): `ChromaException` and `CollectionExistsAsync`.
+- [Conditional transactions](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/conditional-transactions.md): `RunConditionalTransactionAsync`, `BeginConditionalTransaction` and their rules.
 - [Mocks in tests](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/mocking.md): mocking `ChromaClient` and `ChromaCollectionClient`.
 - [Health, traces and metrics](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/observability.md): `HealthcheckAsync` and OpenTelemetry.
 - [Chroma Cloud](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/chroma-cloud.md): options, identity, batches, quotas and the operations of Chroma Cloud.
