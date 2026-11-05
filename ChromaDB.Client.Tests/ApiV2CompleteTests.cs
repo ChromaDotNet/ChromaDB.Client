@@ -49,9 +49,10 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		Assert.That((await collection.GetAsync(whereDocument: ChromaWhereDocumentOperator.NotRegex("^apple"))).Select(x => x.Id), Is.EquivalentTo(new[] { "b", "c" }));
 	}
 
-	// KD-56: on Chroma Cloud a pattern that takes an empty text, and a $contains of fewer than 3 characters, throw before the request, also
-	// in a delete, which would delete every record. On every server Regex("(?s).") finds the records with a document that is not empty,
-	// also of only a new line, NotRegex("(?s).") the others, and a $regex with a short text the documents that contain it.
+	// KD-56 and KD-57: on distributed Chroma, the one Chroma Cloud runs on, a pattern that takes an empty text, and a $contains of fewer
+	// than 3 characters, throw before the request, also in a delete, which would delete every record. On every server Regex("(?s).")
+	// finds the records with a document that is not empty, also of only a new line, NotRegex("(?s).") the others, and a $regex with a
+	// short text the documents that contain it.
 	[Test]
 	public async Task DocumentFiltersThatChromaCloudGetsWrong()
 	{
@@ -65,7 +66,7 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		});
 		var empty = ChromaWhereDocumentOperator.Regex("^$");
 		var shortText = ChromaWhereDocumentOperator.Contains("ab");
-		if (ChromaCloud)
+		if (DistributedChroma)
 		{
 			Assert.That(() => collection.GetAsync(whereDocument: empty), Throws.ArgumentException.With.Message.Contains("takes an empty text"));
 			Assert.That(() => collection.GetAsync(whereDocument: ChromaWhereDocumentOperator.Regex("^[[:alpha:]]*$")), Throws.ArgumentException);
@@ -110,21 +111,21 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		Assert.That((await collection.GetAsync()).Select(x => x.Id), Is.EquivalentTo(new[] { "b", "c" }));
 	}
 
-	// A single server indexes at once; Chroma Cloud may leave out of IndexOnly the records not indexed yet.
+	// A single server indexes at once; distributed Chroma, Chroma Cloud included, may leave out of IndexOnly the records not indexed yet.
 	[Test]
 	public async Task CountAtAReadLevel()
 	{
 		var collection = await Init();
 		Assert.That(await collection.CountAsync(ChromaReadLevel.IndexAndWal), Is.EqualTo(4));
-		Assert.That(await collection.CountAsync(ChromaReadLevel.IndexOnly), ChromaCloud ? Is.InRange(0, 4) : Is.EqualTo(4));
+		Assert.That(await collection.CountAsync(ChromaReadLevel.IndexOnly), DistributedChroma ? Is.InRange(0, 4) : Is.EqualTo(4));
 	}
 
-	// A single server has an HNSW index, Chroma Cloud a SPANN one.
+	// A single server has an HNSW index, distributed Chroma a SPANN one, Chroma Cloud included.
 	[Test]
 	public async Task ModifyConfiguration()
 	{
 		var collection = await Init();
-		var update = ChromaCloud
+		var update = DistributedChroma
 			? new ChromaCollectionConfigurationUpdate { Spann = new() { SearchNprobe = 32 } }
 			: new ChromaCollectionConfigurationUpdate { Hnsw = new() { EfSearch = 200 } };
 		if (!NewConfigurationApplied)
@@ -134,9 +135,9 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		}
 		await collection.ModifyConfigurationAsync(update);
 		var configuration = (await new ChromaClient(BaseConfigurationOptions, HttpClient).GetCollectionAsync(collection.Collection.Name)).ConfigurationJson!.Value;
-		Assert.That(ChromaCloud
+		Assert.That(DistributedChroma
 			? configuration.GetProperty("spann").GetProperty("search_nprobe").GetInt32()
-			: configuration.GetProperty("hnsw").GetProperty("ef_search").GetInt32(), Is.EqualTo(ChromaCloud ? 32 : 200));
+			: configuration.GetProperty("hnsw").GetProperty("ef_search").GetInt32(), Is.EqualTo(DistributedChroma ? 32 : 200));
 	}
 
 	// Fork and its count, and the indexing status, exist on Chroma Cloud and on the servers that declare them: any other single server
