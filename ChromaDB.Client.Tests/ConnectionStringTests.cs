@@ -39,6 +39,27 @@ public class ConnectionStringTests
 		Assert.That(ChromaConfigurationOptions.FromConnectionString("Endpoint=http://localhost:8000;Token=\"a;b\"").ChromaToken, Is.EqualTo("a;b"));
 	}
 
+	// Distributed=true says that the server is distributed Chroma, as WithDistributedChroma does; without it, or empty, it is not.
+	[TestCase("Endpoint=http://chroma:8000;Distributed=true", true)]
+	[TestCase("Endpoint=http://chroma:8000;distributed=True", true)]
+	[TestCase("Endpoint=http://chroma:8000;Distributed=false", false)]
+	[TestCase("Endpoint=http://chroma:8000;Distributed=", false)]
+	[TestCase("Endpoint=http://chroma:8000", false)]
+	public void Distributed(string connectionString, bool distributed)
+	{
+		var options = ChromaConfigurationOptions.FromConnectionString(connectionString);
+		Assert.That((options.IsDistributedChroma, options.IsChromaCloud), Is.EqualTo((distributed, false)));
+	}
+
+	// Another value of Distributed has its message, which does not repeat the token.
+	[TestCase("Endpoint=http://chroma:8000;Token=ck-123;Distributed=yes")]
+	[TestCase("Endpoint=http://chroma:8000;Token=ck-123;Distributed=1")]
+	public void DistributedNotTrueOrFalse(string connectionString)
+	{
+		Assert.That(() => ChromaConfigurationOptions.FromConnectionString(connectionString),
+			Throws.ArgumentException.With.Message.StartsWith("The Distributed of the connection string is not true or false.").And.Message.Not.Contains("ck-123"));
+	}
+
 	[TestCase("Token=ck-123")]
 	[TestCase("Endpoint=;Token=ck-123")]
 	[TestCase("Endpoint=localhost")]

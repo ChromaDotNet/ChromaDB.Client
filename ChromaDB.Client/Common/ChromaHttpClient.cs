@@ -28,6 +28,8 @@ internal sealed class ChromaHttpClient
 	public ChromaWriteRetries WriteRetries { get; }
 	public int? MaxBatchSize { get; }
 	public bool IsChromaCloud { get; }
+	// Chroma Cloud, or a server that the options call distributed Chroma: for the operations that tell it, IsDistributedChroma.
+	public bool MayBeDistributedChroma { get; }
 
 	public ChromaHttpClient(HttpClient httpClient, ChromaConfigurationOptions options)
 	{
@@ -42,6 +44,7 @@ internal sealed class ChromaHttpClient
 		ReadRetries = options.ReadRetries;
 		WriteRetries = options.WriteRetries;
 		IsChromaCloud = options.IsChromaCloud;
+		MayBeDistributedChroma = options.IsDistributedChroma;
 		// Works around KD-21 (docs/COMPATIBILITY.md)
 		// Chroma Cloud declares a max_batch_size of 1000, but takes 300 records per write and answers at most 300 per read, without an
 		// error: its quotas by default.
@@ -83,6 +86,7 @@ internal sealed class ChromaHttpClient
 		WriteRetries = other.WriteRetries;
 		MaxBatchSize = other.MaxBatchSize;
 		IsChromaCloud = other.IsChromaCloud;
+		MayBeDistributedChroma = other.MayBeDistributedChroma;
 		DeserializerOptions = HttpClientHelpers.DeserializerOptions(metadataValues);
 	}
 
@@ -193,6 +197,25 @@ internal sealed class ChromaHttpClient
 		catch (ChromaException)
 		{
 			return false;
+		}
+	}
+
+	// Distributed Chroma, the one Chroma Cloud runs on: Chroma Cloud, or a server that the options call distributed Chroma, which does not
+	// send it in pre-flight-checks. A server that says what it is in the server block, like VecturaDB, a single node, is what it says,
+	// whatever the options say; one whose pre-flight-checks cannot be read is what the options say.
+	public async Task<bool> IsDistributedChroma(CancellationToken cancellationToken)
+	{
+		if (IsChromaCloud || !MayBeDistributedChroma)
+		{
+			return IsChromaCloud;
+		}
+		try
+		{
+			return (await GetPreFlightChecks(cancellationToken))?.Server is null;
+		}
+		catch (ChromaException)
+		{
+			return true;
 		}
 	}
 

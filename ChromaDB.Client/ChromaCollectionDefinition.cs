@@ -72,7 +72,7 @@ public class ChromaCollectionDefinition
 		}
 		if (Configuration is { Hnsw: not null, Spann: not null })
 		{
-			throw new ArgumentException("A collection has one vector index: set Hnsw for a single Chroma server or Spann for Chroma Cloud, not both, as Chroma rejects them together.", nameof(Configuration));
+			throw new ArgumentException("A collection has one vector index: set Hnsw for a single Chroma server or Spann for distributed Chroma and Chroma Cloud, not both, as Chroma rejects them together.", nameof(Configuration));
 		}
 		ChromaHnswConfiguration.CheckMaxNeighbors(Configuration?.Hnsw?.MaxNeighbors, nameof(Configuration));
 		ChromaHnswConfiguration.CheckMaxNeighbors(IntegerSettings()?.TryGetValue("hnsw:M", out var m) == true ? m : null, nameof(Metadata));

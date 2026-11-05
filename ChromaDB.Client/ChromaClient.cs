@@ -176,7 +176,7 @@ public class ChromaClient : IDisposable
 		var hasSpann = configuration.TryGetProperty("spann", out var spann) && spann.ValueKind == System.Text.Json.JsonValueKind.Object;
 		if (settings.Hnsw is not null && !hasHnsw && hasSpann)
 		{
-			return "The collection has a SPANN index, as on Chroma Cloud, which ignores HNSW settings: set Spann instead.";
+			return "The collection has a SPANN index, as on distributed Chroma, the one Chroma Cloud runs on, which ignores HNSW settings: set Spann instead.";
 		}
 		if (settings.Spann is not null && !hasSpann && hasHnsw)
 		{
@@ -679,18 +679,20 @@ public class ChromaClient : IDisposable
 		await _httpClient.Delete(_httpClient.Routes.CollectionByName, requestParams, cancellationToken);
 	}
 
-	// The indexes added with ifSupported go to Chroma Cloud, within its quotas, and to a server that declares sparse vector indexes in
-	// pre-flight-checks, asked only for a schema with such indexes.
+	// The indexes added with ifSupported go to Chroma Cloud, within its quotas, to a server that declares sparse vector indexes in
+	// pre-flight-checks, and to distributed Chroma that the options name, asked only for a schema with such indexes.
 	private async Task<ChromaCollectionDefinition> ForServer(ChromaCollectionDefinition definition, CancellationToken cancellationToken)
-		=> definition.ForServer(_httpClient.IsChromaCloud || definition.Schema?.HasIndexesIfSupported == true && await _httpClient.DeclaresSparseVectorIndexes(cancellationToken),
+		=> definition.ForServer(_httpClient.IsChromaCloud || definition.Schema?.HasIndexesIfSupported == true
+				&& (await _httpClient.DeclaresSparseVectorIndexes(cancellationToken) || await _httpClient.IsDistributedChroma(cancellationToken)),
 			_httpClient.IsChromaCloud);
 
 	// Works around KD-12 (docs/COMPATIBILITY.md)
 	// Chroma 1.5 keeps the lists in the metadata of the records of a collection or a database it deletes, and gives them to the next
 	// records it stores, in any collection and database; deleting the records first deletes their lists. Every Chroma 1.x sends the
-	// same version, so the records go first on all of them: not on Chroma 0.x, which stores no lists, nor on Chroma Cloud.
+	// same version, so the records go first on all of them: not on Chroma 0.x, which stores no lists, nor on distributed Chroma,
+	// Chroma Cloud included.
 	private async Task<bool> KeepsTheListsOfDeletedRecords(CancellationToken cancellationToken)
-		=> !_httpClient.IsChromaCloud && !await _httpClient.IsChroma0(cancellationToken);
+		=> !await _httpClient.IsDistributedChroma(cancellationToken) && !await _httpClient.IsChroma0(cancellationToken);
 
 	/// <summary>
 	/// The version of the server. The 0.x servers send their own version; every Chroma 1.x answers <c>1.0.0</c>.

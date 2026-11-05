@@ -187,6 +187,37 @@ public class InputChecksTests
 		Assert.That(server.Bodies.Where(x => x.Path.EndsWith("/add")).Select(x => x.Body.GetProperty("ids").GetArrayLength()), Is.EqualTo(new[] { 300, 1 }));
 	}
 
+	// Distributed Chroma, the one Chroma Cloud runs on, installed elsewhere: the options say it. Chroma Cloud is distributed Chroma too,
+	// whatever the options say of distributed Chroma, and stays Chroma Cloud.
+	[Test]
+	public void DistributedChroma()
+	{
+		var options = new ChromaConfigurationOptions("http://chroma.example.com:8000");
+		Assert.That(options.IsDistributedChroma, Is.False);
+		Assert.That(options.WithDistributedChroma().IsDistributedChroma, Is.True);
+		Assert.That(options.WithDistributedChroma().WithDatabase("d").IsDistributedChroma, Is.True);
+		Assert.That(options.WithDistributedChroma().WithDistributedChroma(false).IsDistributedChroma, Is.False);
+		Assert.That(options.WithDistributedChroma().IsChromaCloud, Is.False);
+		var cloud = new ChromaConfigurationOptions("https://api.trychroma.com").WithDistributedChroma(false);
+		Assert.That((cloud.IsChromaCloud, cloud.IsDistributedChroma), Is.EqualTo((true, true)));
+		var both = options.WithChromaCloud().WithDistributedChroma();
+		Assert.That((both.IsChromaCloud, both.IsDistributedChroma), Is.EqualTo((true, true)));
+	}
+
+	// With both, Chroma Cloud wins, with its quotas: the batches are of 300 from the start. Distributed Chroma alone has no quota of
+	// Chroma Cloud: the batches are of the max_batch_size of the server.
+	[TestCase(true, new[] { 300, 1 })]
+	[TestCase(false, new[] { 301 })]
+	public async Task DistributedChromaWritesInBatchesOfTheServer(bool chromaCloud, int[] batches)
+	{
+		var server = new Server { MaxBatchSize = 1000 };
+		var options = new ChromaConfigurationOptions("https://chroma.example.com").WithDistributedChroma();
+		var collection = new ChromaCollectionClient(Guid.Empty, "c", chromaCloud ? options.WithChromaCloud() : options, new HttpClient(server));
+		var ids = Enumerable.Range(0, 301).Select(i => $"r{i}").ToList();
+		await collection.AddAsync(ids, ids.Select(_ => Embedding).ToList());
+		Assert.That(server.Bodies.Where(x => x.Path.EndsWith("/add")).Select(x => x.Body.GetProperty("ids").GetArrayLength()), Is.EqualTo(batches));
+	}
+
 	// The creation sends get_or_create once, as the API of Chroma names it.
 	[Test]
 	public async Task CreationSendsGetOrCreateOnce()
