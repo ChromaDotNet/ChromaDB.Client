@@ -188,20 +188,25 @@ public class InputChecksTests
 	}
 
 	// Distributed Chroma, the one Chroma Cloud runs on, installed elsewhere: the options say it. Chroma Cloud is distributed Chroma too,
-	// whatever the options say of distributed Chroma, and stays Chroma Cloud.
+	// whatever the options say of distributed Chroma, and stays Chroma Cloud; DistributedChroma is only what the options say.
 	[Test]
 	public void DistributedChroma()
 	{
 		var options = new ChromaConfigurationOptions("http://chroma.example.com:8000");
-		Assert.That(options.IsDistributedChroma, Is.False);
-		Assert.That(options.WithDistributedChroma().IsDistributedChroma, Is.True);
+		Assert.That((options.IsDistributedChroma, options.DistributedChroma), Is.EqualTo((false, false)));
+		Assert.That((options.WithDistributedChroma().IsDistributedChroma, options.WithDistributedChroma().DistributedChroma), Is.EqualTo((true, true)));
 		Assert.That(options.WithDistributedChroma().WithDatabase("d").IsDistributedChroma, Is.True);
+		Assert.That(options.WithDistributedChroma().WithDatabase("d").DistributedChroma, Is.True);
 		Assert.That(options.WithDistributedChroma().WithDistributedChroma(false).IsDistributedChroma, Is.False);
+		Assert.That(options.WithDistributedChroma().WithDistributedChroma(false).DistributedChroma, Is.False);
 		Assert.That(options.WithDistributedChroma().IsChromaCloud, Is.False);
-		var cloud = new ChromaConfigurationOptions("https://api.trychroma.com").WithDistributedChroma(false);
-		Assert.That((cloud.IsChromaCloud, cloud.IsDistributedChroma), Is.EqualTo((true, true)));
+		var cloud = new ChromaConfigurationOptions("https://api.trychroma.com");
+		Assert.That((cloud.IsChromaCloud, cloud.IsDistributedChroma, cloud.DistributedChroma), Is.EqualTo((true, true, false)));
+		Assert.That((cloud.WithDistributedChroma(false).IsDistributedChroma, cloud.WithDistributedChroma(false).DistributedChroma), Is.EqualTo((true, false)));
+		Assert.That((cloud.WithDistributedChroma().IsDistributedChroma, cloud.WithDistributedChroma().DistributedChroma), Is.EqualTo((true, true)));
 		var both = options.WithChromaCloud().WithDistributedChroma();
-		Assert.That((both.IsChromaCloud, both.IsDistributedChroma), Is.EqualTo((true, true)));
+		Assert.That((both.IsChromaCloud, both.IsDistributedChroma, both.DistributedChroma), Is.EqualTo((true, true, true)));
+		Assert.That(options.WithChromaCloud().DistributedChroma, Is.False);
 	}
 
 	// With both, Chroma Cloud wins, with its quotas: the batches are of 300 from the start. Distributed Chroma alone has no quota of

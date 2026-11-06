@@ -465,10 +465,10 @@ public class ChromaClient : IDisposable
 		});
 
 	/// <summary>
-	/// A collection by its Chroma Resource Name, <c>&lt;tenant resource name&gt;:&lt;database&gt;:&lt;collection&gt;</c>:
-	/// Chroma Cloud only, as in the JavaScript client of Chroma. The operation is hidden in the OpenAPI description. On Chroma Cloud
-	/// this request, sent with an API key limited to one database and with an API key for the whole tenant, got <c>403</c>, also for
-	/// a collection of that tenant.
+	/// A collection by its Chroma Resource Name, <c>&lt;tenant resource name&gt;:&lt;database&gt;:&lt;collection&gt;</c>, as in the
+	/// JavaScript client of Chroma: on distributed Chroma, the one Chroma Cloud runs on, once <c>UpdateTenantAsync</c> has given the
+	/// tenant its resource name. The operation is hidden in the OpenAPI description. On Chroma Cloud this request, sent with an API key
+	/// limited to one database and with an API key for the whole tenant, got <c>403</c>, also for a collection of that tenant.
 	/// </summary>
 	/// <param name="crn">The Chroma Resource Name of the collection, <c>&lt;tenant resource name&gt;:&lt;database&gt;:&lt;collection&gt;</c>.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
@@ -680,10 +680,11 @@ public class ChromaClient : IDisposable
 	}
 
 	// The indexes added with ifSupported go to Chroma Cloud, within its quotas, to a server that declares sparse vector indexes in
-	// pre-flight-checks, and to distributed Chroma that the options name, asked only for a schema with such indexes.
+	// pre-flight-checks, and to distributed Chroma that the options name, asked only for a schema with such indexes: where
+	// SupportsSparseVectorIndexesAsync says.
 	private async Task<ChromaCollectionDefinition> ForServer(ChromaCollectionDefinition definition, CancellationToken cancellationToken)
 		=> definition.ForServer(_httpClient.IsChromaCloud || definition.Schema?.HasIndexesIfSupported == true
-				&& (await _httpClient.DeclaresSparseVectorIndexes(cancellationToken) || await _httpClient.IsDistributedChroma(cancellationToken)),
+				&& await _httpClient.SupportsSparseVectorIndexes(cancellationToken),
 			_httpClient.IsChromaCloud);
 
 	// Works around KD-12 (docs/COMPATIBILITY.md)
@@ -727,6 +728,33 @@ public class ChromaClient : IDisposable
 		{
 			return await _httpClient.Get<ChromaPreFlightChecks>(_httpClient.Routes.PreFlightChecks, new RequestQueryParams(), cancellationToken);
 		});
+
+	/// <summary>
+	/// Whether the server takes sparse vector indexes, like the BM25 index of <c>WithBm25Index</c>: whether the client sends the indexes
+	/// added with <c>ifSupported</c>. Distributed Chroma, the one Chroma Cloud runs on, takes them: on Chroma Cloud, and elsewhere when
+	/// the options name it with <c>WithDistributedChroma</c>. So do the servers that declare them in <c>pre-flight-checks</c>, like
+	/// VecturaDB. A single Chroma server does not. On Chroma Cloud the answer costs no request; on the other servers it comes from
+	/// <c>pre-flight-checks</c>, which the client asks once and again after two minutes, as the other things it learns about the server.
+	/// When the server does not answer within 5 seconds, or its answer cannot be read, the answer is what the options say: this method
+	/// asks again at the next call, so a server that was starting, or waking up from a scale to zero, gets its own answer then, and
+	/// <c>SupportsSparseVectorIndexes</c> keeps it for 30 seconds.
+	/// </summary>
+	/// <param name="cancellationToken">The token that cancels the operation.</param>
+	/// <returns>Whether the server takes sparse vector indexes.</returns>
+	public virtual Task<bool> SupportsSparseVectorIndexesAsync(CancellationToken cancellationToken = default)
+		=> _httpClient.ProbeSparseVectorIndexes(cancellationToken);
+
+	/// <summary>
+	/// The answer of <c>SupportsSparseVectorIndexesAsync</c>, for a caller that cannot await, like a synchronous <c>GetService</c>. While
+	/// the client has no answer of the server, a call waits for <c>pre-flight-checks</c>, 5 seconds at most, with the request on the
+	/// thread pool: it does not wait for the synchronization context of the caller, of a UI thread or of ASP.NET on .NET Framework, so it
+	/// does not deadlock there. When the server does not answer, or its answer cannot be read, the calls of the next 30 seconds answer
+	/// what the options say at once, and then one asks again. After an answer of the server, every call answers at once: after two minutes with the last answer, while
+	/// the client asks the server again in the background.
+	/// </summary>
+	/// <returns>Whether the server takes sparse vector indexes.</returns>
+	public virtual bool SupportsSparseVectorIndexes()
+		=> _httpClient.ProbeSparseVectorIndexesSynchronously();
 
 	/// <summary>
 	/// Resets the server and returns its answer. Chroma Cloud does not allow it to an API key.
@@ -787,7 +815,7 @@ public class ChromaClient : IDisposable
 		});
 
 	/// <summary>
-	/// Sets the name of the tenant in the resource names of Chroma Cloud, like the CRN of a collection.
+	/// Sets the name of the tenant in the resource names of distributed Chroma, the one Chroma Cloud runs on, like the CRN of a collection.
 	/// </summary>
 	/// <param name="name">The name of the tenant.</param>
 	/// <param name="resourceName">The resource name of the tenant, the first part of the CRNs of its collections.</param>

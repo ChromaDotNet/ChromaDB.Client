@@ -59,3 +59,5 @@ var fromSettings = ChromaConfigurationOptions.FromConnectionString("Endpoint=htt
 ```
 
 Then the client sends the indexes added with `ifSupported` ([sparse-vectors-and-schema.md](sparse-vectors-and-schema.md)), throws an `ArgumentException` before a filter on the documents that distributed Chroma gets wrong, also in a delete (KD-56 and KD-57 in [COMPATIBILITY.md](COMPATIBILITY.md#known-defects-of-the-servers)), and deletes a collection or a database in one request, as KD-12 is a defect of a single server. Chroma Cloud, at `*.trychroma.com` or with `WithChromaCloud()`, is distributed Chroma whatever the options say of it, and only Chroma Cloud has its quotas ([chroma-cloud.md](chroma-cloud.md)). A server that says what it is in the server block of `pre-flight-checks`, like VecturaDB, is what it says, whatever the options say.
+
+`IsDistributedChroma` of the options tells whether the client takes the server for distributed Chroma, Chroma Cloud included; `DistributedChroma` only whether the options say it, with `WithDistributedChroma()` or `Distributed=true`, for code that passes the setting on.

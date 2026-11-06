@@ -54,7 +54,7 @@ internal sealed class ChromaRoutes
 	public required string PreFlightChecks { get; init; }
 	public required string Tenants { get; init; }
 	public required string Tenant { get; init; }
-	// Only Chroma Cloud has it.
+	// Only distributed Chroma, the one Chroma Cloud runs on, has it.
 	public required string CollectionByCrn { get; init; }
 	public required string Databases { get; init; }
 	public required string Database { get; init; }

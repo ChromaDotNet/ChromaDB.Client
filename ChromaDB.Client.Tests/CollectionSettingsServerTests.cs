@@ -162,12 +162,15 @@ public class CollectionSettingsServerTests : ChromaTestsBase
 		Assert.That(configuration.GetProperty("embedding_function").GetProperty("name").GetString(), Is.EqualTo("openai"));
 	}
 
-	// A BM25 index added with ifSupported: Chroma Cloud and the servers that declare sparse vector indexes create the collection with it,
-	// every other server without it, as it rejects them.
+	// A BM25 index added with ifSupported: distributed Chroma, the one Chroma Cloud runs on, on Chroma Cloud and when the options name
+	// it, and the servers that declare sparse vector indexes create the collection with it, every other server without it, as it
+	// rejects them. SupportsSparseVectorIndexes says which before, in both methods, the synchronous one with a request of its own.
 	[Test]
 	public async Task Bm25IndexIfSupported()
 	{
+		Assert.That(new ChromaClient(BaseConfigurationOptions, HttpClient).SupportsSparseVectorIndexes(), Is.EqualTo(SparseVectorIndexesSupported));
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		Assert.That(await client.SupportsSparseVectorIndexesAsync(), Is.EqualTo(SparseVectorIndexesSupported));
 		var created = await client.CreateCollectionAsync(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}")
 		{
 			Configuration = new() { Space = ChromaSpace.Cosine },
