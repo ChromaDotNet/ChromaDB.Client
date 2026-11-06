@@ -186,19 +186,108 @@ internal sealed class ChromaHttpClient
 		}
 	}
 
-	// A server that declares sparse vector indexes in the server block of pre-flight-checks, like VecturaDB; Chroma and Chroma Cloud send
-	// no block. When the server cannot tell, it is taken as one without them.
-	public async Task<bool> DeclaresSparseVectorIndexes(CancellationToken cancellationToken)
+	// Whether the server takes sparse vector indexes, so the client sends the indexes added with ifSupported: distributed Chroma, the one
+	// Chroma Cloud runs on, on Chroma Cloud and elsewhere when the options name it, and a server that declares them in the server block
+	// of pre-flight-checks, like VecturaDB. Chroma and distributed Chroma send no block: a server that says what it is in the block is
+	// what it says, whatever the options say, and one whose pre-flight-checks cannot be read is what the options say.
+	public async Task<bool> SupportsSparseVectorIndexes(CancellationToken cancellationToken)
 	{
+		if (IsChromaCloud)
+		{
+			return true;
+		}
 		try
 		{
-			return (await GetPreFlightChecks(cancellationToken))?.Server?.Features?.Contains("sparse_vector_index") == true;
+			return SparseVectorIndexesFrom(await GetPreFlightChecks(cancellationToken));
 		}
 		catch (ChromaException)
 		{
-			return false;
+			return MayBeDistributedChroma;
 		}
 	}
+
+	private bool SparseVectorIndexesFrom(ChromaPreFlightChecks? checks)
+		=> checks?.Server is { } server ? server.Features?.Contains("sparse_vector_index") == true : MayBeDistributedChroma;
+
+	// How long SupportsSparseVectorIndexesAsync and SupportsSparseVectorIndexes of ChromaClient wait for the server, instead of the 100
+	// seconds of HttpClient: a caller that cannot await, like a synchronous GetService, is not held by a server that does not answer.
+	internal static TimeSpan ProbeTimeout { get; set; } = TimeSpan.FromSeconds(5);
+
+	// SupportsSparseVectorIndexes without a request when the client knows the answer, otherwise within ProbeTimeout: after it, what the
+	// options say, not kept, so the next call asks again. A cancellation of the caller goes as it is.
+	public async Task<bool> ProbeSparseVectorIndexes(CancellationToken cancellationToken)
+	{
+		if (KnownSparseVectorIndexes() is { } known)
+		{
+			return known;
+		}
+		using var probe = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		probe.CancelAfter(ProbeTimeout);
+		try
+		{
+			return await SupportsSparseVectorIndexes(probe.Token);
+		}
+		catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+		{
+			return MayBeDistributedChroma;
+		}
+	}
+
+	// How long ProbeSparseVectorIndexesSynchronously answers what the options say without a request, after a probe that got no answer of
+	// the server: a server that is down does not hold every call for ProbeTimeout.
+	internal static TimeSpan FailedProbeLifetime { get; set; } = TimeSpan.FromSeconds(30);
+
+	// For a caller that cannot await, like a synchronous GetService. Until the server answers, the answer is the one of
+	// ProbeSparseVectorIndexes, with its request on the thread pool: the client does not use ConfigureAwait(false), so on the thread of
+	// the caller its continuations would wait for the synchronization context that the caller blocks, of a UI or of ASP.NET. A probe
+	// without an answer leaves what the options say for FailedProbeLifetime. After an answer of the server, the answer comes at once: when
+	// the pre-flight-checks the client read are no longer current, it comes from them all the same, while the client asks for them again
+	// in the background, one request at a time.
+	public bool ProbeSparseVectorIndexesSynchronously()
+	{
+		if (KnownSparseVectorIndexes() is { } known)
+		{
+			return known;
+		}
+		if (_server.PreFlightChecks is { } last)
+		{
+			RefreshPreFlightChecks();
+			return SparseVectorIndexesFrom(last.Value);
+		}
+		// A long is read and written whole also on 32 bits.
+		if (DateTime.UtcNow.Ticks < Interlocked.Read(ref _server.FailedProbeUntil))
+		{
+			return MayBeDistributedChroma;
+		}
+		var answer = Task.Run(() => ProbeSparseVectorIndexes(CancellationToken.None)).GetAwaiter().GetResult();
+		if (_server.PreFlightChecks is null)
+		{
+			Interlocked.Exchange(ref _server.FailedProbeUntil, (DateTime.UtcNow + FailedProbeLifetime).Ticks);
+		}
+		return answer;
+	}
+
+	// A failure has no caller to go to: the next call asks again.
+	private void RefreshPreFlightChecks()
+	{
+		if (Interlocked.CompareExchange(ref _server.RefreshingPreFlightChecks, 1, 0) == 0)
+		{
+			Task.Run(async () =>
+			{
+				try
+				{
+					await ProbeSparseVectorIndexes(CancellationToken.None);
+				}
+				finally
+				{
+					Volatile.Write(ref _server.RefreshingPreFlightChecks, 0);
+				}
+			}).ContinueWith(refresh => refresh.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+		}
+	}
+
+	private bool? KnownSparseVectorIndexes()
+		=> IsChromaCloud ? true : _server.PreFlightChecks is { IsCurrent: true } checks ? SparseVectorIndexesFrom(checks.Value) : null;
 
 	// Distributed Chroma, the one Chroma Cloud runs on: Chroma Cloud, or a server that the options call distributed Chroma, which does not
 	// send it in pre-flight-checks. A server that says what it is in the server block, like VecturaDB, a single node, is what it says,
@@ -315,6 +404,10 @@ internal sealed class ChromaHttpClient
 		public readonly SemaphoreSlim VersionLock = new(1, 1);
 		public volatile Fact<ChromaPreFlightChecks?>? PreFlightChecks;
 		public readonly SemaphoreSlim PreFlightChecksLock = new(1, 1);
+		// 1 while ProbeSparseVectorIndexesSynchronously asks pre-flight-checks again in the background.
+		public int RefreshingPreFlightChecks;
+		// The ticks of DateTime.UtcNow until which ProbeSparseVectorIndexesSynchronously answers what the options say.
+		public long FailedProbeUntil;
 		public volatile Fact<bool>? DeleteLimit;
 		public volatile Fact<int>? RecordsLimit;
 		public readonly SemaphoreSlim DeleteLimitLock = new(1, 1);

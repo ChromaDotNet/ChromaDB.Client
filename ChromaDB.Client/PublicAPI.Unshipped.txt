@@ -126,3 +126,5 @@ ChromaDB.Client.ChromaStaleReadException.ChromaStaleReadException() -> void
 ChromaDB.Client.ChromaStaleReadException.ChromaStaleReadException(string? message) -> void
 ChromaDB.Client.ChromaStaleReadException.ChromaStaleReadException(string? message, System.Exception? inner) -> void
 virtual ChromaDB.Client.ChromaCollectionClient.AddFunctionInputAsync(string! name, System.Guid inputCollectionId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<(ChromaDB.Client.Models.ChromaAttachedFunction! AttachedFunction, bool Created)>!
+virtual ChromaDB.Client.ChromaClient.SupportsSparseVectorIndexes() -> bool
+virtual ChromaDB.Client.ChromaClient.SupportsSparseVectorIndexesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!

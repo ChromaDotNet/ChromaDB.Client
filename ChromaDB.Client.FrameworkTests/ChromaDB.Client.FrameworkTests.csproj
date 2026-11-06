@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
-	<!-- The tests whose outcome depends on the runtime, on .NET Framework: there the client runs its net462 build, and the
-	     runtime parses and formats numbers in its own way. They need no server. Not in the solution, whose tests run on
-	     Linux: the CI runs this project on Windows. -->
+	<!-- The tests whose outcome depends on the runtime, on .NET Framework: there the client runs its net462 build, the
+	     runtime parses and formats numbers in its own way, and its UIs and ASP.NET have synchronization contexts that a
+	     synchronous call must not wait for. They need no server. Not in the solution, whose tests run on Linux: the CI
+	     runs this project on Windows. -->
 	<PropertyGroup>
 		<TargetFramework>net48</TargetFramework>
 		<LangVersion>latest</LangVersion>
@@ -23,5 +24,6 @@
 		<Compile Include="..\ChromaDB.Client.Tests\NumbersTests.cs" Link="NumbersTests.cs" />
 		<Compile Include="..\ChromaDB.Client.Tests\PathNamesTests.cs" Link="PathNamesTests.cs" />
 		<Compile Include="..\ChromaDB.Client.Tests\RequestValuesTests.cs" Link="RequestValuesTests.cs" />
+		<Compile Include="..\ChromaDB.Client.Tests\SparseVectorIndexSupportTests.cs" Link="SparseVectorIndexSupportTests.cs" />
 	</ItemGroup>
 </Project>
