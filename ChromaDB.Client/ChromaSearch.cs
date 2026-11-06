@@ -1,7 +1,8 @@
 namespace ChromaDB.Client.Models;
 
 /// <summary>
-/// One search of the Search API of Chroma, which only Chroma Cloud serves. The filters combine with <c>$and</c>; without
+/// One search of the Search API of Chroma, which distributed Chroma serves, the one Chroma Cloud runs on, and the servers that declare
+/// it in <c>pre-flight-checks</c>, like VecturaDB. The filters combine with <c>$and</c>; without
 /// <c>Rank</c> the records come in the order of the server. A new field of Chroma becomes a new property here.
 /// </summary>
 public class ChromaSearch

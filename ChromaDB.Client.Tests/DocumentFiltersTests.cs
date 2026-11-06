@@ -4,12 +4,12 @@ using NUnit.Framework;
 
 namespace ChromaDB.Client.Tests;
 
-// KD-56 and KD-57: on Chroma Cloud a filter on the documents gives the wrong records, also in a delete: a $regex whose pattern takes an
-// empty text finds every record and its $not_regex none, and, once Chroma Cloud has indexed the records, a $contains of fewer than 3
-// characters finds none and its $not_contains every record. Such a filter throws on Chroma Cloud before any request, in every read and
-// delete, also inside $and, $or and Not, and so does a pattern that the client cannot read, which Chroma rejects. The client reads a
-// pattern as Chroma does, with the syntax of the Rust crate regex (RegexMinimumLengthTests). Every other filter goes, and every filter
-// goes on a single server.
+// KD-56 and KD-57: on distributed Chroma, the one Chroma Cloud runs on, a filter on the documents gives the wrong records, also in a
+// delete: a $regex whose pattern takes an empty text finds every record and its $not_regex none, and, once the records are indexed, a
+// $contains of fewer than 3 characters finds none and its $not_contains every record. Such a filter throws on Chroma Cloud before any
+// request, and on a server that the options call distributed Chroma before the operation, in every read and delete, also inside $and,
+// $or and Not, and so does a pattern that the client cannot read, which Chroma rejects. The client reads a pattern as Chroma does, with
+// the syntax of the Rust crate regex (RegexMinimumLengthTests). Every other filter goes, and every filter goes on a single server.
 [TestFixture]
 public class DocumentFiltersTests
 {
@@ -96,8 +96,37 @@ public class DocumentFiltersTests
 	{
 		var server = new Server();
 		var ex = Assert.ThrowsAsync<ArgumentException>(() => Run(Client(server, Cloud), operation, filter));
-		Assert.That(ex!.Message, Does.StartWith("On Chroma Cloud the ").And.Contain("gives the wrong records"));
+		Assert.That(ex!.Message, Does.StartWith("On distributed Chroma, the one Chroma Cloud runs on, the ").And.Contain("gives the wrong records"));
 		Assert.That(server.Paths, Is.Empty);
+	}
+
+	// KD-56 and KD-57 are defects of distributed Chroma: on a server that the options call distributed Chroma the same filters throw,
+	// after the pre-flight-checks that tell a server that says what it is, and before the operation.
+	[Test]
+	public void ThrowsOnDistributedChroma([ValueSource(nameof(WrongOnChromaCloud))] ChromaWhereDocumentOperator filter, [ValueSource(nameof(Operations))] string operation)
+	{
+		var server = new Server();
+		var ex = Assert.ThrowsAsync<ArgumentException>(() => Run(Client(server, Local, distributed: true), operation, filter));
+		Assert.That(ex!.Message, Does.StartWith("On distributed Chroma, the one Chroma Cloud runs on, the ").And.Contain("gives the wrong records"));
+		Assert.That(server.Paths, Is.EqualTo(new[] { "pre-flight-checks" }));
+	}
+
+	[Test]
+	public async Task GoesOnDistributedChroma([ValueSource(nameof(RightOnChromaCloud))] ChromaWhereDocumentOperator filter, [ValueSource(nameof(Operations))] string operation)
+	{
+		var server = new Server();
+		await Run(Client(server, Local, distributed: true), operation, filter);
+		Assert.That(server.Paths, Does.Contain(operation.Split(' ')[0]));
+	}
+
+	// A server that says what it is in the server block of pre-flight-checks, like VecturaDB, a single node that gives the right records,
+	// is not taken for distributed Chroma, whatever the options say: every filter goes.
+	[Test]
+	public async Task GoesWhereTheServerSaysWhatItIs([ValueSource(nameof(WrongOnChromaCloud))] ChromaWhereDocumentOperator filter, [ValueSource(nameof(Operations))] string operation)
+	{
+		var server = new Server { PreFlightChecks = """{"max_batch_size":100,"server":{"name":"VecturaDB","version":"1.0.0-preview.7","features":["search"]}}""" };
+		await Run(Client(server, Local, distributed: true), operation, filter);
+		Assert.That(server.Paths, Does.Contain(operation.Split(' ')[0]));
 	}
 
 	[Test]
@@ -282,8 +311,8 @@ public class DocumentFiltersTests
 		_ => client.SearchAsync(new ChromaSearch { WhereDocument = filter, Limit = 5 }),
 	};
 
-	static ChromaCollectionClient Client(HttpMessageHandler handler, string uri)
-		=> new(new ChromaCollection("c") { Id = Guid.NewGuid() }, new ChromaConfigurationOptions(uri), new HttpClient(handler));
+	static ChromaCollectionClient Client(HttpMessageHandler handler, string uri, bool distributed = false)
+		=> new(new ChromaCollection("c") { Id = Guid.NewGuid() }, new ChromaConfigurationOptions(uri).WithDistributedChroma(distributed), new HttpClient(handler));
 
 	// Answers each request with an empty result, and records the last segment of its path. With RegexQuota, a get, query, search or
 	// delete gets the 422 of Chroma Cloud for a regex pattern beyond its quota.
@@ -292,6 +321,7 @@ public class DocumentFiltersTests
 		public List<string> Paths { get; } = [];
 		public List<string?> Bodies { get; } = [];
 		public (int Usage, int Limit)? RegexQuota { get; init; }
+		public string PreFlightChecks { get; init; } = """{"max_batch_size":100,"supports_base64_encoding":false}""";
 
 		// The body of the last request whose path ends with the segment.
 		public string? Body(string last) => Bodies[Paths.LastIndexOf(last)];
@@ -311,7 +341,7 @@ public class DocumentFiltersTests
 			var answer = last switch
 			{
 				"version" => "\"1.5.9\"",
-				"pre-flight-checks" => """{"max_batch_size":100,"supports_base64_encoding":false}""",
+				"pre-flight-checks" => PreFlightChecks,
 				"get" => """{"ids":[],"include":[]}""",
 				"query" => """{"ids":[[]],"include":[]}""",
 				"search" => """{"ids":[[]]}""",

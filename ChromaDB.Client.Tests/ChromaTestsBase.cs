@@ -23,21 +23,27 @@ public abstract class ChromaTestsBase
 	protected static readonly int? TestMaxBatchSize = int.TryParse(Environment.GetEnvironmentVariable("CHROMA_TEST_MAX_BATCH_SIZE"), out var size) ? size : null;
 	protected static bool RunningServer => TestUri is not null;
 	protected static bool ChromaCloud => TestUri?.Contains(".trychroma.com") == true;
+	// CHROMA_TEST_DISTRIBUTED=true says that the server already running is distributed Chroma, the one Chroma Cloud runs on, as the
+	// options of the tests do with WithDistributedChroma: it is expected to behave as Chroma Cloud does, without its quotas.
+	private static readonly bool TestDistributed = RunningServer && Environment.GetEnvironmentVariable("CHROMA_TEST_DISTRIBUTED") is "true";
+	protected static bool DistributedChroma => ChromaCloud || TestDistributed;
 
 	// The features the server declares in the server block of pre-flight-checks, like VecturaDB, read once: a server is expected to serve
 	// a feature it declares as Chroma Cloud does, without the quotas of Chroma Cloud. Chroma and Chroma Cloud send no block.
 	private static IReadOnlyList<string>? _declaredFeatures;
 	private static bool Declares(string feature) => _declaredFeatures?.Contains(feature) == true;
 	// Sparse vector indexes, with BM25 and sparse vectors in metadata.
-	protected static bool SparseVectorIndexesSupported => ChromaCloud || Declares("sparse_vector_index");
+	protected static bool SparseVectorIndexesSupported => DistributedChroma || Declares("sparse_vector_index");
 	// The Search API.
-	protected static bool SearchSupported => ChromaCloud || Declares("search");
+	protected static bool SearchSupported => DistributedChroma || Declares("search");
 	// Fork and its count.
-	protected static bool ForkSupported => ChromaCloud || Declares("fork");
+	protected static bool ForkSupported => DistributedChroma || Declares("fork");
 	// The indexing status of a collection.
-	protected static bool IndexingStatusSupported => ChromaCloud || Declares("indexing_status");
-	// The conditional transactions.
-	protected static bool ConditionalTransactionsSupported => ChromaCloud || Declares("conditional_transactions");
+	protected static bool IndexingStatusSupported => DistributedChroma || Declares("indexing_status");
+	// The conditional transactions. Distributed Chroma has them only for the tenants of its frontend configuration: the sample
+	// configuration of Chroma (rust/frontend/sample_configs/distributed.yaml), which the Helm chart and the operator use, lists
+	// default_tenant only, and the other tenants get "conditional transactions are disabled by frontend configuration".
+	protected static bool ConditionalTransactionsSupported => ChromaCloud || TestDistributed && TestTenant is null or "default_tenant" || Declares("conditional_transactions");
 	// The attached functions, with more inputs for an asynchronous one.
 	protected static bool AttachedFunctionsSupported => ChromaCloud || Declares("attached_functions");
 
@@ -73,7 +79,7 @@ public abstract class ChromaTestsBase
 		}
 		if (RunningServer)
 		{
-			_baseConfigurationOptions = new ChromaConfigurationOptions(uri: TestUri!).WithApiVersion(ApiVersion);
+			_baseConfigurationOptions = new ChromaConfigurationOptions(uri: TestUri!).WithApiVersion(ApiVersion).WithDistributedChroma(TestDistributed);
 			_baseConfigurationOptions = TestToken is not null ? _baseConfigurationOptions.WithChromaToken(TestToken) : _baseConfigurationOptions;
 			_baseConfigurationOptions = TestTenant is not null ? _baseConfigurationOptions.WithTenant(TestTenant) : _baseConfigurationOptions;
 			_baseConfigurationOptions = TestDatabase is not null ? _baseConfigurationOptions.WithDatabase(TestDatabase) : _baseConfigurationOptions;

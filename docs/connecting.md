@@ -46,4 +46,16 @@ From a connection string, as the settings of an application keep it:
 var options = ChromaConfigurationOptions.FromConnectionString("Endpoint=https://api.trychroma.com;Token=ck-...;Tenant=...;Database=...");
 ```
 
-`Endpoint` is the http or https URI of the server, and a connection string that is just a URI is the endpoint alone; another key, no endpoint, or an endpoint without http or https throws an `ArgumentException` that says which. `Token` goes in the `X-Chroma-Token` header. `Tenant` and `Database` are the ones of the requests.
+`Endpoint` is the http or https URI of the server, and a connection string that is just a URI is the endpoint alone; another key, no endpoint, an endpoint without http or https, or a `Distributed` that is not `true` or `false` throws an `ArgumentException` that says which. `Token` goes in the `X-Chroma-Token` header. `Tenant` and `Database` are the ones of the requests. `Distributed=true` says that the server is distributed Chroma, as `WithDistributedChroma()` does.
+
+## Distributed Chroma
+
+Distributed Chroma is the one Chroma Cloud runs on. Installed elsewhere, as with the Helm chart of Chroma or an operator, it answers like a single Chroma server to the questions the client could ask it: the same version, `1.0.0`, and no list of what it serves in `pre-flight-checks`. The options say it:
+
+```csharp
+var options = new ChromaConfigurationOptions(uri: "http://chroma.internal:8000").WithDistributedChroma();
+// or, in a connection string
+var fromSettings = ChromaConfigurationOptions.FromConnectionString("Endpoint=http://chroma.internal:8000;Distributed=true");
+```
+
+Then the client sends the indexes added with `ifSupported` ([sparse-vectors-and-schema.md](sparse-vectors-and-schema.md)), throws an `ArgumentException` before a filter on the documents that distributed Chroma gets wrong, also in a delete (KD-56 and KD-57 in [COMPATIBILITY.md](COMPATIBILITY.md#known-defects-of-the-servers)), and deletes a collection or a database in one request, as KD-12 is a defect of a single server. Chroma Cloud, at `*.trychroma.com` or with `WithChromaCloud()`, is distributed Chroma whatever the options say of it, and only Chroma Cloud has its quotas ([chroma-cloud.md](chroma-cloud.md)). A server that says what it is in the server block of `pre-flight-checks`, like VecturaDB, is what it says, whatever the options say.

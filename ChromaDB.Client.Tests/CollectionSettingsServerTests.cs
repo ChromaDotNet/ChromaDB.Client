@@ -20,7 +20,7 @@ public class CollectionSettingsServerTests : ChromaTestsBase
 		{
 			Configuration = new() { Space = ChromaSpace.Cosine, Hnsw = new() { EfConstruction = 150, EfSearch = 120, MaxNeighbors = 20, ResizeFactor = 1.5, SyncThreshold = 2000 } },
 		};
-		if (ChromaCloud)
+		if (DistributedChroma)
 		{
 			await Assert.ThatAsync(() => client.CreateCollectionAsync(definition), Throws.InstanceOf<ChromaException>().With.Message.Contains("SPANN"));
 			Assert.That(await client.CollectionExistsAsync(name), Is.False);
@@ -40,9 +40,9 @@ public class CollectionSettingsServerTests : ChromaTestsBase
 	[Test]
 	public async Task WholeDoublesInTheHnswMetadata()
 	{
-		if (ChromaCloud)
+		if (DistributedChroma)
 		{
-			Assert.Ignore("Chroma Cloud has no HNSW index.");
+			Assert.Ignore("Distributed Chroma, Chroma Cloud included, has no HNSW index.");
 		}
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
 		var collection = await client.CreateCollectionAsync(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}")
@@ -65,7 +65,7 @@ public class CollectionSettingsServerTests : ChromaTestsBase
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
 		var name = $"collection{Random.Shared.Next()}";
 		var definition = new ChromaCollectionDefinition(name) { Configuration = new() { Space = ChromaSpace.Cosine, Spann = new() { SearchNprobe = 32, WriteNprobe = 16 } } };
-		if (ChromaCloud)
+		if (DistributedChroma)
 		{
 			AssertSpannSettings(await client.CreateCollectionAsync(definition));
 			return;

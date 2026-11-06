@@ -69,7 +69,8 @@ public class ConditionalTransactionServerTests : ChromaTestsBase
 		Assert.That((await collection.GetAsync("counter"))!.Document, Is.EqualTo("11"));
 	}
 
-	// A later read of a record that changed after the first read: Chroma Cloud answers it as it was, a single server refuses the read.
+	// A later read of a record that changed after the first read: distributed Chroma, Chroma Cloud included, answers it as it was; a
+	// single server that has conditional transactions, like VecturaDB, refuses the read.
 	[Test]
 	public async Task ALaterReadOfARecordThatChanged()
 	{
@@ -78,7 +79,7 @@ public class ConditionalTransactionServerTests : ChromaTestsBase
 		var transaction = collection.BeginConditionalTransaction();
 		await transaction.GetAsync(["a"]);
 		await collection.UpdateAsync(["a"], documents: ["changed outside"]);
-		if (ChromaCloud)
+		if (DistributedChroma)
 		{
 			Assert.That((await transaction.GetAsync("a"))!.Document, Is.EqualTo("apple pie"));
 			return;

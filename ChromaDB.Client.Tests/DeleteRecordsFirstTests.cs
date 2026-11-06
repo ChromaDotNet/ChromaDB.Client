@@ -71,6 +71,39 @@ public class DeleteRecordsFirstTests
 		Assert.That(server.Requests.Select(x => x.Request), Is.EqualTo(new[] { "DELETE tenants/default_tenant/databases/default_database/collections/c" }));
 	}
 
+	// KD-12 is a defect of a single server: on a server that the options call distributed Chroma, as on Chroma Cloud, a deletion is one
+	// request, after the pre-flight-checks that tell a server that says what it is.
+	[Test]
+	public async Task DeleteCollectionOnDistributedChroma()
+	{
+		var server = new FakeServer("1.0.0", "{}");
+		await new ChromaClient(new ChromaConfigurationOptions("http://chroma.example.com:8000").WithDistributedChroma(), new HttpClient(server)).DeleteCollectionAsync("c", deleteRecordsFirst: true);
+		Assert.That(server.Requests.Select(x => x.Request), Is.EqualTo(new[] { "GET pre-flight-checks", "DELETE tenants/default_tenant/databases/default_database/collections/c" }));
+	}
+
+	// A server that says what it is in the server block of pre-flight-checks, like VecturaDB, a single node of Chroma 1.5, gets the records
+	// deleted first, whatever the options say.
+	[Test]
+	public async Task DeleteCollectionWhereTheServerSaysWhatItIs()
+	{
+		var server = new FakeServer("1.0.0", $$"""{"id":"{{Id}}","name":"c"}""", """["a","b"]""", "[]")
+		{
+			PreFlightChecks = """{"max_batch_size":2,"server":{"name":"VecturaDB","version":"1.0.0-preview.7","features":["search"]}}""",
+		};
+		await new ChromaClient(new ChromaConfigurationOptions("http://localhost:8000").WithDistributedChroma(), new HttpClient(server)).DeleteCollectionAsync("c", deleteRecordsFirst: true);
+		var records = $"tenants/default_tenant/databases/default_database/collections/{Id}";
+		Assert.That(server.Requests.Select(x => x.Request), Is.EqualTo(new[]
+		{
+			"GET pre-flight-checks",
+			"GET version",
+			"GET tenants/default_tenant/databases/default_database/collections/c",
+			$"POST {records}/get",
+			$"POST {records}/delete",
+			$"POST {records}/get",
+			"DELETE tenants/default_tenant/databases/default_database/collections/c",
+		}));
+	}
+
 	// A page that comes back after its delete would come back forever: the client throws, and the collection stays with its records.
 	[Test]
 	public async Task RecordsThatStayStopTheDeletes()
@@ -288,6 +321,7 @@ public class DeleteRecordsFirstTests
 		int _page;
 
 		public List<(string Request, JsonElement Body)> Requests { get; } = [];
+		public string PreFlightChecks { get; init; } = """{"max_batch_size":2}""";
 
 		protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
 		{
@@ -297,7 +331,7 @@ public class DeleteRecordsFirstTests
 			var answer = path switch
 			{
 				"version" => $"\"{version}\"",
-				"pre-flight-checks" => """{"max_batch_size":2}""",
+				"pre-flight-checks" => PreFlightChecks,
 				_ when path.EndsWith("/get") => $$"""{"ids":{{pages[_page++]}}}""",
 				_ when path.EndsWith("/delete") => "{}",
 				_ => found,

@@ -21,6 +21,14 @@ public class ChromaConfigurationOptions
 
 	private bool? _chromaCloud;
 	/// <summary>
+	/// Whether the server is distributed Chroma, the one Chroma Cloud runs on: Chroma Cloud, or the options say so with
+	/// <c>WithDistributedChroma</c>, or <c>Distributed=true</c> in the connection string. Chroma Cloud is distributed Chroma whatever the
+	/// options say of it, and keeps its quotas; distributed Chroma alone has none of them.
+	/// </summary>
+	public bool IsDistributedChroma => IsChromaCloud || _distributedChroma;
+
+	private bool _distributedChroma;
+	/// <summary>
 	/// The tenant of the requests that are not given one; when null or empty, <c>default_tenant</c>.
 	/// </summary>
 	public string? Tenant { get; init; }
@@ -144,9 +152,10 @@ public class ChromaConfigurationOptions
 	/// Options from a connection string, as an application keeps it in its settings:
 	/// <c>Endpoint=https://api.trychroma.com;Token=...;Tenant=...;Database=...</c>. <c>Endpoint</c> is the URI of the server, and a
 	/// connection string that is just an http or https URI is the endpoint alone. <c>Token</c> goes in the <c>X-Chroma-Token</c>
-	/// header, as Chroma Cloud takes its API keys; <c>Tenant</c> and <c>Database</c> are the ones of the requests. The keys are
-	/// case-insensitive, a value with <c>;</c> goes in quotes, and an empty value is no value. Another key, no endpoint, or an endpoint
-	/// that is not an http or https URI throws an <c>ArgumentException</c>, each with its message.
+	/// header, as Chroma Cloud takes its API keys; <c>Tenant</c> and <c>Database</c> are the ones of the requests; <c>Distributed=true</c>
+	/// says that the server is distributed Chroma, as <c>WithDistributedChroma</c> does. The keys are case-insensitive, a value with
+	/// <c>;</c> goes in quotes, and an empty value is no value. Another key, no endpoint, an endpoint that is not an http or https URI, or
+	/// a <c>Distributed</c> that is not <c>true</c> or <c>false</c> throws an <c>ArgumentException</c>, each with its message.
 	/// </summary>
 	/// <param name="connectionString">The connection string.</param>
 	/// <returns>The options.</returns>
@@ -158,6 +167,7 @@ public class ChromaConfigurationOptions
 		}
 		var builder = new System.Data.Common.DbConnectionStringBuilder { ConnectionString = connectionString };
 		string? endpoint = null, token = null, tenant = null, database = null;
+		var distributed = false;
 		foreach (string key in builder.Keys)
 		{
 			var value = builder[key]?.ToString() is { Length: > 0 } text ? text : null;
@@ -175,8 +185,14 @@ public class ChromaConfigurationOptions
 				case "database":
 					database = value;
 					break;
+				case "distributed":
+					distributed = value is null ? false
+						: value.Equals("true", StringComparison.OrdinalIgnoreCase) ? true
+						: value.Equals("false", StringComparison.OrdinalIgnoreCase) ? false
+						: throw new ArgumentException("The Distributed of the connection string is not true or false.", nameof(connectionString));
+					break;
 				default:
-					throw new ArgumentException($"The connection string has the key \"{key}\": it takes Endpoint, Token, Tenant and Database.", nameof(connectionString));
+					throw new ArgumentException($"The connection string has the key \"{key}\": it takes Endpoint, Token, Tenant, Database and Distributed.", nameof(connectionString));
 			}
 		}
 		if (endpoint is null)
@@ -188,7 +204,7 @@ public class ChromaConfigurationOptions
 		{
 			throw new ArgumentException("The Endpoint of the connection string is not an http or https URI: it takes the URI of the server, like http://localhost:8000.", nameof(connectionString));
 		}
-		var options = new ChromaConfigurationOptions(endpointUri, tenant, database);
+		var options = new ChromaConfigurationOptions(endpointUri, tenant, database) { _distributedChroma = distributed };
 		return token is null ? options : options.WithChromaToken(token);
 	}
 
@@ -207,6 +223,7 @@ public class ChromaConfigurationOptions
 		ReadRetries = options.ReadRetries;
 		WriteRetries = options.WriteRetries;
 		_chromaCloud = options._chromaCloud;
+		_distributedChroma = options._distributedChroma;
 	}
 
 	/// <summary>
@@ -277,6 +294,18 @@ public class ChromaConfigurationOptions
 	/// <returns>The new options; these do not change.</returns>
 	public ChromaConfigurationOptions WithChromaCloud(bool chromaCloud = true)
 		=> new(this) { _chromaCloud = chromaCloud };
+
+	/// <summary>
+	/// A copy of these options that says whether the server is distributed Chroma, the one Chroma Cloud runs on, installed elsewhere, like
+	/// with the Helm chart of Chroma or an operator. On distributed Chroma the client sends the indexes added with <c>ifSupported</c>,
+	/// throws before a filter on the documents that distributed Chroma gets wrong (KD-56, KD-57), and deletes a collection or a database
+	/// in one request. A server that says what it is in the server block of <c>pre-flight-checks</c>, like VecturaDB, is what it says,
+	/// whatever these options say. Chroma Cloud is distributed Chroma in any case, and only Chroma Cloud has its quotas.
+	/// </summary>
+	/// <param name="distributedChroma">Whether the server is distributed Chroma.</param>
+	/// <returns>The new options; these do not change.</returns>
+	public ChromaConfigurationOptions WithDistributedChroma(bool distributedChroma = true)
+		=> new(this) { _distributedChroma = distributedChroma };
 
 	/// <summary>
 	/// A copy of these options with the given strategy for the embeddings of records that exist in <c>UpdateAsync</c> and

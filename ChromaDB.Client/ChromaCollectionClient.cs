@@ -496,9 +496,10 @@ public class ChromaCollectionClient
 		{
 			throw new ArgumentOutOfRangeException(limit < 0 ? nameof(limit) : nameof(offset), "The limit and the offset of a get cannot be negative.");
 		}
-		CheckDocumentFilters(() => ChromaWhereOperator.Split(where, whereDocument, ids).WhereDocument?.ToRequestWhereDocument(), document: true, nameof(whereDocument));
+		var documentFilters = CheckDocumentFilters(() => ChromaWhereOperator.Split(where, whereDocument, ids).WhereDocument?.ToRequestWhereDocument(), document: true, nameof(whereDocument));
 		return WithRegexQuota(() => [(ChromaWhereOperator.Split(where, whereDocument, ids).WhereDocument?.ToRequestWhereDocument(), true)], Operation<IReadOnlyList<ChromaCollectionEntry>>("get", cancellationToken, async () =>
 		{
+			await documentFilters(cancellationToken);
 			// Works around KD-13 (docs/COMPATIBILITY.md)
 			// No get for a limit of 0, after a client made by name has read its collection, as with None: one that does not exist throws.
 			if (limit == 0)
@@ -773,9 +774,10 @@ public class ChromaCollectionClient
 	/// <returns>For each query embedding, its nearest records, nearest first.</returns>
 	public virtual Task<IReadOnlyList<IReadOnlyList<ChromaCollectionQueryEntry>>> QueryAsync(ChromaQuery query, CancellationToken cancellationToken = default)
 	{
-		CheckDocumentFilters(() => ChromaWhereOperator.Split(query.Where, query.WhereDocument, query.Ids).WhereDocument?.ToRequestWhereDocument(), document: true, nameof(query));
+		var documentFilters = CheckDocumentFilters(() => ChromaWhereOperator.Split(query.Where, query.WhereDocument, query.Ids).WhereDocument?.ToRequestWhereDocument(), document: true, nameof(query));
 		return WithRegexQuota(() => [(ChromaWhereOperator.Split(query.Where, query.WhereDocument, query.Ids).WhereDocument?.ToRequestWhereDocument(), true)], Operation<IReadOnlyList<IReadOnlyList<ChromaCollectionQueryEntry>>>("query", cancellationToken, async () =>
 		{
+			await documentFilters(cancellationToken);
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
 				.Insert("{database}", _database)
@@ -1624,9 +1626,10 @@ public class ChromaCollectionClient
 		{
 			throw new ArgumentException("The ids of a delete without filters cannot be empty: there is nothing to delete.", nameof(ids));
 		}
-		CheckDocumentFilters(() => ChromaWhereOperator.Split(where, whereDocument, ids).WhereDocument?.ToRequestWhereDocument(), document: true, nameof(whereDocument));
+		var documentFilters = CheckDocumentFilters(() => ChromaWhereOperator.Split(where, whereDocument, ids).WhereDocument?.ToRequestWhereDocument(), document: true, nameof(whereDocument));
 		return WithRegexQuota(() => [(ChromaWhereOperator.Split(where, whereDocument, ids).WhereDocument?.ToRequestWhereDocument(), true)], Operation("delete", cancellationToken, async () =>
 		{
+			await documentFilters(cancellationToken);
 			var split = ChromaWhereOperator.Split(where, whereDocument, ids);
 			if (split.Where == ChromaWhereOperator.None)
 			{
@@ -1659,9 +1662,10 @@ public class ChromaCollectionClient
 	/// <returns>The count the server answers, from Chroma 1.5.3, which for a delete by ids is the number of ids given; null from the earlier servers.</returns>
 	public virtual Task<int?> DeleteAsync(ChromaDelete delete, CancellationToken cancellationToken = default)
 	{
-		CheckDocumentFilters(() => ChromaWhereOperator.Split(delete.Where, delete.WhereDocument, delete.Ids).WhereDocument?.ToRequestWhereDocument(), document: true, nameof(delete));
+		var documentFilters = CheckDocumentFilters(() => ChromaWhereOperator.Split(delete.Where, delete.WhereDocument, delete.Ids).WhereDocument?.ToRequestWhereDocument(), document: true, nameof(delete));
 		return WithRegexQuota(() => [(ChromaWhereOperator.Split(delete.Where, delete.WhereDocument, delete.Ids).WhereDocument?.ToRequestWhereDocument(), true)], Operation("delete", cancellationToken, async () =>
 		{
+			await documentFilters(cancellationToken);
 			// The rules of Chroma and of its Python client, checked before any request. All is no filter.
 			if (delete.Ids is [])
 			{
@@ -1830,7 +1834,7 @@ public class ChromaCollectionClient
 			throw new ArgumentOutOfRangeException(limit < 0 ? nameof(limit) : nameof(offset), "The limit and the offset of a get cannot be negative.");
 		}
 		var split = ChromaWhereOperator.Split(where, whereDocument, ids);
-		CheckDocumentFilters(() => split.WhereDocument?.ToRequestWhereDocument(), document: true, nameof(whereDocument));
+		var documentFilters = CheckDocumentFilters(() => split.WhereDocument?.ToRequestWhereDocument(), document: true, nameof(whereDocument));
 		if (split.Where == ChromaWhereOperator.None)
 		{
 			return Task.FromResult<IReadOnlyList<ChromaCollectionEntry>>([]);
@@ -1840,6 +1844,7 @@ public class ChromaCollectionClient
 		var asked = split.Ids is { Count: > 0 } given && limit > given.Count ? given.Count : limit;
 		return WithRegexQuota(() => [(split.WhereDocument?.ToRequestWhereDocument(), true)], Operation<IReadOnlyList<ChromaCollectionEntry>>("conditional_get", cancellationToken, async () =>
 		{
+			await documentFilters(cancellationToken);
 			transaction.Scope(_collection.Id);
 			var requestParams = new RequestQueryParams()
 				.Insert("{tenant}", _tenant)
@@ -1966,7 +1971,8 @@ public class ChromaCollectionClient
 		});
 
 	/// <summary>
-	/// Runs one search with the Search API of Chroma, which only Chroma Cloud serves: a single server answers <c>501</c>.
+	/// Runs one search with the Search API of Chroma, which distributed Chroma serves, the one Chroma Cloud runs on, and the servers that
+	/// declare it in <c>pre-flight-checks</c>, like VecturaDB: a single Chroma server answers <c>501</c>.
 	/// </summary>
 	/// <param name="search">The search.</param>
 	/// <param name="readLevel">Which records are read: <c>ChromaReadLevel.IndexOnly</c> leaves out the ones not indexed yet; null for the default of the server.</param>
@@ -1976,8 +1982,8 @@ public class ChromaCollectionClient
 		=> (await SearchAsync([search], readLevel, cancellationToken)).Single();
 
 	/// <summary>
-	/// Runs several searches in one request with the Search API of Chroma, which only Chroma Cloud serves: a single server answers
-	/// <c>501</c>. The results come in the order of the searches. With <c>ChromaReadLevel.IndexOnly</c> the records not indexed yet are
+	/// Runs several searches in one request with the Search API of Chroma, which distributed Chroma serves, the one Chroma Cloud runs on,
+	/// and the servers that declare it in <c>pre-flight-checks</c>, like VecturaDB: a single Chroma server answers <c>501</c>. The results come in the order of the searches. With <c>ChromaReadLevel.IndexOnly</c> the records not indexed yet are
 	/// left out.
 	/// </summary>
 	/// <param name="searches">The searches, sent in one request.</param>
@@ -1986,10 +1992,11 @@ public class ChromaCollectionClient
 	/// <returns>For each search, the records it ranks, in order.</returns>
 	public virtual Task<IReadOnlyList<IReadOnlyList<ChromaSearchEntry>>> SearchAsync(IReadOnlyList<ChromaSearch> searches, ChromaReadLevel? readLevel = null, CancellationToken cancellationToken = default)
 	{
+		var documentFilters = new List<Func<CancellationToken, Task>>();
 		foreach (var search in searches ?? [])
 		{
-			CheckDocumentFilters(() => search.Where is { } where && where != ChromaWhereOperator.None && where != ChromaWhereOperator.All ? ChromaWhereOperator.ToRequestWhere(where) : null, document: false, nameof(searches));
-			CheckDocumentFilters(() => search.WhereDocument?.ToRequestWhereDocument(), document: true, nameof(searches));
+			documentFilters.Add(CheckDocumentFilters(() => search.Where is { } where && where != ChromaWhereOperator.None && where != ChromaWhereOperator.All ? ChromaWhereOperator.ToRequestWhere(where) : null, document: false, nameof(searches)));
+			documentFilters.Add(CheckDocumentFilters(() => search.WhereDocument?.ToRequestWhereDocument(), document: true, nameof(searches)));
 		}
 		return WithRegexQuota(() => (searches ?? []).SelectMany(search => new (Dictionary<string, object>?, bool)[]
 		{
@@ -1997,6 +2004,10 @@ public class ChromaCollectionClient
 			(search.WhereDocument?.ToRequestWhereDocument(), true),
 		}), Operation<IReadOnlyList<IReadOnlyList<ChromaSearchEntry>>>("search", cancellationToken, async () =>
 		{
+			foreach (var check in documentFilters)
+			{
+				await check(cancellationToken);
+			}
 			if (searches is not { Count: > 0 })
 			{
 				throw new ArgumentException("At least one search is needed.", nameof(searches));
@@ -2078,18 +2089,37 @@ public class ChromaCollectionClient
 			: default;
 
 	// Works around KD-56 and KD-57 (docs/COMPATIBILITY.md)
-	// On Chroma Cloud a filter on the documents gives the wrong records, also in a delete: a $regex whose pattern takes an empty text finds
-	// every record and its $not_regex none, and, once Chroma Cloud has indexed the records, a $contains of fewer than 3 characters finds
-	// none and its $not_contains every record. Rather than give or delete the wrong records, such a filter throws there, before any
-	// request, and so does a pattern that the client cannot read as Chroma does, which Chroma rejects. The filter is the one of the
-	// request, built only on Chroma Cloud: where_document, or the where of a search, whose filters on the documents are under #document.
-	// A filter that the operation rejects is left to it.
-	private void CheckDocumentFilters(Func<Dictionary<string, object>?> filter, bool document, string paramName)
+	// On distributed Chroma, the one Chroma Cloud runs on, a filter on the documents gives the wrong records, also in a delete: a $regex
+	// whose pattern takes an empty text finds every record and its $not_regex none, and, once the records are indexed, a $contains of
+	// fewer than 3 characters finds none and its $not_contains every record. Rather than give or delete the wrong records, such a filter
+	// throws there, and so does a pattern that the client cannot read as Chroma does, which Chroma rejects: on Chroma Cloud now, before
+	// any request; on distributed Chroma that the options name, in the check this returns, which the operation runs first, after the
+	// pre-flight-checks that tell a server that says what it is. The filter is the one of the request, built only there: where_document,
+	// or the where of a search, whose filters on the documents are under #document. A filter that the operation rejects is left to it.
+	private Func<CancellationToken, Task> CheckDocumentFilters(Func<Dictionary<string, object>?> filter, bool document, string paramName)
 	{
-		if (!_httpClient.IsChromaCloud)
+		if (_httpClient.IsChromaCloud)
 		{
-			return;
+			ThrowOnWrongDocumentFilters(filter, document, paramName);
+			return NoDocumentFilterCheck;
 		}
+		if (!_httpClient.MayBeDistributedChroma)
+		{
+			return NoDocumentFilterCheck;
+		}
+		return async cancellationToken =>
+		{
+			if (await _httpClient.IsDistributedChroma(cancellationToken))
+			{
+				ThrowOnWrongDocumentFilters(filter, document, paramName);
+			}
+		};
+	}
+
+	private static readonly Func<CancellationToken, Task> NoDocumentFilterCheck = _ => Task.CompletedTask;
+
+	private void ThrowOnWrongDocumentFilters(Func<Dictionary<string, object>?> filter, bool document, string paramName)
+	{
 		Dictionary<string, object>? request;
 		try
 		{
@@ -2107,12 +2137,12 @@ public class ChromaCollectionClient
 				if (length is null or 0)
 				{
 					var reason = length is 0 ? "it takes an empty text" : "the client cannot read it as Chroma does, with the syntax of the Rust crate regex, to tell that it needs a character";
-					throw new ArgumentException($"On Chroma Cloud the pattern \"{value}\" of {@operator} gives the wrong records: {reason}. There a filter on the documents whose pattern takes an empty text finds every record with $regex, also in a delete, and none with $not_regex. A pattern that needs a character is right: Regex(\"(?s).\") finds the records with a document that is not empty, and NotRegex(\"(?s).\") the records with an empty document or none.", paramName);
+					throw new ArgumentException($"On distributed Chroma, the one Chroma Cloud runs on, the pattern \"{value}\" of {@operator} gives the wrong records: {reason}. There a filter on the documents whose pattern takes an empty text finds every record with $regex, also in a delete, and none with $not_regex. A pattern that needs a character is right: Regex(\"(?s).\") finds the records with a document that is not empty, and NotRegex(\"(?s).\") the records with an empty document or none.", paramName);
 				}
 			}
 			else if (Characters(value) < MinContainsCharacters)
 			{
-				throw new ArgumentException($"On Chroma Cloud the text \"{value}\" of {@operator} gives the wrong records: once Chroma Cloud has indexed the records, with fewer than {MinContainsCharacters} characters $contains finds no record and $not_contains every record, also in a delete. The text as the pattern of a $regex or $not_regex, its special characters escaped, is right, and Regex(\"(?s).\") finds the records with a document that is not empty.", paramName);
+				throw new ArgumentException($"On distributed Chroma, the one Chroma Cloud runs on, the text \"{value}\" of {@operator} gives the wrong records: once the records are indexed, with fewer than {MinContainsCharacters} characters $contains finds no record and $not_contains every record, also in a delete. The text as the pattern of a $regex or $not_regex, its special characters escaped, is right, and Regex(\"(?s).\") finds the records with a document that is not empty.", paramName);
 			}
 		}
 	}
@@ -2274,8 +2304,8 @@ public class ChromaCollectionClient
 	};
 
 	/// <summary>
-	/// A copy of the collection under a new name, with the same records: Chroma Cloud only, a single server answers
-	/// 501.
+	/// A copy of the collection under a new name, with the same records: on distributed Chroma, the one Chroma Cloud runs on, and the
+	/// servers that declare it in <c>pre-flight-checks</c>, like VecturaDB; a single Chroma server answers 501.
 	/// </summary>
 	/// <param name="newName">The name of the new collection.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
@@ -2295,7 +2325,8 @@ public class ChromaCollectionClient
 		});
 
 	/// <summary>
-	/// How many forks the collection has: Chroma Cloud only.
+	/// How many forks the collection has: on distributed Chroma, the one Chroma Cloud runs on, and the servers that declare forks in
+	/// <c>pre-flight-checks</c>, like VecturaDB.
 	/// </summary>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>The number of forks.</returns>
@@ -2310,7 +2341,8 @@ public class ChromaCollectionClient
 		});
 
 	/// <summary>
-	/// How far the writes to the collection are indexed: Chroma Cloud only.
+	/// How far the writes to the collection are indexed: on distributed Chroma, the one Chroma Cloud runs on, and the servers that declare
+	/// it in <c>pre-flight-checks</c>, like VecturaDB.
 	/// </summary>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
 	/// <returns>How many writes are indexed.</returns>
@@ -2486,7 +2518,7 @@ public class ChromaCollectionClient
 			// Works around KD-25 (docs/COMPATIBILITY.md)
 			if (configuration.Hnsw is not null && !hasHnsw && hasSpann)
 			{
-				throw new ChromaException("The collection has a SPANN index, as on Chroma Cloud, which rejects HNSW settings: set Spann instead.");
+				throw new ChromaException("The collection has a SPANN index, as on distributed Chroma, the one Chroma Cloud runs on, which rejects HNSW settings: set Spann instead.");
 			}
 			if (configuration.Spann is not null && !hasSpann && hasHnsw)
 			{

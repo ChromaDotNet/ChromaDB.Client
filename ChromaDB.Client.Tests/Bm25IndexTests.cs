@@ -76,6 +76,23 @@ public class Bm25IndexTests
 		Assert.That(server.Schemas, Is.EqualTo(new[] { schema, longKeySchema }));
 	}
 
+	// A server that the options call distributed Chroma, the one Chroma Cloud runs on, gets the indexes added with ifSupported, also
+	// with a key beyond the quota of Chroma Cloud, which it does not have; also when its pre-flight-checks cannot be read. A server that
+	// says what it is in the server block, like VecturaDB, gets them as it declares them, whatever the options say.
+	[TestCase("""{"max_batch_size":100,"supports_base64_encoding":false}""", "title_bm25", "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk_bm25")]
+	[TestCase("\"broken\"", "title_bm25", "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk_bm25")]
+	[TestCase(null, "title_bm25", "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk_bm25")]
+	[TestCase(SparseVectorIndexes, "title_bm25", "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk_bm25")]
+	[TestCase("""{"max_batch_size":100,"server":{"name":"VecturaDB","version":"1.0.0-preview.3","features":["search","fork"]}}""", null, null)]
+	public async Task IndexIfSupportedOnDistributedChroma(string? preFlightChecks, string? schema, string? longKeySchema)
+	{
+		var server = new FakeServer(preFlightChecks);
+		var client = new ChromaClient(new ChromaConfigurationOptions("http://chroma.example.com:8000").WithDistributedChroma(), new HttpClient(server));
+		await client.CreateCollectionAsync(new ChromaCollectionDefinition("c") { Schema = new ChromaCollectionSchema().WithBm25Index("title", ifSupported: true) });
+		await client.GetOrCreateCollectionAsync(new ChromaCollectionDefinition("c") { Schema = new ChromaCollectionSchema().WithBm25Index(new string('k', 32), ifSupported: true) });
+		Assert.That(server.Schemas, Is.EqualTo(new[] { schema, longKeySchema }));
+	}
+
 	// With API keys on, the server shows its block only to a valid key, and answers pre-flight-checks without it otherwise: the client
 	// sends its key there too, in either header, and gets the indexes added with ifSupported through only with the right one.
 	[TestCase("k", ChromaTokenTransportHeader.XChromaToken, "title_bm25")]
