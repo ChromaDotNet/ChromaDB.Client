@@ -26,6 +26,12 @@ public class ChromaConfigurationOptions
 	/// options say of it, and keeps its quotas; distributed Chroma alone has none of them.
 	/// </summary>
 	public bool IsDistributedChroma => IsChromaCloud || _distributedChroma;
+	/// <summary>
+	/// Whether the options name the server distributed Chroma, with <c>WithDistributedChroma</c> or <c>Distributed=true</c> in the
+	/// connection string, whatever its address: false for Chroma Cloud without them. <c>IsDistributedChroma</c> tells whether the client
+	/// takes the server for distributed Chroma, Chroma Cloud included.
+	/// </summary>
+	public bool DistributedChroma => _distributedChroma;
 
 	private bool _distributedChroma;
 	/// <summary>

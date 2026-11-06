@@ -48,7 +48,16 @@ public class ConnectionStringTests
 	public void Distributed(string connectionString, bool distributed)
 	{
 		var options = ChromaConfigurationOptions.FromConnectionString(connectionString);
-		Assert.That((options.IsDistributedChroma, options.IsChromaCloud), Is.EqualTo((distributed, false)));
+		Assert.That((options.IsDistributedChroma, options.DistributedChroma, options.IsChromaCloud), Is.EqualTo((distributed, distributed, false)));
+	}
+
+	// On the address of Chroma Cloud the server is distributed Chroma either way, and DistributedChroma is what the connection string says.
+	[TestCase("Endpoint=https://api.trychroma.com;Distributed=true", true)]
+	[TestCase("Endpoint=https://api.trychroma.com", false)]
+	public void DistributedOnChromaCloud(string connectionString, bool distributed)
+	{
+		var options = ChromaConfigurationOptions.FromConnectionString(connectionString);
+		Assert.That((options.IsChromaCloud, options.IsDistributedChroma, options.DistributedChroma), Is.EqualTo((true, true, distributed)));
 	}
 
 	// Another value of Distributed has its message, which does not repeat the token.
