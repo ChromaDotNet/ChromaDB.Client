@@ -193,6 +193,41 @@ public class ApiV2CompleteTests : ChromaTestsBase
 		await Assert.ThatAsync(() => collection.AddFunctionInputAsync("stats", input.Id), Throws.InstanceOf<ChromaException>());
 	}
 
+	// The get answers the function as attached, with the collection it is attached to and its output; after the detach a get and
+	// another detach answer 404, and the collection still takes records.
+	[Test]
+	public async Task GetAndDetachFunction()
+	{
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		var collection = client.GetCollectionClient(await client.CreateCollectionAsync($"collection{Random.Shared.Next()}"));
+		if (!AttachedFunctionsSupported)
+		{
+			await Assert.ThatAsync(() => collection.GetAttachedFunctionAsync("stats"), Throws.InstanceOf<ChromaException>());
+			await Assert.ThatAsync(() => collection.DetachFunctionAsync("stats"), Throws.InstanceOf<ChromaException>());
+			return;
+		}
+		var output = $"output{Random.Shared.Next()}";
+		ChromaAttachedFunction attached;
+		try
+		{
+			(attached, _) = await collection.AttachFunctionAsync(ChromaFunctions.Statistics, "stats", output);
+		}
+		// KD-27: Chroma Cloud answers 429 to the attach of a function that the tenant has not enabled, also on the first call.
+		catch (ChromaException ex) when (ChromaCloud && (int?)ex.StatusCode == 429)
+		{
+			Assert.Ignore("KD-27: the tenant of the tests has not enabled the function on Chroma Cloud.");
+			return;
+		}
+		var got = await collection.GetAttachedFunctionAsync("stats");
+		Assert.That((got.Id, got.Name, got.FunctionName, got.InputCollectionId, got.OutputCollection), Is.EqualTo((attached.Id, "stats", ChromaFunctions.Statistics, (Guid?)collection.Collection.Id, output)));
+		await Assert.ThatAsync(() => collection.GetAttachedFunctionAsync("other"), Throws.InstanceOf<ChromaException>().With.Property(nameof(ChromaException.StatusCode)).EqualTo(HttpStatusCode.NotFound));
+		Assert.That(await collection.DetachFunctionAsync("stats"), Is.True);
+		await Assert.ThatAsync(() => collection.GetAttachedFunctionAsync("stats"), Throws.InstanceOf<ChromaException>().With.Property(nameof(ChromaException.StatusCode)).EqualTo(HttpStatusCode.NotFound));
+		await Assert.ThatAsync(() => collection.DetachFunctionAsync("stats"), Throws.InstanceOf<ChromaException>().With.Property(nameof(ChromaException.StatusCode)).EqualTo(HttpStatusCode.NotFound));
+		await collection.AddAsync(new ChromaRecords(["a", "b"]) { Embeddings = [new([1f, 0f]), new([0f, 1f])] });
+		Assert.That(await collection.CountAsync(), Is.EqualTo(2));
+	}
+
 	// On Chroma Cloud the tenant and the database of the API key; a single server, also one already running, always answers
 	// with the default ones.
 	[Test]
