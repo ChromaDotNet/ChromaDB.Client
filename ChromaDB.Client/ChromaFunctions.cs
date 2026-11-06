@@ -1,7 +1,8 @@
 namespace ChromaDB.Client;
 
 /// <summary>
-/// The functions of Chroma Cloud that can be attached to a collection, as the Python client of Chroma names them.
+/// The functions of distributed Chroma, the one Chroma Cloud runs on, that can be attached to a collection, as the Python client of
+/// Chroma names them.
 /// </summary>
 public static class ChromaFunctions
 {

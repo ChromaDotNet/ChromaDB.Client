@@ -1,8 +1,8 @@
 namespace ChromaDB.Client;
 
 /// <summary>
-/// What a read looks at, <c>read_level</c> in Chroma. It matters on Chroma Cloud, where new records are indexed later;
-/// a single server indexes them at once and accepts it without a difference.
+/// What a read looks at, <c>read_level</c> in Chroma. It matters on distributed Chroma, the one Chroma Cloud runs on, where new records
+/// are indexed later; a single server indexes them at once and accepts it without a difference.
 /// </summary>
 public enum ChromaReadLevel
 {

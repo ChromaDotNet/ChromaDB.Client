@@ -1,6 +1,6 @@
 # Sparse vectors and schema
 
-Chroma Cloud keeps sparse vectors, like the BM25 vectors of the documents, in a metadata key with a sparse vector index, which the schema of the collection declares:
+Distributed Chroma, the one Chroma Cloud runs on, and VecturaDB keep sparse vectors, like the BM25 vectors of the documents, in a metadata key with a sparse vector index, which the schema of the collection declares:
 
 ```csharp
 var collection = await client.CreateCollectionAsync(new ChromaCollectionDefinition("articles")
@@ -40,9 +40,9 @@ var results = await collectionClient.SearchAsync(new ChromaSearch { Rank = Chrom
   	.WithoutIndex(ChromaSchemaIndex.FullTextSearch);
   ```
 
-- **On Chroma Cloud only:**
-  - the algorithm of a sparse vector index, `WithSparseVectorIndex(key, ChromaSparseIndexAlgorithm.MaxScore, ...)`, which `ChromaSparseVectorIndex.Algorithm` reads back, for the tenants that have it;
-  - a customer-managed key of Google Cloud KMS, `WithGcpCmek("projects/.../locations/.../keyRings/.../cryptoKeys/...")`, like `set_cmek` of the Python client.
+- **In the schema of distributed Chroma, the one Chroma Cloud runs on:**
+  - the algorithm of a sparse vector index, `WithSparseVectorIndex(key, ChromaSparseIndexAlgorithm.MaxScore, ...)`, which `ChromaSparseVectorIndex.Algorithm` reads back: distributed Chroma and VecturaDB keep it in the schema, Chroma Cloud for the tenants that have it;
+  - a customer-managed key of Google Cloud KMS, `WithGcpCmek("projects/.../locations/.../keyRings/.../cryptoKeys/...")`, like `set_cmek` of the Python client: distributed Chroma keeps it in the schema, also a key that does not exist.
 - **The space with a schema:** `Configuration = new() { Space = ... }` goes in the schema, on `#embedding`, as `create_index(VectorIndexConfig(space=...))` of the Python client writes it, and not in the `hnsw:space` metadata. Chroma rejects the two together: "Cannot set both collection config and schema simultaneously".
 - **Where the schema works:**
   - the versions that apply it: [COMPATIBILITY.md](COMPATIBILITY.md);

@@ -1,6 +1,6 @@
 # Conditional transactions
 
-A conditional transaction reads records of a collection and writes them only if none of the records it read or writes changed after its reads, as `collection.conditional()` of the Python and JavaScript clients of Chroma. Chroma Cloud has conditional transactions; Chroma 1.5.9 does not.
+A conditional transaction reads records of a collection and writes them only if none of the records it read or writes changed after its reads, as `collection.conditional()` of the Python and JavaScript clients of Chroma. Distributed Chroma, the one Chroma Cloud runs on, has conditional transactions for the tenants that the configuration of its frontend enables: the sample configuration of Chroma lists only `default_tenant` in `tenants_with_transactions_enabled`, and another tenant gets "conditional transactions are disabled by frontend configuration". VecturaDB has them. Chroma 1.5.9 does not.
 
 ```csharp
 var counted = await collectionClient.RunConditionalTransactionAsync(async (transaction, cancellationToken) =>

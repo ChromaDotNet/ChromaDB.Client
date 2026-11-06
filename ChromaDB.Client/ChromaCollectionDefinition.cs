@@ -26,8 +26,9 @@ public class ChromaCollectionDefinition
 	public ChromaCollectionConfiguration? Configuration { get; init; }
 
 	/// <summary>
-	/// The indexes of the keys of the collection, like a sparse vector index for BM25. Chroma 1.3.0 and later apply a schema, but
-	/// sparse vector indexes only on Chroma Cloud: a single server rejects them, and does not get the ones added with <c>ifSupported</c>.
+	/// The indexes of the keys of the collection, like a sparse vector index for BM25. Chroma 1.3.0 and later apply a schema; distributed
+	/// Chroma, the one Chroma Cloud runs on, and VecturaDB apply its sparse vector indexes too, while a single Chroma server rejects them,
+	/// and does not get the ones added with <c>ifSupported</c>.
 	/// </summary>
 	public ChromaCollectionSchema? Schema { get; init; }
 

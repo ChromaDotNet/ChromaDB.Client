@@ -14,15 +14,15 @@ public class ChromaCollectionConfiguration
 
 	/// <summary>
 	/// The settings of the HNSW index, the index of a single Chroma server. The client sends them as the <c>hnsw:</c> metadata, which
-	/// every tested Chroma applies, or in the schema when there is one. Chroma Cloud ignores them, and Chroma rejects them together with
-	/// <c>Spann</c>: then it throws.
+	/// every tested Chroma applies, or in the schema when there is one. Distributed Chroma, the one Chroma Cloud runs on, ignores them,
+	/// and Chroma rejects them together with <c>Spann</c>: then it throws.
 	/// </summary>
 	public ChromaHnswConfiguration? Hnsw { get; init; }
 
 	/// <summary>
-	/// The settings of the SPANN index, the index of Chroma Cloud, in the <c>configuration</c> of the request, which Chroma 1.0.0 and
-	/// later take, or in the schema for the settings that only a schema takes. A single server ignores them, and Chroma rejects them
-	/// together with <c>Hnsw</c>: then it throws.
+	/// The settings of the SPANN index, the index of distributed Chroma, the one Chroma Cloud runs on, in the <c>configuration</c> of the
+	/// request, which Chroma 1.0.0 and later take, or in the schema for the settings that only a schema takes. A single server ignores
+	/// them, and Chroma rejects them together with <c>Hnsw</c>: then it throws.
 	/// </summary>
 	public ChromaSpannConfiguration? Spann { get; init; }
 
