@@ -14,7 +14,8 @@ public class ChromaTenant
 	public string Name { get; }
 
 	/// <summary>
-	/// The name of the tenant in the resource names of Chroma Cloud, like the CRN of a collection; null when it has none.
+	/// The name of the tenant in the resource names of distributed Chroma, the one Chroma Cloud runs on, like the CRN of a collection;
+	/// null when it has none.
 	/// <c>UpdateTenantAsync</c> sets it.
 	/// </summary>
 	[JsonPropertyName("resource_name")]

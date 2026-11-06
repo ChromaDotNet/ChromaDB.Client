@@ -465,10 +465,10 @@ public class ChromaClient : IDisposable
 		});
 
 	/// <summary>
-	/// A collection by its Chroma Resource Name, <c>&lt;tenant resource name&gt;:&lt;database&gt;:&lt;collection&gt;</c>:
-	/// Chroma Cloud only, as in the JavaScript client of Chroma. The operation is hidden in the OpenAPI description. On Chroma Cloud
-	/// this request, sent with an API key limited to one database and with an API key for the whole tenant, got <c>403</c>, also for
-	/// a collection of that tenant.
+	/// A collection by its Chroma Resource Name, <c>&lt;tenant resource name&gt;:&lt;database&gt;:&lt;collection&gt;</c>, as in the
+	/// JavaScript client of Chroma: on distributed Chroma, the one Chroma Cloud runs on, once <c>UpdateTenantAsync</c> has given the
+	/// tenant its resource name. The operation is hidden in the OpenAPI description. On Chroma Cloud this request, sent with an API key
+	/// limited to one database and with an API key for the whole tenant, got <c>403</c>, also for a collection of that tenant.
 	/// </summary>
 	/// <param name="crn">The Chroma Resource Name of the collection, <c>&lt;tenant resource name&gt;:&lt;database&gt;:&lt;collection&gt;</c>.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
@@ -815,7 +815,7 @@ public class ChromaClient : IDisposable
 		});
 
 	/// <summary>
-	/// Sets the name of the tenant in the resource names of Chroma Cloud, like the CRN of a collection.
+	/// Sets the name of the tenant in the resource names of distributed Chroma, the one Chroma Cloud runs on, like the CRN of a collection.
 	/// </summary>
 	/// <param name="name">The name of the tenant.</param>
 	/// <param name="resourceName">The resource name of the tenant, the first part of the CRNs of its collections.</param>

@@ -53,7 +53,7 @@ await client.UpdateTenantAsync("my_tenant", resourceName: "my_org");
 var collection = await client.GetCollectionByCrnAsync("my_org:my_database:my_collection");
 ```
 
-`UpdateTenantAsync` sets the resource name of a tenant, which `GetTenantAsync` returns as `ResourceName`. `GetCollectionByCrnAsync` gets a collection by its Chroma Resource Name.
+`UpdateTenantAsync` sets the resource name of a tenant, which `GetTenantAsync` returns as `ResourceName`. `GetCollectionByCrnAsync` gets a collection by its Chroma Resource Name. Distributed Chroma, the one Chroma Cloud runs on, keeps the resource name and gets the collection by its CRN ([COMPATIBILITY.md](COMPATIBILITY.md#other-behaviors-of-the-servers)).
 
 `GetCollectionByCrnAsync` on Chroma Cloud: KD-26 in [COMPATIBILITY.md](COMPATIBILITY.md#known-defects-of-the-servers).
 
