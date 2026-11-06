@@ -3,7 +3,8 @@ using System.Text.Json.Serialization;
 namespace ChromaDB.Client.Models;
 
 /// <summary>
-/// How far Chroma Cloud has indexed the writes to a collection.
+/// How far the server has indexed the writes to a collection: on distributed Chroma, the one Chroma Cloud runs on, and the servers that
+/// declare it in <c>pre-flight-checks</c>, like VecturaDB.
 /// </summary>
 public class ChromaIndexingStatus
 {

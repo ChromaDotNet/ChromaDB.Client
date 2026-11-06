@@ -1,7 +1,8 @@
 namespace ChromaDB.Client.Models;
 
 /// <summary>
-/// The settings of the SPANN index of a new collection, the index of Chroma Cloud; the ones left null take the default of the server.
+/// The settings of the SPANN index of a new collection, the index of distributed Chroma, the one Chroma Cloud runs on; the ones left
+/// null take the default of the server.
 /// A single Chroma server uses an HNSW index and ignores them: then <c>CreateCollectionAsync</c> throws a <c>ChromaException</c>.
 /// </summary>
 public class ChromaSpannConfiguration

@@ -13,7 +13,8 @@ namespace ChromaDB.Client;
 /// and without deletes by filters; an add needs a read of the transaction that did not find the id, an update and a delete a read that
 /// found it; it takes one write for each id, and no read of an id after its write; a read without ids needs a positive limit, and the
 /// commit checks only the records it returned. Its operations go one at a time: one that starts before the previous one ends throws an
-/// <c>InvalidOperationException</c>. Chroma Cloud has conditional transactions; Chroma 1.5.9 does not.
+/// <c>InvalidOperationException</c>. Distributed Chroma, the one Chroma Cloud runs on, has conditional transactions for the tenants that
+/// the configuration of its frontend enables, and so does VecturaDB; Chroma 1.5.9 does not.
 /// </summary>
 public class ChromaConditionalTransaction
 {

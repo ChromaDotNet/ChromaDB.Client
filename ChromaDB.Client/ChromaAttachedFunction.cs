@@ -3,7 +3,8 @@ using System.Text.Json.Serialization;
 namespace ChromaDB.Client.Models;
 
 /// <summary>
-/// A function of Chroma Cloud attached to a collection, which writes its results to an output collection.
+/// A function of distributed Chroma, the one Chroma Cloud runs on, attached to a collection, which writes its results to an output
+/// collection.
 /// <c>AttachFunctionAsync</c> fills <c>Id</c>, <c>Name</c> and <c>FunctionName</c>; <c>GetAttachedFunctionAsync</c> fills the rest too.
 /// </summary>
 public class ChromaAttachedFunction

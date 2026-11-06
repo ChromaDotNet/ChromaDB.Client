@@ -1601,7 +1601,7 @@ public class ChromaCollectionClient
 		if (records.Metadatas?.Any(metadata => metadata?.Values.Any(IsSparseVector) == true) == true
 			&& await _httpClient.IsChroma0(cancellationToken))
 		{
-			throw new ChromaException("Chroma 0.x drops the sparse vectors in metadata without an error: only Chroma Cloud stores them.");
+			throw new ChromaException("Chroma 0.x drops the sparse vectors in metadata without an error: distributed Chroma, the one Chroma Cloud runs on, and VecturaDB store them.");
 		}
 	}
 
@@ -1953,8 +1953,8 @@ public class ChromaCollectionClient
 		});
 
 	/// <summary>
-	/// The count at a read level: <c>ChromaReadLevel.IndexOnly</c> leaves out the records not indexed yet. Chroma Cloud indexes them
-	/// later, so right after a write the count can be lower; a single server indexes them at once.
+	/// The count at a read level: <c>ChromaReadLevel.IndexOnly</c> leaves out the records not indexed yet. Distributed Chroma, the one
+	/// Chroma Cloud runs on, indexes them later, so right after a write the count can be lower; a single server indexes them at once.
 	/// </summary>
 	/// <param name="readLevel">Which records are read: <c>ChromaReadLevel.IndexOnly</c> leaves out the ones not indexed yet.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
@@ -2357,9 +2357,9 @@ public class ChromaCollectionClient
 		});
 
 	/// <summary>
-	/// Attaches a function of Chroma Cloud, like <c>ChromaFunctions.Statistics</c>, under a name of its own; its
-	/// results go to the output collection. <c>Created</c> is false when a function with that name was already
-	/// attached.
+	/// Attaches a function of distributed Chroma, the one Chroma Cloud runs on, like <c>ChromaFunctions.Statistics</c>, under a name of
+	/// its own; its results go to the output collection. <c>Created</c> is false when a function with that name was already attached.
+	/// VecturaDB attaches them too; a single Chroma server answers with an error.
 	/// </summary>
 	/// <param name="function">The function to attach, like <c>ChromaFunctions.Statistics</c>.</param>
 	/// <param name="name">The name of the attached function.</param>
@@ -2386,7 +2386,7 @@ public class ChromaCollectionClient
 		});
 
 	/// <summary>
-	/// Gets the function attached to the collection under the name: Chroma Cloud only.
+	/// Gets the function attached to the collection under the name.
 	/// </summary>
 	/// <param name="name">The name of the attached function.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
@@ -2404,8 +2404,7 @@ public class ChromaCollectionClient
 
 	/// <summary>
 	/// Detaches the function attached under the name, and deletes its output collection when
-	/// <c>deleteOutputCollection</c> is true: Chroma Cloud only. Returns the <c>success</c> of the answer of the
-	/// server.
+	/// <c>deleteOutputCollection</c> is true. Returns the <c>success</c> of the answer of the server.
 	/// </summary>
 	/// <param name="name">The name of the attached function.</param>
 	/// <param name="deleteOutputCollection">Whether the output collection of the function is deleted too.</param>
@@ -2429,7 +2428,8 @@ public class ChromaCollectionClient
 	/// <summary>
 	/// Adds the collection with the id as another input of the asynchronous function attached to this collection under the name, as
 	/// <c>AttachedFunction.add_input</c> of the Python client of Chroma: the function runs on the records of both. The server rejects it for
-	/// a synchronous function. <c>Created</c> is false when the collection was an input of the function already. Chroma Cloud only.
+	/// a synchronous function. <c>Created</c> is false when the collection was an input of the function already. On distributed Chroma, the
+	/// one Chroma Cloud runs on, and on VecturaDB.
 	/// </summary>
 	/// <param name="name">The name of the attached function.</param>
 	/// <param name="inputCollectionId">The id of the collection to add as an input.</param>

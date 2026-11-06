@@ -32,7 +32,8 @@ With `CHROMA_TEST_URI`, the tests run against a server that is already running, 
 - `CHROMA_TEST_TENANT` and `CHROMA_TEST_DATABASE` are used as they are, not created;
 - `CHROMA_TEST_MAX_BATCH_SIZE` is a batch limit lower than the one the server declares, like 300 on Chroma Cloud.
 - `CHROMA_TEST_DISTRIBUTED=true` says that the server is distributed Chroma, the one Chroma Cloud runs on, installed elsewhere: the tests use `WithDistributedChroma()` and expect what Chroma Cloud does, without its quotas.
+- `CHROMA_TEST_OTHER_TENANTS=true` says that the server lets the tests create and look up other tenants and databases, like a server started for the tests.
 
-Each fixture deletes the collections and the databases its requests created, and nothing else. The tests that reset the server, create or look up other tenants and databases, or query an id that does not exist are skipped.
+Each fixture deletes the collections and the databases its requests created, and nothing else. The tests that reset the server, create or look up other tenants and databases, or query an id that does not exist are skipped; with `CHROMA_TEST_OTHER_TENANTS=true` the ones of other tenants and databases run.
 
 The property tests, in the classes whose names end in `PropertyTests`, check random cases with [FsCheck](https://github.com/fscheck/FsCheck) and need no Chroma. Each run takes new cases. A failure prints the case and its seed, like `(5123468595321266860,8907826574119387873)`: `FSCHECK_REPLAY` with that seed runs the same cases again. The CI sets one, so that its runs check the same cases.

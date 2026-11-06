@@ -3,7 +3,8 @@ using System.Text.Json.Serialization;
 namespace ChromaDB.Client.Models;
 
 /// <summary>
-/// The settings of the SPANN index of Chroma Cloud that can change; the ones left null keep their value.
+/// The settings of the SPANN index of distributed Chroma, the one Chroma Cloud runs on, that can change; the ones left null keep their
+/// value.
 /// </summary>
 public class ChromaSpannConfigurationUpdate
 {

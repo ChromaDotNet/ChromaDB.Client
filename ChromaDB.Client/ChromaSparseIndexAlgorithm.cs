@@ -1,7 +1,7 @@
 namespace ChromaDB.Client.Models;
 
 /// <summary>
-/// The algorithm of a sparse vector index of Chroma Cloud, <c>algorithm</c> in its schema.
+/// The algorithm of a sparse vector index, <c>algorithm</c> in the schema of the collection.
 /// </summary>
 public enum ChromaSparseIndexAlgorithm
 {
@@ -10,7 +10,8 @@ public enum ChromaSparseIndexAlgorithm
 	/// </summary>
 	Wand,
 	/// <summary>
-	/// MaxScore, <c>max_score</c>, on Chroma Cloud for the tenants that have it.
+	/// MaxScore, <c>max_score</c>: distributed Chroma, the one Chroma Cloud runs on, and VecturaDB keep it in the schema, Chroma Cloud for
+	/// the tenants that have it.
 	/// </summary>
 	MaxScore,
 }

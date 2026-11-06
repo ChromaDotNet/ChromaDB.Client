@@ -223,32 +223,43 @@ public class CollectionSettingsServerTests : ChromaTestsBase
 		}
 	}
 
-	// Only Chroma Cloud has sparse vector indexes, SPANN and customer-managed keys. A key of Google Cloud KMS that does not exist is kept.
+	// Distributed Chroma, the one Chroma Cloud runs on, takes SPANN settings in the configuration, next to a sparse vector index in the
+	// schema.
 	[Test]
-	public async Task SettingsOfChromaCloud()
+	public async Task SettingsOfDistributedChroma()
 	{
-		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has them.");
+		Assume.That(DistributedChroma, Is.True, "The test is for distributed Chroma, the one Chroma Cloud runs on.");
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
-		const string key = "projects/p/locations/us/keyRings/r/cryptoKeys/k";
 		var collection = await client.CreateCollectionAsync(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}")
 		{
 			Configuration = new() { Space = ChromaSpace.Cosine, Spann = new() { SearchNprobe = 32, NreplicaCount = 4, SearchRngEpsilon = 8, NumSamplesKmeans = 500 } },
-			Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", bm25: true).WithGcpCmek(key),
+			Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", bm25: true),
 		});
 		Assert.That(collection.SparseVectorIndexes.Single().Algorithm, Is.EqualTo(ChromaSparseIndexAlgorithm.Wand));
 		var schema = collection.SchemaJson!.Value;
-		Assert.That(schema.GetProperty("cmek").GetProperty("gcp").GetString(), Is.EqualTo(key));
 		var spann = schema.GetProperty("keys").GetProperty("#embedding").GetProperty("float_list").GetProperty("vector_index").GetProperty("config").GetProperty("spann");
 		Assert.That((spann.GetProperty("search_nprobe").GetInt32(), spann.GetProperty("nreplica_count").GetInt32(), spann.GetProperty("search_rng_epsilon").GetDouble(), spann.GetProperty("num_samples_kmeans").GetInt32()),
 			Is.EqualTo((32, 4, 8.0, 500)));
 		Assert.That(collection.Space, Is.EqualTo(ChromaSpace.Cosine));
 	}
 
-	// MaxScore is only for the tenants of Chroma Cloud that have it: on the others the test is inconclusive.
+	// A customer-managed key of Google Cloud KMS in the schema, which is kept also when it does not exist.
+	[Test]
+	public async Task CustomerManagedKey()
+	{
+		Assume.That(DistributedChroma, Is.True, "The test is for distributed Chroma, the one Chroma Cloud runs on.");
+		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
+		const string key = "projects/p/locations/us/keyRings/r/cryptoKeys/k";
+		var collection = await client.CreateCollectionAsync(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}") { Schema = new ChromaCollectionSchema().WithGcpCmek(key) });
+		Assert.That(collection.SchemaJson!.Value.GetProperty("cmek").GetProperty("gcp").GetString(), Is.EqualTo(key));
+	}
+
+	// MaxScore in the schema, which distributed Chroma and VecturaDB keep. Chroma Cloud keeps it only for the tenants that have it: on the
+	// others the test is inconclusive.
 	[Test]
 	public async Task MaxScoreSparseIndex()
 	{
-		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has sparse vector indexes.");
+		Assume.That(SparseVectorIndexesSupported, Is.True, "The server has no sparse vector indexes.");
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
 		var definition = new ChromaCollectionDefinition($"collection{Random.Shared.Next()}") { Schema = new ChromaCollectionSchema().WithSparseVectorIndex("doc_bm25", ChromaSparseIndexAlgorithm.MaxScore, bm25: true) };
 		ChromaCollection collection;

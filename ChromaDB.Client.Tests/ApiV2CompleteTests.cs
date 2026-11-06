@@ -306,7 +306,7 @@ public class ApiV2CompleteTests : ChromaTestsBase
 	[Test]
 	public async Task HybridSearchWithBm25()
 	{
-		Assume.That(SparseVectorIndexesSupported, Is.True, "Only Chroma Cloud and the servers that declare them have sparse vector indexes.");
+		Assume.That(SparseVectorIndexesSupported, Is.True, "The server has no sparse vector indexes.");
 		var bm25 = new ChromaBm25(k: 1.5);
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
 		// The space goes in the schema: Chroma Cloud rejects a configuration together with a schema.
@@ -340,7 +340,7 @@ public class ApiV2CompleteTests : ChromaTestsBase
 	[Test]
 	public async Task QuotasOfChromaCloud()
 	{
-		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has these quotas.");
+		Assume.That(ChromaCloud, Is.True, "Only Chroma Cloud has the quotas of 8,182 bytes for a metadata value, 16,384 for a document and 36 for a key of the schema.");
 		var client = new ChromaClient(BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact), HttpClient);
 		var name = $"collection{Random.Shared.Next()}";
 		var tooLong = new ChromaCollectionDefinition(name) { Schema = new ChromaCollectionSchema().WithIndex(ChromaSchemaIndex.StringInverted, new string('k', 37)) };
@@ -359,7 +359,7 @@ public class ApiV2CompleteTests : ChromaTestsBase
 	[Test]
 	public async Task HybridRrfOnChromaCloud()
 	{
-		Assume.That(SparseVectorIndexesSupported, Is.True, "Only Chroma Cloud and the servers that declare them have sparse vector indexes.");
+		Assume.That(SparseVectorIndexesSupported, Is.True, "The server has no sparse vector indexes.");
 		var client = new ChromaClient(BaseConfigurationOptions, HttpClient);
 		var collection = client.GetCollectionClient(await client.CreateCollectionAsync(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}")
 		{

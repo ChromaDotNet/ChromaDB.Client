@@ -67,8 +67,8 @@ public sealed class ChromaCollectionSchema
 	}
 
 	/// <summary>
-	/// The same as the overload without <c>algorithm</c>, with the algorithm of the index: <c>MaxScore</c> is on Chroma Cloud for the
-	/// tenants that have it, <c>Wand</c> is the default.
+	/// The same as the overload without <c>algorithm</c>, with the algorithm of the index: distributed Chroma, the one Chroma Cloud runs
+	/// on, and VecturaDB keep <c>MaxScore</c> in the schema, Chroma Cloud for the tenants that have it; <c>Wand</c> is the default.
 	/// </summary>
 	/// <param name="key">The metadata key that holds the sparse vectors.</param>
 	/// <param name="algorithm">The algorithm of the index.</param>
@@ -131,7 +131,7 @@ public sealed class ChromaCollectionSchema
 
 	/// <summary>
 	/// A copy of the schema whose collection is encrypted with a customer-managed key of Google Cloud KMS, as <c>set_cmek</c> of the
-	/// Python client of Chroma: Chroma Cloud only. A resource that is not
+	/// Python client of Chroma. Distributed Chroma, the one Chroma Cloud runs on, keeps the key in the schema. A resource that is not
 	/// <c>projects/{project}/locations/{location}/keyRings/{key ring}/cryptoKeys/{key}</c> throws an <c>ArgumentException</c>.
 	/// </summary>
 	/// <param name="resource">The resource name of the key.</param>

@@ -14,7 +14,7 @@ var client = await new ChromaClient(options, httpClient).WithTenantAndDatabaseFr
 - a tenant or database set in the options, other than the default ones, must match the one the key gives, when it gives one;
 - a single Chroma server always answers with `default_tenant` and `default_database`.
 
-These operations exist only on Chroma Cloud; a single Chroma server answers them with an error.
+Fork, the fork count and the indexing status exist on distributed Chroma, the one Chroma Cloud runs on, and on VecturaDB; a single Chroma server answers them with an error.
 
 ```csharp
 var copy = await collectionClient.ForkAsync("my_collection_copy");
@@ -24,12 +24,12 @@ var status = await collectionClient.GetIndexingStatusAsync();
 
 `ForkAsync` copies a collection with its records under a new name. `GetIndexingStatusAsync` tells how many writes are indexed.
 
-On every server, `CountAsync(ChromaReadLevel.IndexOnly)` counts only the records already indexed. Chroma Cloud indexes them later, so right after a write the count can be lower, even 0, while `CountAsync()` already sees them. A single server indexes them at once and gives the same count.
+On every server, `CountAsync(ChromaReadLevel.IndexOnly)` counts only the records already indexed. Distributed Chroma, the one Chroma Cloud runs on, indexes them later, so right after a write the count can be lower, even 0, while `CountAsync()` already sees them. A single server indexes them at once and gives the same count.
 
 ```csharp
 await collectionClient.AddAsync(ids, embeddings: embeddings);                  // 6 records
 var all = await collectionClient.CountAsync();                                 // 6
-var indexed = await collectionClient.CountAsync(ChromaReadLevel.IndexOnly);    // on Chroma Cloud, from 0 to 6 until they are indexed
+var indexed = await collectionClient.CountAsync(ChromaReadLevel.IndexOnly);    // on distributed Chroma, Chroma Cloud included, from 0 to 6 until they are indexed
 ```
 
 ```csharp
@@ -38,7 +38,7 @@ var function = await collectionClient.GetAttachedFunctionAsync("my_stats");
 await collectionClient.DetachFunctionAsync("my_stats", deleteOutputCollection: true);
 ```
 
-The functions of Chroma Cloud, `ChromaFunctions.Statistics` and `ChromaFunctions.RecordCounter`, run on the records of a collection and write their results to an output collection.
+The functions of distributed Chroma, the one Chroma Cloud runs on, `ChromaFunctions.Statistics` and `ChromaFunctions.RecordCounter`, run on the records of a collection and write their results to an output collection. VecturaDB attaches them too; a single Chroma server answers with an error.
 
 ```csharp
 var (function, added) = await collectionClient.AddFunctionInputAsync("my_async_function", otherCollection.Id);
@@ -46,7 +46,7 @@ var (function, added) = await collectionClient.AddFunctionInputAsync("my_async_f
 
 `AddFunctionInputAsync` adds another input collection to an asynchronous function, as `AttachedFunction.add_input` of the Python client: the function then runs on the records of both. `added` is false when the collection was an input already. A synchronous function, like `ChromaFunctions.Statistics`, takes no other input.
 
-[Conditional transactions](conditional-transactions.md) exist on Chroma Cloud too.
+[Conditional transactions](conditional-transactions.md) exist on distributed Chroma, the one Chroma Cloud runs on, and on VecturaDB.
 
 ```csharp
 await client.UpdateTenantAsync("my_tenant", resourceName: "my_org");

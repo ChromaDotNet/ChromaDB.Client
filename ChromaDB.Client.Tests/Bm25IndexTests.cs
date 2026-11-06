@@ -40,8 +40,9 @@ public class Bm25IndexTests
 		await client.AddAsync(new ChromaRecords(["a"]) { Embeddings = [Embedding], Metadatas = [new Dictionary<string, object> { ["title"] = "apple", ["title_bm25"] = new ChromaSparseVector([1], [1f]) }] });
 	}
 
-	// An index added with ifSupported goes to Chroma Cloud only: a single server rejects sparse vector indexes, and gets the schema
-	// without it, or no schema when nothing else is in it.
+	// An index added with ifSupported goes to Chroma Cloud, to distributed Chroma that the options name and to the servers that declare
+	// sparse vector indexes, and not to a single Chroma server, which rejects sparse vector indexes and gets the schema without it, or no
+	// schema when nothing else is in it.
 	[TestCase("https://api.trychroma.com", "title_bm25", "title,title_bm25", "title_bm25", "title_bm25", "title_bm25")]
 	[TestCase("http://localhost:8000", null, "title", "title_bm25", "", "")]
 	public async Task IndexIfSupported(string uri, string? alone, string? withAnotherIndex, string? addedAgain, string? withDefaults, string? withCmek)

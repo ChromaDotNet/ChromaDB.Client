@@ -101,7 +101,8 @@ public class TenantDatabaseTests : ChromaTestsBase
 			await client.CreateDatabaseAsync(name, tenant: tenant);
 		}
 		var result = await client.ListDatabasesAsync(tenant: tenant);
-		Assert.That(result.Select(x => x.Name), Is.EqualTo(new[] { "db_a", "db_b", "db_c" }));
+		// A single server lists them by name, distributed Chroma in the order they were created.
+		Assert.That(result.Select(x => x.Name), Is.EqualTo(DistributedChroma ? new[] { "db_b", "db_a", "db_c" } : new[] { "db_a", "db_b", "db_c" }));
 		Assert.That(result.Select(x => x.Tenant), Is.All.EqualTo(tenant));
 	}
 
