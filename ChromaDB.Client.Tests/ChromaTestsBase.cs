@@ -45,7 +45,7 @@ public abstract class ChromaTestsBase
 	// default_tenant only, and the other tenants get "conditional transactions are disabled by frontend configuration".
 	protected static bool ConditionalTransactionsSupported => ChromaCloud || TestDistributed && TestTenant is null or "default_tenant" || Declares("conditional_transactions");
 	// The attached functions, with more inputs for an asynchronous one.
-	protected static bool AttachedFunctionsSupported => ChromaCloud || Declares("attached_functions");
+	protected static bool AttachedFunctionsSupported => DistributedChroma || Declares("attached_functions");
 
 	// CHROMA_TEST_API_VERSION=v1 runs the tests with the v1 API, the only one of Chroma 0.5.15 and earlier.
 	protected static readonly ChromaApiVersion ApiVersion = Environment.GetEnvironmentVariable("CHROMA_TEST_API_VERSION") is "v1" ? ChromaApiVersion.V1 : ChromaApiVersion.V2;
@@ -177,8 +177,9 @@ public abstract class ChromaTestsBase
 	protected static bool IsChroma1 => ChromaImage.Version.Major >= 1;
 
 	// A server already running, like Chroma Cloud, may not let the tests create or look up other tenants and databases:
-	// Chroma Cloud answers 403 "Permission denied." also for a tenant or a database that does not exist.
-	protected static bool OtherTenantsAndDatabasesTested => !RunningServer;
+	// Chroma Cloud answers 403 "Permission denied." also for a tenant or a database that does not exist. CHROMA_TEST_OTHER_TENANTS=true
+	// says that the server already running lets them.
+	protected static bool OtherTenantsAndDatabasesTested => !RunningServer || Environment.GetEnvironmentVariable("CHROMA_TEST_OTHER_TENANTS") is "true";
 
 	// Chroma 0.4.14 has no tenants and databases, 0.4.15 has them.
 	protected static bool TenantsSupported => ChromaImage.Version >= new Version(0, 4, 15);

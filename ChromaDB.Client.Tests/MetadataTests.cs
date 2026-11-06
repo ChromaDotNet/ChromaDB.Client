@@ -246,7 +246,7 @@ public class MetadataTests : ChromaTestsBase
 	[Test]
 	public async Task AnEmptyTextReplacesItsVectorOnChromaCloud()
 	{
-		Assume.That(SparseVectorIndexesSupported, Is.True, "Only Chroma Cloud and the servers that declare them have sparse vector indexes.");
+		Assume.That(SparseVectorIndexesSupported, Is.True, "The server has no sparse vector indexes.");
 		var options = BaseConfigurationOptions.WithMetadataValues(ChromaMetadataValues.Exact);
 		var collection = await new ChromaClient(options, HttpClient).CreateCollectionAsync(new ChromaCollectionDefinition($"collection{Random.Shared.Next()}")
 		{
@@ -401,6 +401,8 @@ public class MetadataTests : ChromaTestsBase
 	}
 
 	// The records of every collection go first, also of the collections beyond a page of the list: 120 collections, each with a record.
+	// On distributed Chroma, which has no KD-12, the database goes in one request. Then no record can be read: not by the id of its
+	// collection, nor in a database and a collection created again with the same names.
 	[Test]
 	public async Task DeletedDatabaseDeletesTheRecordsOfEveryCollection()
 	{
@@ -411,14 +413,22 @@ public class MetadataTests : ChromaTestsBase
 		var chroma = new ChromaClient(BaseConfigurationOptions, httpClient);
 		var database = $"database{Random.Shared.Next()}";
 		await chroma.CreateDatabaseAsync(database);
+		ChromaCollectionClient? last = null;
 		for (var i = 0; i < 120; i++)
 		{
 			var collection = await chroma.CreateCollectionAsync($"collection{i:000}", database: database);
-			await new ChromaCollectionClient(collection, BaseConfigurationOptions.WithDatabase(database), httpClient).AddAsync(["a"], [Embedding1]);
+			last = new ChromaCollectionClient(collection, BaseConfigurationOptions.WithDatabase(database), httpClient);
+			await last.AddAsync(["a"], [Embedding1]);
 		}
 		deletes.Collections.Clear();
 		await chroma.DeleteDatabaseAsync(database, deleteRecordsFirst: true);
-		Assert.That(deletes.Collections, Has.Count.EqualTo(120));
+		Assert.That(deletes.Collections, Has.Count.EqualTo(DistributedChroma ? 0 : 120));
+		await Assert.ThatAsync(() => last!.GetAsync(["a"]), Throws.InstanceOf<ChromaException>());
+		await chroma.CreateDatabaseAsync(database);
+		var again = new ChromaCollectionClient(await chroma.CreateCollectionAsync("collection119", database: database), BaseConfigurationOptions.WithDatabase(database), httpClient);
+		Assert.That(await again.CountAsync(), Is.Zero);
+		Assert.That(await again.GetAsync(["a"]), Is.Empty);
+		await chroma.DeleteDatabaseAsync(database);
 	}
 
 	// The collections whose records a request deletes.

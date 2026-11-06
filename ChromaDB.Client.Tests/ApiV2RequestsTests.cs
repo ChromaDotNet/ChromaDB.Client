@@ -6,7 +6,7 @@ using NUnit.Framework;
 namespace ChromaDB.Client.Tests;
 
 // The requests of the operations of the v2 API as the OpenAPI description of Chroma 1.5.9 defines them, against a fake server:
-// some of them exist only on Chroma Cloud.
+// some of them a single Chroma server does not have.
 [TestFixture]
 public class ApiV2RequestsTests
 {

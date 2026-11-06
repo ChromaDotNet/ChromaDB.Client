@@ -43,11 +43,11 @@ jobs:
             api: v1
           - chroma: '1.5.9'
             pack: true
-          # VecturaDB, a single node with the features of Chroma Cloud, tested with the expectations of Chroma 1.5.9, which it is based on,
-          # and the features it declares in pre-flight-checks. A fixed preview: each new one comes with a pull request. A chroma value of
-          # its own, so that the entry is a job of its own and is not merged into the one of 1.5.9.
+          # VecturaDB, a single node with the features of distributed Chroma, the one Chroma Cloud runs on, tested with the expectations of
+          # Chroma 1.5.9, which it is based on, and the features it declares in pre-flight-checks. A fixed preview: each new one comes with a
+          # pull request. A chroma value of its own, so that the entry is a job of its own and is not merged into the one of 1.5.9.
           - chroma: 'vecturadb'
-            vecturadb: '1.0.0-preview.5'
+            vecturadb: '1.0.0-preview.8'
             expectations: '1.5.9'
     continue-on-error: ${{ matrix.chroma == 'latest' }}
     env:
@@ -76,7 +76,8 @@ jobs:
     - name: Build
       run: dotnet build -c ${{ env.CONFIGURATION }} --version-suffix '${{ env.VERSION_SUFFIX }}'
 
-    # The tests run against the server already running, in its default tenant and database, which they use as they are.
+    # The tests run against the server already running, in its default tenant and database, which they use as they are, and create
+    # other tenants and databases there.
     - name: Start VecturaDB
       if: ${{ matrix.vecturadb }}
       run: |
@@ -86,6 +87,7 @@ jobs:
           echo 'CHROMA_TEST_URI=http://127.0.0.1:8000'
           echo 'CHROMA_TEST_TENANT=default_tenant'
           echo 'CHROMA_TEST_DATABASE=default_database'
+          echo 'CHROMA_TEST_OTHER_TENANTS=true'
         } >> $GITHUB_ENV
 
     - name: Test
