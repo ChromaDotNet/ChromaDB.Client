@@ -40,6 +40,8 @@ await collectionClient.DetachFunctionAsync("my_stats", deleteOutputCollection: t
 
 The functions of distributed Chroma, the one Chroma Cloud runs on, `ChromaFunctions.Statistics` and `ChromaFunctions.RecordCounter`, run on the records of a collection and write their results to an output collection. VecturaDB attaches them too; a single Chroma server answers with an error.
 
+`GetAttachedFunctionAsync` returns the function with its output collection, and the collection it is attached to as `InputCollectionId`. In our tests on distributed Chroma and on VecturaDB, a name that is not attached, also after a detach, makes `GetAttachedFunctionAsync` and `DetachFunctionAsync` throw a `ChromaException` whose `StatusCode` is `NotFound`. After a detach the collection keeps its records.
+
 ```csharp
 var (function, added) = await collectionClient.AddFunctionInputAsync("my_async_function", otherCollection.Id);
 ```

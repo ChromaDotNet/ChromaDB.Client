@@ -5,7 +5,8 @@ namespace ChromaDB.Client.Models;
 /// <summary>
 /// A function of distributed Chroma, the one Chroma Cloud runs on, attached to a collection, which writes its results to an output
 /// collection.
-/// <c>AttachFunctionAsync</c> fills <c>Id</c>, <c>Name</c> and <c>FunctionName</c>; <c>GetAttachedFunctionAsync</c> fills the rest too.
+/// <c>AttachFunctionAsync</c> fills <c>Id</c>, <c>Name</c> and <c>FunctionName</c>; <c>GetAttachedFunctionAsync</c> and
+/// <c>AddFunctionInputAsync</c> fill the rest too.
 /// </summary>
 public class ChromaAttachedFunction
 {
@@ -28,7 +29,7 @@ public class ChromaAttachedFunction
 	public string FunctionName { get; init; } = null!;
 
 	/// <summary>
-	/// The id of the collection the function is attached to.
+	/// The id of the collection the function is attached to. In the answer of <c>AddFunctionInputAsync</c>, the id of the input it added.
 	/// </summary>
 	[JsonPropertyName("input_collection_id")]
 	public Guid? InputCollectionId { get; init; }
@@ -52,7 +53,7 @@ public class ChromaAttachedFunction
 	public string? Tenant { get; init; }
 
 	/// <summary>
-	/// The database, from <c>database_id</c> in the answer of the server.
+	/// The id of the database, from <c>database_id</c> in the answer of the server.
 	/// </summary>
 	[JsonPropertyName("database_id")]
 	public string? Database { get; init; }

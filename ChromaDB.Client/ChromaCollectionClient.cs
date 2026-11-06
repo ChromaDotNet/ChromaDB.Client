@@ -2386,7 +2386,9 @@ public class ChromaCollectionClient
 		});
 
 	/// <summary>
-	/// Gets the function attached to the collection under the name.
+	/// Gets the function attached to the collection under the name. Its <c>InputCollectionId</c> is this collection: the inputs added with
+	/// <c>AddFunctionInputAsync</c> are not in the answer. A name that is not attached gets <c>404</c>, and the method throws a
+	/// <c>ChromaException</c> whose <c>StatusCode</c> is <c>NotFound</c>.
 	/// </summary>
 	/// <param name="name">The name of the attached function.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
@@ -2404,7 +2406,9 @@ public class ChromaCollectionClient
 
 	/// <summary>
 	/// Detaches the function attached under the name, and deletes its output collection when
-	/// <c>deleteOutputCollection</c> is true. Returns the <c>success</c> of the answer of the server.
+	/// <c>deleteOutputCollection</c> is true. Returns the <c>success</c> of the answer of the server. The collection keeps its records, and
+	/// the other inputs of the function stay. A name that is not attached, also one detached already, gets <c>404</c>, and the method throws
+	/// a <c>ChromaException</c> whose <c>StatusCode</c> is <c>NotFound</c>.
 	/// </summary>
 	/// <param name="name">The name of the attached function.</param>
 	/// <param name="deleteOutputCollection">Whether the output collection of the function is deleted too.</param>
@@ -2434,7 +2438,8 @@ public class ChromaCollectionClient
 	/// <param name="name">The name of the attached function.</param>
 	/// <param name="inputCollectionId">The id of the collection to add as an input.</param>
 	/// <param name="cancellationToken">The token that cancels the operation.</param>
-	/// <returns>The attached function as the server answers, and whether the input was added now.</returns>
+	/// <returns>The attached function as the server answers, with the added collection as <c>InputCollectionId</c>, and whether the input
+	/// was added now.</returns>
 	public virtual Task<(ChromaAttachedFunction AttachedFunction, bool Created)> AddFunctionInputAsync(string name, Guid inputCollectionId, CancellationToken cancellationToken = default)
 		=> Operation("add_attached_function_input", cancellationToken, async () =>
 		{
