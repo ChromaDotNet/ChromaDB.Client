@@ -37,3 +37,20 @@ With `CHROMA_TEST_URI`, the tests run against a server that is already running, 
 Each fixture deletes the collections and the databases its requests created, and nothing else. The tests that reset the server, create or look up other tenants and databases, or query an id that does not exist are skipped; with `CHROMA_TEST_OTHER_TENANTS=true` the ones of other tenants and databases run.
 
 The property tests, in the classes whose names end in `PropertyTests`, check random cases with [FsCheck](https://github.com/fscheck/FsCheck) and need no Chroma. Each run takes new cases. A failure prints the case and its seed, like `(5123468595321266860,8907826574119387873)`: `FSCHECK_REPLAY` with that seed runs the same cases again. The CI sets one, so that its runs check the same cases.
+
+## Releases
+
+The CI of a version tag, `vX.Y.Z`, publishes the packages to NuGet. The tests of a release run before its tag, on packages built from the commit that becomes the tag, as the CI builds them. Built that way, they have the same files as the published packages:
+
+1. On Linux, with the .NET SDK the CI uses: the newest SDK of the runner image, as the repository has no `global.json`. The log of the CI run on `main` shows it. On Windows the files of the package get other line endings.
+2. From a git checkout of the commit in `/home/runner/work/ChromaDB.Client/ChromaDB.Client`, with `origin` at `https://github.com/ChromaDotNet/ChromaDB.Client`. Each DLL holds the path of its PDB, and the package and the version of the DLLs hold the commit.
+3. With `PackageIdPrefix=ChromaDotNet` and `GITHUB_REPOSITORY=ChromaDotNet/ChromaDB.Client`, and the two commands of the CI at the root:
+
+```
+dotnet build -c Release --version-suffix ''
+dotnet pack -c Release --no-build --version-suffix ''
+```
+
+These packages have the version of the release. They stay in a folder of their own and are never pushed. The tests restore them with a NuGet cache of their own, set with `NUGET_PACKAGES`, never the global one.
+
+After the release, the files of each package on nuget.org are compared with those of the tested package. They are the same, apart from `.signature.p7s`, the signature nuget.org adds; the times of the files in the archive differ. When a file differs, the tests of the release run again on the packages from nuget.org, with that cache emptied first.
