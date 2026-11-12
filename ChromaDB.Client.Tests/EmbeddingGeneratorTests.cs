@@ -1,4 +1,3 @@
-#if !CHROMA_CLIENT_NETSTANDARD2_0
 using System.Net;
 using System.Text.Json;
 using ChromaDB.Client.Models;
@@ -203,4 +202,3 @@ public class EmbeddingGeneratorTests
 		}
 	}
 }
-#endif

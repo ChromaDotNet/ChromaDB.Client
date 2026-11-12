@@ -36,16 +36,19 @@ public class ChromaMetadataConvertTests
 		Assert.That((opened, opened.Offset), Is.EqualTo((Opened, TimeSpan.Zero)));
 	}
 
-#if !CHROMA_CLIENT_NETSTANDARD2_0
+	// Also with the netstandard2.0 build, which has no DateOnly and uses the one of the runtime.
 	[Test]
 	public void DateOnlyAsADate()
 	{
 		var day = new DateOnly(2026, 10, 4);
 		Assert.That(ChromaMetadataConvert.ToMetadataValue(day), Is.EqualTo("2026-10-04"));
+		Assert.That(ChromaMetadataConvert.ToMetadataValue(new List<DateOnly> { day }), Is.EqualTo(new List<object> { "2026-10-04" }));
 		Assert.That(ChromaMetadataConvert.FromMetadataValue("2026-10-04", typeof(DateOnly)), Is.EqualTo(day));
+		Assert.That(ChromaMetadataConvert.FromMetadataValue("2026-10-04", typeof(DateOnly?)), Is.EqualTo(day));
 		Assert.That(ChromaMetadataConvert.FromMetadataValue(new List<object> { "2026-10-04" }, typeof(DateOnly[])), Is.EqualTo(new[] { day }));
+		Assert.That(ChromaMetadataConvert.FromMetadataValue(new List<object> { "2026-10-04" }, typeof(List<DateOnly>)), Is.EqualTo(new List<DateOnly> { day }));
+		Assert.That(() => ChromaMetadataConvert.FromMetadataValue("not a date", typeof(DateOnly)), Throws.InstanceOf<InvalidCastException>().With.InnerException.InstanceOf<FormatException>());
 	}
-#endif
 
 	// Chroma stores no empty list: it is no value, as null is.
 	[Test]

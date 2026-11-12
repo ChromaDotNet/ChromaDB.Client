@@ -1,7 +1,5 @@
 using ChromaDB.Client.Common;
-#if !NETSTANDARD2_0
 using Microsoft.Extensions.AI;
-#endif
 
 namespace ChromaDB.Client.Models;
 
@@ -32,17 +30,15 @@ public class ChromaCollectionDefinition
 	/// </summary>
 	public ChromaCollectionSchema? Schema { get; init; }
 
-#if !NETSTANDARD2_0
 	/// <summary>
 	/// The generator of the embeddings of the collection. With the generator of the embedding function of Chroma, whose metadata has the
 	/// provider <c>chroma</c> and the model <c>all-MiniLM-L6-v2</c>, a new collection declares the function <c>default</c>, as the Python
 	/// client of Chroma does, unless
 	/// <c>Configuration.EmbeddingFunction</c> declares another: the clients of Chroma that read it compute the embeddings with that function.
 	/// Chroma 0.x takes no embedding function, so there the collection is created without. The client of the collection gets the generator
-	/// with <c>WithEmbeddingGenerator</c>. The builds for .NET 8 and .NET Framework have this property; the one for .NET Standard 2.0 does not.
+	/// with <c>WithEmbeddingGenerator</c>.
 	/// </summary>
 	public IEmbeddingGenerator<string, Embedding<float>>? EmbeddingGenerator { get; init; }
-#endif
 
 	/// <summary>
 	/// Creates the definition of a collection with the name.
@@ -94,13 +90,10 @@ public class ChromaCollectionDefinition
 			Metadata = Metadata,
 			Configuration = Configuration,
 			Schema = schema,
-#if !NETSTANDARD2_0
 			EmbeddingGenerator = EmbeddingGenerator,
-#endif
 		};
 	}
 
-#if !NETSTANDARD2_0
 	// The definition with the embedding function that its generator declares: the one of Chroma declares "default". The function of the configuration stays, and so do the other settings.
 	internal ChromaCollectionDefinition WithDeclaredEmbeddingFunction()
 	{
@@ -122,7 +115,6 @@ public class ChromaCollectionDefinition
 			EmbeddingGenerator = EmbeddingGenerator,
 		};
 	}
-#endif
 
 	internal Dictionary<string, object>? ToRequestSchema()
 		=> SettingsInSchema ? (Schema ?? new ChromaCollectionSchema()).ToSchema(Configuration) : null;

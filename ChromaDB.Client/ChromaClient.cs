@@ -1,5 +1,8 @@
 ﻿using System.Globalization;
 using System.Net;
+#if !NET
+using System.Reflection;
+#endif
 using ChromaDB.Client.Common;
 using ChromaDB.Client.Models;
 using ChromaDB.Client.Models.Requests;
@@ -43,7 +46,7 @@ public class ChromaClient : IDisposable
 	{ }
 
 	/// <summary>
-	/// A client of the server of the options, with an <c>HttpClient</c> of its own, which <c>Dispose</c> closes. On .NET 8 and later
+	/// A client of the server of the options, with an <c>HttpClient</c> of its own, which <c>Dispose</c> closes. Except on .NET Framework,
 	/// its connections last two minutes, as with <c>AddChromaClient</c>, so a change of the address of the server in the DNS is seen.
 	/// The clients that <c>WithMetadataValues</c>, <c>WithTenantAndDatabaseFromIdentityAsync</c> and <c>GetCollectionClient</c> return
 	/// share that <c>HttpClient</c>: they work until this client is disposed.
@@ -82,13 +85,38 @@ public class ChromaClient : IDisposable
 		}
 	}
 
-	// As the handlers of IHttpClientFactory, renewed every two minutes by default; SocketsHttpHandler is not in .NET Standard 2.0.
-	private static HttpClient NewHttpClient()
+	private static HttpClient NewHttpClient() => new(NewHttpMessageHandler());
+
+	// Connections renewed every two minutes, as by the handlers of IHttpClientFactory, so that the client follows a change of the address
+	// of the server. SocketsHttpHandler is not in .NET Standard 2.0: the netstandard2.0 build, which applications on .NET Core 3.1 to .NET 9
+	// take, creates the one of the runtime through reflection. .NET Framework has none, and keeps the HttpClientHandler.
+	internal static HttpMessageHandler NewHttpMessageHandler()
 #if NET
-		=> new(new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(2) });
+		=> new SocketsHttpHandler { PooledConnectionLifetime = PooledConnectionLifetime };
 #else
-		=> new();
+	{
+		if (RuntimeSocketsHttpHandler is not { } sockets)
+		{
+			return new HttpClientHandler();
+		}
+		var handler = (HttpMessageHandler)sockets.Constructor.Invoke(null);
+		sockets.Lifetime.SetValue(handler, PooledConnectionLifetime);
+		return handler;
+	}
+
+	// The constructor and the property are read next to Type.GetType with constant names, so that trimming and NativeAOT keep them.
+	private static readonly (ConstructorInfo Constructor, PropertyInfo Lifetime)? RuntimeSocketsHttpHandler = FindSocketsHttpHandler();
+
+	private static (ConstructorInfo, PropertyInfo)? FindSocketsHttpHandler()
+	{
+		var type = Type.GetType("System.Net.Http.SocketsHttpHandler, System.Net.Http", throwOnError: false);
+		var constructor = type?.GetConstructor(Type.EmptyTypes);
+		var lifetime = type?.GetProperty("PooledConnectionLifetime", typeof(TimeSpan));
+		return constructor is not null && lifetime is not null ? (constructor, lifetime) : null;
+	}
 #endif
+
+	private static readonly TimeSpan PooledConnectionLifetime = TimeSpan.FromMinutes(2);
 
 	/// <summary>
 	/// Closes the <c>HttpClient</c> the client created; one given to the constructor stays open.
@@ -145,15 +173,11 @@ public class ChromaClient : IDisposable
 	// 0.x takes no embedding function: there the collection is created without, as before.
 	private async Task<ChromaCollectionDefinition> WithDeclaredEmbeddingFunction(ChromaCollectionDefinition definition, CancellationToken cancellationToken)
 	{
-#if !NETSTANDARD2_0
 		var declared = definition.WithDeclaredEmbeddingFunction();
 		if (declared != definition && !await _httpClient.IsChroma0(cancellationToken))
 		{
 			return declared;
 		}
-#else
-		await Task.CompletedTask;
-#endif
 		return definition;
 	}
 
