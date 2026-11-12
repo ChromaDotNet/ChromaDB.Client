@@ -9,7 +9,7 @@ dotnet build
 dotnet test
 ```
 
-`dotnet test` starts a Chroma container for each test fixture with Testcontainers, so Docker must be running. The variables that choose the Chroma version, the v1 API, a tenant and a database, or a server already running like Chroma Cloud are described in [Tests](#tests). `-p:ChromaClientTargetFramework=netstandard2.0` runs the tests against the .NET Standard 2.0 builds of the packages.
+`dotnet test` starts a Chroma container for each test fixture with Testcontainers, so Docker must be running. The variables that choose the Chroma version, the v1 API, a tenant and a database, or a server already running like Chroma Cloud are described in [Tests](#tests). `-p:ChromaClientTargetFramework=netstandard2.0` runs the tests against the .NET Standard 2.0 builds of the packages, and `-p:TestTargetFramework=net11.0` builds and runs them on another .NET, as an application on it is built.
 
 ## Pull requests
 
@@ -20,7 +20,7 @@ dotnet test
 - Public types and members have XML documentation, which goes in the package.
 - Versions follow semantic versioning: removing or changing public API needs a major version.
 
-The CI runs the tests against several Chroma versions, and publishes the app in `Samples/ChromaDB.Client.TrimmingTest` with trimming and with NativeAOT. Only the version tags are published to NuGet; every change merged into `main` builds the packages, which its CI run keeps as artifacts.
+The CI runs the tests on .NET 10 against several Chroma versions, and on .NET 11 against Chroma 1.5.9. It publishes the app in `Samples/ChromaDB.Client.TrimmingTest` with trimming and with NativeAOT, on .NET 10 and on .NET 11. Only the version tags are published to NuGet; every change merged into `main` builds the packages, which its CI run keeps as artifacts.
 
 ## Tests
 
@@ -42,7 +42,7 @@ The property tests, in the classes whose names end in `PropertyTests`, check ran
 
 The CI of a version tag, `vX.Y.Z`, publishes the packages to NuGet. The tests of a release run before its tag, on packages built from the commit that becomes the tag, as the CI builds them. Built that way, they have the same files as the published packages:
 
-1. On Linux, with the .NET SDK the CI uses: the newest SDK of the runner image, as the repository has no `global.json`. The log of the CI run on `main` shows it. On Windows the files of the package get other line endings.
+1. On Linux, with the .NET SDK the CI uses: the newest SDK on the runner, from its image or from `DOTNET_VERSION`, as the repository has no `global.json`. The log of the CI run on `main` shows it. On Windows the files of the package get other line endings.
 2. From a git checkout of the commit in `/home/runner/work/ChromaDB.Client/ChromaDB.Client`, with `origin` at `https://github.com/ChromaDotNet/ChromaDB.Client`. Each DLL holds the path of its PDB, and the package and the version of the DLLs hold the commit.
 3. With `PackageIdPrefix=ChromaDotNet` and `GITHUB_REPOSITORY=ChromaDotNet/ChromaDB.Client`, and the two commands of the CI at the root:
 

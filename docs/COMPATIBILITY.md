@@ -251,9 +251,11 @@ The filter of a search is the where clause itself, as the Python client sends it
 
 ## Versions tested in the CI
 
-Every change runs the whole suite against:
+Every change runs the whole suite on .NET 10 against:
 
 - v2 API: 0.5.16, 0.5.20, 0.6.3, 1.0.0, 1.5.9, and `latest` without blocking;
 - v1 API: 0.4.10, 0.4.15, 0.4.23, 0.5.15.
+
+Against 1.5.9 it also runs the suite built for .NET 11, and the .NET Standard 2.0 build, which applications on .NET Core 3.1 to .NET 9 take.
 
 On the older servers the tests of the features they miss are skipped, with the reason.
