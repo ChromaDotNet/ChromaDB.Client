@@ -1,5 +1,9 @@
 using System.Collections;
 using System.Globalization;
+#if !NET
+using System.Reflection;
+using System.Runtime.ExceptionServices;
+#endif
 
 namespace ChromaDB.Client;
 
@@ -77,9 +81,58 @@ public static class ChromaMetadataConvert
 			DateTime dateTime => dateTime.ToString("O", CultureInfo.InvariantCulture),
 #if NET
 			DateOnly date => date.ToString("O", CultureInfo.InvariantCulture),
+#else
+			IFormattable date when date.GetType() == RuntimeDateOnly?.Type => date.ToString("O", CultureInfo.InvariantCulture),
 #endif
 			_ => throw new ArgumentException($"Chroma metadata has no value of type {value.GetType().Name}.", nameof(value)),
 		};
+
+#if !NET
+	// DateOnly is not in .NET Standard 2.0: the netstandard2.0 build, which applications on .NET Core 3.1 to .NET 9 take, uses the one of the
+	// runtime, found by its name. Its members are read next to Type.GetType with constant names, so that trimming and NativeAOT keep them,
+	// and the values go in the list through IList, without code made at run time. .NET Framework has no DateOnly.
+	private static readonly (Type Type, MethodInfo Parse, Type List, ConstructorInfo NewList, MethodInfo ToArray)? RuntimeDateOnly = FindDateOnly();
+
+	private static (Type, MethodInfo, Type, ConstructorInfo, MethodInfo)? FindDateOnly()
+	{
+		var type = Type.GetType("System.DateOnly", throwOnError: false);
+		var parse = type?.GetMethod("Parse", [typeof(string), typeof(IFormatProvider)]);
+		var list = Type.GetType("System.Collections.Generic.List`1[[System.DateOnly]]", throwOnError: false);
+		var newList = list?.GetConstructor(Type.EmptyTypes);
+		var toArray = list?.GetMethod("ToArray", Type.EmptyTypes);
+		return type is not null && parse is not null && list is not null && newList is not null && toArray is not null
+			? (type, parse, list, newList, toArray)
+			: null;
+	}
+
+	private static object ParseDateOnly(string text)
+	{
+		try
+		{
+			return RuntimeDateOnly!.Value.Parse.Invoke(null, [text, CultureInfo.InvariantCulture])!;
+		}
+		catch (TargetInvocationException ex) when (ex.InnerException is FormatException format)
+		{
+			ExceptionDispatchInfo.Capture(format).Throw();
+			throw;
+		}
+	}
+
+	// An array or a list of the DateOnly of the runtime, or null for another type.
+	private static object? DateOnlyCollection(IList list, Type type)
+	{
+		if (RuntimeDateOnly is not { } dateOnly || (type != dateOnly.List && type != dateOnly.ToArray.ReturnType))
+		{
+			return null;
+		}
+		var items = (IList)dateOnly.NewList.Invoke(null);
+		foreach (var item in list)
+		{
+			items.Add(item is null ? throw CannotRead(list, type) : FromScalar(item, dateOnly.Type));
+		}
+		return type == dateOnly.List ? items : dateOnly.ToArray.Invoke(items, null)!;
+	}
+#endif
 
 	/// <summary>
 	/// The .NET value of the given type for a metadata value, as <c>ChromaMetadataValues.Exact</c> reads it: a <c>long</c>, a
@@ -113,6 +166,8 @@ public static class ChromaMetadataConvert
 			?? Collection<DateTimeOffset>(list, type)
 #if NET
 			?? Collection<DateOnly>(list, type)
+#else
+			?? DateOnlyCollection(list, type)
 #endif
 			?? throw CannotRead(list, type);
 
@@ -142,6 +197,8 @@ public static class ChromaMetadataConvert
 				(string text, var t) when t == typeof(DateTime) => DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
 #if NET
 				(string text, var t) when t == typeof(DateOnly) => DateOnly.Parse(text, CultureInfo.InvariantCulture),
+#else
+				(string text, var t) when t == RuntimeDateOnly?.Type => ParseDateOnly(text),
 #endif
 				(bool flag, var t) when t == typeof(bool) => flag,
 				(long number, var t) when t == typeof(long) => number,

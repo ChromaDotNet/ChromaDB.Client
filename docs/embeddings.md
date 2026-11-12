@@ -46,7 +46,7 @@ var nearest = await collectionClient.QueryAsync("a red fruit", nResults: 1);
 - `QueryAsync(queryText)` and `QueryTextsAsync(queryTexts)` compute the embeddings of the query texts, as `query_texts` in the Python client. Without a generator they throw an `InvalidOperationException`.
 - The other `With` methods of the collection client keep the generator. The client does not dispose it.
 
-The builds for .NET 8 and .NET Framework have these methods. The build for .NET Standard 2.0, which applications on .NET Core 3.1 to 7 use, does not.
+Every build has these methods: the ones for .NET 10 and .NET Framework, and the one for .NET Standard 2.0, which applications on .NET Core 3.1 to .NET 9 use.
 
 ## The default embedding function of Chroma
 

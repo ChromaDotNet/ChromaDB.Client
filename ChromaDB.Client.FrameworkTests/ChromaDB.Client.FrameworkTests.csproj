@@ -20,6 +20,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\ChromaDB.Client\ChromaDB.Client.csproj" />
+		<Compile Include="..\ChromaDB.Client.Tests\DefaultHttpClientTests.cs" Link="DefaultHttpClientTests.cs" />
 		<Compile Include="..\ChromaDB.Client.Tests\EmbeddingGeneratorTests.cs" Link="EmbeddingGeneratorTests.cs" />
 		<Compile Include="..\ChromaDB.Client.Tests\NumbersTests.cs" Link="NumbersTests.cs" />
 		<Compile Include="..\ChromaDB.Client.Tests\PathNamesTests.cs" Link="PathNamesTests.cs" />

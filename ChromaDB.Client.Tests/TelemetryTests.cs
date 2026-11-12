@@ -115,12 +115,7 @@ public class TelemetryTests
 	{
 		var port = Port();
 		var metrics = new List<Metric>();
-		var builder = OpenTelemetry.Sdk.CreateMeterProviderBuilder().AddMeter(ChromaTelemetry.MeterName).AddInMemoryExporter(metrics);
-#if CHROMA_CLIENT_NETSTANDARD2_0
-		// The netstandard2.0 build cannot advise them: the view of the README sets them.
-		builder.AddView("db.client.operation.duration", new ExplicitBucketHistogramConfiguration { Boundaries = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10] });
-#endif
-		using var provider = builder.Build();
+		using var provider = OpenTelemetry.Sdk.CreateMeterProviderBuilder().AddMeter(ChromaTelemetry.MeterName).AddInMemoryExporter(metrics).Build();
 		await CollectionClient(new FakeServer(_ => (HttpStatusCode.OK, "3")), port, "articles").CountAsync();
 		provider.ForceFlush();
 

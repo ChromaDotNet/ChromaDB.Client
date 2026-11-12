@@ -92,7 +92,7 @@ public class NumbersTests
 	}
 
 	// The text of 80,000 doubles and floats from a generator that gives the same numbers on every runtime: the same on
-	// .NET 8, where "R" gives the digits, and on .NET Framework, where they come from the exact value and from doubles.
+	// .NET, where "R" gives the digits, and on .NET Framework, where they come from the exact value and from doubles.
 	[Test]
 	public void SameTextOnEveryRuntime()
 	{

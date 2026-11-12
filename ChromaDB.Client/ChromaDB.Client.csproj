@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFrameworks>netstandard2.0;net462;net8.0</TargetFrameworks>
+		<TargetFrameworks>netstandard2.0;net462;net10.0</TargetFrameworks>
 		<LangVersion>latest</LangVersion>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<IsPackable>true</IsPackable>
 		<!-- The analyzers of trimming and NativeAOT run on the target that has them. -->
-		<IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">true</IsAotCompatible>
-		<VersionPrefix>2.20.0</VersionPrefix>
+		<IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net10.0'))">true</IsAotCompatible>
+		<VersionPrefix>2.21.0</VersionPrefix>
 		<PackageId>ChromaDB.Client</PackageId>
 		<!-- -p:PackageIdPrefix=Name publishes the package as Name.Client. -->
 		<PackageId Condition="'$(PackageIdPrefix)' != ''">$(PackageIdPrefix).Client</PackageId>
@@ -49,26 +49,18 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
 		</PackageReference>
 	</ItemGroup>
-	<!-- The netstandard2.0 build is the one of .NET Core 3.1 to 7: the 8.0 packages have builds for .NET 6 and 7, and no
-	     warning there, as 2.7.1. ActivitySource and Meter are in the runtime from .NET 5. -->
+	<!-- The netstandard2.0 build is the one of the applications on .NET Core 3.1 to .NET 9. InstrumentAdvice, for the bucket boundaries
+	     of db.client.operation.duration, is in DiagnosticSource 9 and later, as on .NET 8 and 9 until 2.20.0; it warns below .NET 8.
+	     ActivitySource and Meter are in the runtime from .NET 5. -->
 	<ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0'">
 		<PackageReference Include="System.Memory" Version="4.5.5" />
-		<PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
+		<PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.20" />
 		<PackageReference Include="System.Text.Json" Version="8.0.6" />
 	</ItemGroup>
-	<!-- .NET 8: InstrumentAdvice, for the bucket boundaries of db.client.operation.duration, is in DiagnosticSource 9 and later,
-	     which OpenTelemetry 1.10 and later bring too. -->
-	<ItemGroup Condition="'$(TargetFramework)'=='net8.0'">
-		<PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.20" />
-	</ItemGroup>
-	<!-- The embedding generators of Microsoft.Extensions.AI, on .NET 8 and .NET Framework: 9.5.0, the first stable release, brings no
-	     package on .NET 8, and on .NET Framework only System.Text.Json 8.0.5, below the one of the client. The netstandard2.0 build has no
-	     generators, so the applications on .NET 6 and 7 get no new package. -->
-	<ItemGroup Condition="'$(TargetFramework)'=='net8.0' Or '$(TargetFramework)'=='net462'">
+	<!-- The embedding generators of Microsoft.Extensions.AI, on every build: 9.5.0, the first stable release, brings no package on
+	     .NET 10, and on .NET Framework and .NET Standard 2.0 only System.Text.Json 8.0.5, below the one of the client. -->
+	<ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="9.5.0" />
-		<!-- The API with the generators: the analyzer reads every PublicAPI.Shipped.txt and PublicAPI.Unshipped.txt of the build. -->
-		<AdditionalFiles Include="PublicAPI\EmbeddingGenerators\PublicAPI.Shipped.txt" />
-		<AdditionalFiles Include="PublicAPI\EmbeddingGenerators\PublicAPI.Unshipped.txt" />
 	</ItemGroup>
 	<!-- .NET Framework: the versions OpenTelemetry 1.19 brings, so that the two load without binding redirects. -->
 	<ItemGroup Condition="'$(TargetFramework)'=='net462'">

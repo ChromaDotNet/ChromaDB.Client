@@ -1,4 +1,3 @@
-#if !CHROMA_CLIENT_NETSTANDARD2_0
 using ChromaDB.Client.Models;
 using Microsoft.Extensions.AI;
 using NUnit.Framework;
@@ -60,4 +59,3 @@ public class EmbeddingGeneratorServerTests : ChromaTestsBase
 		public void Dispose() { }
 	}
 }
-#endif

@@ -2,9 +2,7 @@
 using ChromaDB.Client.Models;
 using ChromaDB.Client.Models.Requests;
 using ChromaDB.Client.Models.Responses;
-#if !NETSTANDARD2_0
 using Microsoft.Extensions.AI;
-#endif
 
 namespace ChromaDB.Client;
 
@@ -43,9 +41,7 @@ public class ChromaCollectionClient
 	private readonly string? _documentCopyKey;
 	private readonly string? _documentDeletionKey;
 	private readonly bool _emptyDocumentDeletions;
-#if !NETSTANDARD2_0
 	private readonly IEmbeddingGenerator<string, Embedding<float>>? _embeddingGenerator;
-#endif
 
 	/// <summary>
 	/// Creates a client for the records of the collection, which sends its requests with the options and the
@@ -103,19 +99,15 @@ public class ChromaCollectionClient
 		_documentCopyKey = documentCopyKey;
 		_documentDeletionKey = documentDeletionKey;
 		_emptyDocumentDeletions = emptyDocumentDeletions;
-#if !NETSTANDARD2_0
 		_embeddingGenerator = client._embeddingGenerator;
-#endif
 	}
 
-#if !NETSTANDARD2_0
 	// The same client with the embedding generator.
 	private ChromaCollectionClient(ChromaCollectionClient client, IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator)
 		: this(client, client._httpClient, client._documentCopyKey, client._documentDeletionKey, client._emptyDocumentDeletions)
 	{
 		_embeddingGenerator = embeddingGenerator;
 	}
-#endif
 
 	/// <summary>
 	/// Creates a client without getting the collection first: the requests on a collection need only its id, and the
@@ -427,12 +419,11 @@ public class ChromaCollectionClient
 	public virtual ChromaCollectionClient WithMetadataValues(ChromaMetadataValues metadataValues)
 		=> new(this, _httpClient.WithMetadataValues(metadataValues), _documentCopyKey, _documentDeletionKey, _emptyDocumentDeletions);
 
-#if !NETSTANDARD2_0
 	/// <summary>
 	/// A client of the same collection that computes the embeddings with the generator, as an embedding function does in the Python client
 	/// of Chroma. <c>AddAsync</c>, <c>UpdateAsync</c> and <c>UpsertAsync</c> compute the embeddings of records given without them from
 	/// their documents, and <c>QueryAsync</c> with a text and <c>QueryTextsAsync</c> compute those of the query texts. Records given with
-	/// embeddings keep them. The builds for .NET 8 and .NET Framework have this method; the one for .NET Standard 2.0 does not.
+	/// embeddings keep them.
 	/// </summary>
 	/// <param name="embeddingGenerator">The generator of the embeddings; the client does not dispose it.</param>
 	/// <returns>The client of the same collection, with the generator.</returns>
@@ -449,7 +440,6 @@ public class ChromaCollectionClient
 	/// The generator of the embeddings of the client, from <c>WithEmbeddingGenerator</c>, or null for none.
 	/// </summary>
 	public virtual IEmbeddingGenerator<string, Embedding<float>>? EmbeddingGenerator => _embeddingGenerator;
-#endif
 
 	// The metadata key that tells a deleted document from an empty one: the document copy key, or the document deletion key.
 	private string? DocumentReadKey => _documentCopyKey ?? _documentDeletionKey;
@@ -709,7 +699,6 @@ public class ChromaCollectionClient
 	public virtual Task<IReadOnlyList<IReadOnlyList<ChromaCollectionQueryEntry>>> QueryAsync(IReadOnlyList<ReadOnlyMemory<float>> queryEmbeddings, int nResults = 10, ChromaWhereOperator? where = null, ChromaWhereDocumentOperator? whereDocument = null, ChromaQueryInclude? include = null, IReadOnlyList<string>? ids = null, CancellationToken cancellationToken = default)
 		=> QueryAsync(new ChromaQuery(queryEmbeddings) { NResults = nResults, Where = where, WhereDocument = whereDocument, Include = include, Ids = ids }, cancellationToken);
 
-#if !NETSTANDARD2_0
 	/// <summary>
 	/// Searches the <c>nResults</c> records nearest to the query text, with the embedding that the generator of
 	/// <c>WithEmbeddingGenerator</c> computes from it, as <c>query_texts</c> in the Python client of Chroma. Without a generator it throws an
@@ -761,7 +750,6 @@ public class ChromaCollectionClient
 		var embeddings = await Embed(generator, queryTexts, cancellationToken);
 		return await QueryAsync(new ChromaQuery(embeddings) { NResults = nResults, Where = where, WhereDocument = whereDocument, Include = include, Ids = ids }, cancellationToken);
 	}
-#endif
 
 	/// <summary>
 	/// Runs the query and returns one list of results per query embedding. The ids of the query without a record are left
@@ -1079,17 +1067,14 @@ public class ChromaCollectionClient
 	// stored document or deletes it, has no text. Before any request, as the other checks of the records.
 	private void CheckDocumentsToEmbed(ChromaRecords records)
 	{
-#if !NETSTANDARD2_0
 		if (_embeddingGenerator is not null && records.Embeddings is null && records.Documents is { } documents && documents.Any(document => document is null))
 		{
 			throw new ArgumentException("The client computes the embeddings from the documents, and a record has a null document: give every record a document, or give the embeddings.", nameof(records));
 		}
-#endif
 	}
 
 	// As an embedding function in the Python client of Chroma: records given without embeddings get the ones the generator computes from
 	// their documents. Without a generator, or without documents, the records go as they are.
-#if !NETSTANDARD2_0
 	private async Task<ChromaRecords> WithEmbeddings(ChromaRecords records, CancellationToken cancellationToken)
 	{
 		if (_embeddingGenerator is not { } generator || records.Embeddings is not null || records.Documents is not { } documents)
@@ -1124,10 +1109,6 @@ public class ChromaCollectionClient
 		}
 		return embeddings.Select(embedding => embedding.Vector).ToList();
 	}
-#else
-	private static Task<ChromaRecords> WithEmbeddings(ChromaRecords records, CancellationToken cancellationToken)
-		=> Task.FromResult(records);
-#endif
 
 	// The copy of each document under the document copy key, when the server takes it: Chroma Cloud takes a metadata value of at most
 	// 8,182 bytes. In an update or an upsert, a document without its copy, as one too long or one deleted, deletes the stored copy with
