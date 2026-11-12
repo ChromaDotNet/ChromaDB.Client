@@ -16,7 +16,7 @@ permissions:
 
 env:
   CONFIGURATION: Release
-  DOTNET_VERSION: 8.0.x
+  DOTNET_VERSION: 10.0.x
   # The seed of the property tests, so that every run checks the same cases: without it, each run takes new ones.
   FSCHECK_REPLAY: '(5123468595321266860,8907826574119387873)'
 
@@ -130,10 +130,10 @@ jobs:
           **/*.nupkg
           **/*.snupkg
 
-    # An application on .NET 6 or 7 takes the netstandard2.0 build: the packages it brings must not warn that they do
+    # An application on .NET 8 or 9 takes the netstandard2.0 build: the packages it brings must not warn that they do
     # not support it. Built outside the repository, so its props do not apply, with -warnaserror, which turns the
     # warnings of the targets of a package into errors (TreatWarningsAsErrors only covers the compiler).
-    - name: Build applications on .NET 6 and 7 with the package
+    - name: Build applications on .NET 8 and 9 with the package
       if: ${{ matrix.pack }}
       run: |
         pkgdir="$GITHUB_WORKSPACE/ChromaDB.Client/bin/${{ env.CONFIGURATION }}"
@@ -145,7 +145,7 @@ jobs:
         <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
             <OutputType>Exe</OutputType>
-            <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
+            <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
             <CheckEolTargetFramework>false</CheckEolTargetFramework>
             <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
           </PropertyGroup>
@@ -217,8 +217,60 @@ jobs:
     - name: Test on .NET Framework 4.8
       run: dotnet test ChromaDB.Client.FrameworkTests -c ${{ env.CONFIGURATION }} --verbosity normal
 
+  newest-dotnet:
+    # The newest release of .NET, where an application takes the net10.0 build of the client: the tests built for it, as an
+    # application on it is built, against Chroma 1.5.9, and Samples/ChromaDB.Client.TrimmingTest published for it with trimming and
+    # with NativeAOT, every warning an error, as in the job of trimming.
+    strategy:
+      matrix:
+        dotnet: ['11.0']
+    runs-on: ubuntu-latest
+    name: .NET ${{ matrix.dotnet }}
+    services:
+      chroma:
+        image: chromadb/chroma:1.5.9
+        ports:
+          - 8000:8000
+    env:
+      CHROMA_IMAGE: chromadb/chroma:1.5.9
+
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      with:
+        dotnet-version: ${{ matrix.dotnet }}.x
+
+    - name: NativeAOT prerequisites
+      run: sudo apt-get install -y clang zlib1g-dev
+
+    - name: Test
+      run: dotnet test ChromaDB.Client.Tests -c ${{ env.CONFIGURATION }} -p:TestTargetFramework=net${{ matrix.dotnet }} --verbosity normal --logger 'GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true'
+
+    - name: Test in a non-default tenant and database
+      run: dotnet test ChromaDB.Client.Tests -c ${{ env.CONFIGURATION }} -p:TestTargetFramework=net${{ matrix.dotnet }} --no-build --verbosity normal --logger 'GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true'
+      env:
+        CHROMA_TEST_TENANT: test_tenant
+        CHROMA_TEST_DATABASE: test_database
+
+    - name: Wait for Chroma
+      run: for i in $(seq 1 60); do curl -sf http://localhost:8000/api/v2/heartbeat && break; sleep 1; done
+
+    - name: Publish with trimming
+      run: dotnet publish Samples/ChromaDB.Client.TrimmingTest -c ${{ env.CONFIGURATION }} -p:TestTargetFramework=net${{ matrix.dotnet }} -r linux-x64 -o trimmed -p:TreatWarningsAsErrors=true
+
+    - name: Run with trimming
+      run: ./trimmed/ChromaDB.Client.TrimmingTest http://localhost:8000 --lists
+
+    - name: Publish with NativeAOT
+      run: dotnet publish Samples/ChromaDB.Client.TrimmingTest -c ${{ env.CONFIGURATION }} -p:TestTargetFramework=net${{ matrix.dotnet }} -r linux-x64 -o aot -p:TrimmingTestAot=true -p:TreatWarningsAsErrors=true
+
+    - name: Run with NativeAOT
+      run: ./aot/ChromaDB.Client.TrimmingTest http://localhost:8000 --lists
+
   publish:
-    needs: [ci, trimming, framework]
+    needs: [ci, trimming, framework, newest-dotnet]
     # Publishes the version tags: with the NUGET_API_KEY secret in the original repository, and with NuGet trusted
     # publishing where the NUGET_USER variable is set. The original repository publishes the default branch too; elsewhere
     # its pushes leave the packages as artifacts of the run.

@@ -115,6 +115,19 @@ await Check("Exact metadata", async () =>
 	var value = (await exact.GetAsync("c", include: ChromaGetInclude.Metadatas))?.Metadata?["date"];
 	return Expect($"{value?.GetType().Name} {value}", value is string, "a string");
 });
+await Check("DateOnly in metadata", async () =>
+{
+	// The netstandard2.0 build, which an application on .NET 8 or 9 takes, finds DateOnly by its name: trimming and NativeAOT must keep it.
+	var day = new DateOnly(2026, 10, 4);
+	var exact = client.WithMetadataValues(ChromaMetadataValues.Exact).GetCollectionClient(collectionClient.Collection);
+	await exact.UpsertAsync(new ChromaRecords(["d"]) { Embeddings = [new([0f, 0.5f, 0.5f])], Metadatas = [ChromaMetadataConvert.ToMetadata([new("day", day)])!] });
+	var value = (await exact.GetAsync("d", include: ChromaGetInclude.Metadatas))?.Metadata?["day"];
+	var read = (DateOnly?)ChromaMetadataConvert.FromMetadataValue(value, typeof(DateOnly));
+	var list = (List<DateOnly>?)ChromaMetadataConvert.FromMetadataValue(new List<object> { value! }, typeof(List<DateOnly>));
+	var array = (DateOnly[]?)ChromaMetadataConvert.FromMetadataValue(new List<object> { value! }, typeof(DateOnly[]));
+	await exact.DeleteAsync(["d"]);
+	return Expect($"{value} {read} {list?.Count} {array?.Length}", read == day && list is [var first] && first == day && array is [var only] && only == day, "the same day");
+});
 await Check("Lists in metadata", async () =>
 {
 	// A list of each type the client knows without reflection.
