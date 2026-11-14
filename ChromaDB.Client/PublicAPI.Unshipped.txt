@@ -129,3 +129,5 @@ virtual ChromaDB.Client.ChromaCollectionClient.AddFunctionInputAsync(string! nam
 virtual ChromaDB.Client.ChromaClient.SupportsSparseVectorIndexes() -> bool
 virtual ChromaDB.Client.ChromaClient.SupportsSparseVectorIndexesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 ChromaDB.Client.ChromaConfigurationOptions.DistributedChroma.get -> bool
+ChromaDB.Client.Models.ChromaCollectionDefinition.SchemaJson.get -> System.Text.Json.JsonElement?
+ChromaDB.Client.Models.ChromaCollectionDefinition.SchemaJson.init -> void
