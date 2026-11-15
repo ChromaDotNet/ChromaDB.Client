@@ -1,4 +1,4 @@
-﻿using ChromaDB.Client.Models;
+using ChromaDB.Client.Models;
 using ChromaDB.Client.Tests.TestContainer;
 using NUnit.Framework;
 using Testcontainers.Chroma;
@@ -264,6 +264,10 @@ public abstract class ChromaTestsBase
 
 	// Since Chroma 1.0.16, add and upsert require embeddings.
 	protected static bool EmbeddingsRequired => ChromaImage.Version >= new Version(1, 0, 16);
+
+	// The backup and the restore of ChromaDB.Client.Backup are tested with Chroma 1.5.9 and later, and on a server already running:
+	// VecturaDB and Chroma Cloud.
+	protected static bool BackupTested => RunningServer || ChromaImage.Version >= new Version(1, 5, 9);
 
 	protected static List<ReadOnlyMemory<float>> Embeddings(int count)
 		=> Enumerable.Repeat(new ReadOnlyMemory<float>([1f, 0.5f, 0f, -0.5f, -1f]), count).ToList();

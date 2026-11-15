@@ -46,13 +46,17 @@ jobs:
           # VecturaDB, a single node with the features of distributed Chroma, the one Chroma Cloud runs on, tested with the expectations of
           # Chroma 1.5.9, which it is based on, and the features it declares in pre-flight-checks. A fixed preview: each new one comes with a
           # pull request. A chroma value of its own, so that the entry is a job of its own and is not merged into the one of 1.5.9.
+          # second: the backup of one server restored into the other, both ways, with Chroma 1.5.9 started by the tests
+          # (RestoreAcrossServersTests).
           - chroma: 'vecturadb'
             vecturadb: '1.0.0-preview.9'
             expectations: '1.5.9'
+            second: 'chromadb/chroma:1.5.9'
     continue-on-error: ${{ matrix.chroma == 'latest' }}
     env:
       CHROMA_IMAGE: chromadb/chroma:${{ matrix.expectations || matrix.chroma }}
       CHROMA_TEST_API_VERSION: ${{ matrix.api }}
+      CHROMA_TEST_SECOND_IMAGE: ${{ matrix.second }}
       # An environment variable, so that the restore in the Build step reads it too:
       # pack --no-build takes the package id of the referenced client project from that restore.
       PackageIdPrefix: ${{ vars.PACKAGE_ID_PREFIX }}

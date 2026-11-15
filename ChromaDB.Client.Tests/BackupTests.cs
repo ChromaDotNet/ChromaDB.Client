@@ -344,7 +344,11 @@ public class BackupServerTests : ChromaTestsBase
 	string _path = null!;
 
 	[SetUp]
-	public void SetUp() => _path = Path.Combine(Path.GetTempPath(), $"chromadotnet-backup-test-{Guid.NewGuid():N}.zip");
+	public void SetUp()
+	{
+		Assume.That(BackupTested, Is.True, "The backup is tested with Chroma 1.5.9 and later, VecturaDB, distributed Chroma and Chroma Cloud.");
+		_path = Path.Combine(Path.GetTempPath(), $"chromadotnet-backup-test-{Guid.NewGuid():N}.zip");
+	}
 
 	[TearDown]
 	public void TearDown() => File.Delete(_path);
