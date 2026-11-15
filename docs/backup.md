@@ -48,6 +48,16 @@ Where the files are tested: the CI of every pull request runs the ones for Linux
 
 Each file also has its Sigstore signature, `<file>.sigstore.json`. On macOS a file downloaded with a browser needs `xattr -d com.apple.quarantine chromadotnet-osx-arm64` before it runs.
 
+### Docker
+
+From 2.22.0, each release also has the image `ghcr.io/chromadotnet/chromadotnet`, tagged with its version: the file for musl x64 on Alpine, for linux/amd64. The backup goes in the folder mounted on `/data`, written with the owner of that folder by `--user`:
+
+```
+docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD:/data" ghcr.io/chromadotnet/chromadotnet:2.22.0 backup --url http://localhost:8000 --all --out backup.zip
+```
+
+The CI of every pull request builds the image and runs it against Chroma 1.5.9, with a backup, a restore and a verification. The image is signed by its digest with Sigstore and has its build provenance on GitHub.
+
 Chroma Cloud:
 
 ```
