@@ -248,6 +248,7 @@ public class BackupFakeServerTests
 		public int RefusalsBeforeFirstGet { get; set; }
 		public HttpStatusCode? GetStatus { get; init; }
 		public List<int> Offsets { get; } = [];
+		public string Version { get; init; } = "1.5.9";
 
 		public static string Id(int i) => $"r{i:000}";
 
@@ -257,7 +258,7 @@ public class BackupFakeServerTests
 			var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
 			if (path.EndsWith("/version"))
 			{
-				return Json("\"1.5.9\"");
+				return Json($"\"{Version}\"");
 			}
 			if (path.EndsWith("/pre-flight-checks"))
 			{
