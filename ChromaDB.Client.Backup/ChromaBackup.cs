@@ -235,6 +235,10 @@ public static partial class ChromaBackup
 			foreach (var record in batch)
 			{
 				comparison.BackupIds.Add(record.Id);
+				if (record.Embedding is null)
+				{
+					comparison.WithoutEmbedding.Add(record.Id);
+				}
 				if (!found.TryGetValue(record.Id, out var onServerRecord))
 				{
 					comparison.Missing.Add(record.Id);
@@ -264,6 +268,8 @@ public static partial class ChromaBackup
 		public HashSet<string> BackupIds { get; } = new(StringComparer.Ordinal);
 		public List<string> Missing { get; } = [];
 		public List<string> Different { get; } = [];
+		// The records of the backup without an embedding, which the server sent as null: a restore cannot write them, so it deletes none of them.
+		public HashSet<string> WithoutEmbedding { get; } = new(StringComparer.Ordinal);
 		public ChromaVerifyCollection Result { get; set; } = null!;
 	}
 
