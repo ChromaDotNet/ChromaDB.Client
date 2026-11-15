@@ -31,6 +31,13 @@ public class ChromaCollectionDefinition
 	public ChromaCollectionSchema? Schema { get; init; }
 
 	/// <summary>
+	/// The schema of the collection as JSON, sent as it is: the <c>SchemaJson</c> of a collection read from a server, to create a
+	/// collection with the same indexes and settings, as a restore does. It is the whole schema, so <c>Schema</c> and
+	/// <c>Configuration</c> stay null. Chroma 1.3.0 and later apply a schema, and reject the <c>hnsw:</c> metadata next to it.
+	/// </summary>
+	public System.Text.Json.JsonElement? SchemaJson { get; init; }
+
+	/// <summary>
 	/// The generator of the embeddings of the collection. With the generator of the embedding function of Chroma, whose metadata has the
 	/// provider <c>chroma</c> and the model <c>all-MiniLM-L6-v2</c>, a new collection declares the function <c>default</c>, as the Python
 	/// client of Chroma does, unless
@@ -55,7 +62,14 @@ public class ChromaCollectionDefinition
 	// by 0.4.10 to 0.5.3 and fails on 0.5.4 to 0.6.3; the SPANN settings and the embedding function, which only the configuration takes
 	// besides a schema, go in the configuration, with the space in the SPANN settings: Chroma ignores the "hnsw:space" metadata of a
 	// request with SPANN settings.
-	internal bool SettingsInSchema => Schema is not null || Configuration?.Spann?.HasSchemaOnlySettings == true;
+	internal bool SettingsInSchema => Schema is not null || SchemaJson is not null || Configuration?.Spann?.HasSchemaOnlySettings == true;
+
+	// The keys of the schema, for the quota of bytes of Chroma Cloud.
+	internal IEnumerable<string> SchemaKeys
+		=> Schema?.Keys
+			?? (SchemaJson is { ValueKind: System.Text.Json.JsonValueKind.Object } json && json.TryGetProperty("keys", out var keys) && keys.ValueKind == System.Text.Json.JsonValueKind.Object
+				? keys.EnumerateObject().Select(key => key.Name).ToList()
+				: []);
 
 	internal bool SettingsInConfiguration => !SettingsInSchema && (Configuration?.Spann is not null || Configuration?.EmbeddingFunction is not null);
 
@@ -66,6 +80,10 @@ public class ChromaCollectionDefinition
 		if (Name is "." or "..")
 		{
 			throw new ArgumentException($"\"{Name}\" cannot be the name of a collection.", nameof(Name));
+		}
+		if (SchemaJson is { } schemaJson && (schemaJson.ValueKind != System.Text.Json.JsonValueKind.Object || Schema is not null || Configuration is not null))
+		{
+			throw new ArgumentException("SchemaJson is the whole schema, a JSON object: set it without Schema and Configuration.", nameof(SchemaJson));
 		}
 		if (Configuration is { Hnsw: not null, Spann: not null })
 		{
@@ -90,14 +108,16 @@ public class ChromaCollectionDefinition
 			Metadata = Metadata,
 			Configuration = Configuration,
 			Schema = schema,
+			SchemaJson = SchemaJson,
 			EmbeddingGenerator = EmbeddingGenerator,
 		};
 	}
 
 	// The definition with the embedding function that its generator declares: the one of Chroma declares "default". The function of the configuration stays, and so do the other settings.
+	// A SchemaJson keeps the function it has: it is the whole schema.
 	internal ChromaCollectionDefinition WithDeclaredEmbeddingFunction()
 	{
-		if (Configuration?.EmbeddingFunction is not null || ChromaEmbeddingFunctionReference.Declared(EmbeddingGenerator) is not { } reference)
+		if (SchemaJson is not null || Configuration?.EmbeddingFunction is not null || ChromaEmbeddingFunctionReference.Declared(EmbeddingGenerator) is not { } reference)
 		{
 			return this;
 		}
@@ -117,7 +137,8 @@ public class ChromaCollectionDefinition
 	}
 
 	internal Dictionary<string, object>? ToRequestSchema()
-		=> SettingsInSchema ? (Schema ?? new ChromaCollectionSchema()).ToSchema(Configuration) : null;
+		=> SchemaJson is { } json ? json.EnumerateObject().ToDictionary(property => property.Name, property => (object)property.Value.Clone())
+			: SettingsInSchema ? (Schema ?? new ChromaCollectionSchema()).ToSchema(Configuration) : null;
 
 	internal Dictionary<string, object>? ToRequestConfiguration()
 	{

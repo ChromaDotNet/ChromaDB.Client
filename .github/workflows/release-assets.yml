@@ -36,7 +36,7 @@ jobs:
       run: |
         version="${TAG#v}"
         mkdir nuget
-        for id in ChromaDotNet.Client ChromaDotNet.Client.DependencyInjection; do
+        for id in ChromaDotNet.Client ChromaDotNet.Client.DependencyInjection ChromaDotNet.Client.Backup ChromaDotNet.Tool; do
           lower=$(echo "$id" | tr '[:upper:]' '[:lower:]')
           file="nuget/$id.$version.nupkg"
           # nuget.org can take a few minutes to serve a new package.
@@ -61,6 +61,7 @@ jobs:
         done
         test -n "$run"
         gh run download "$run" --repo "$GITHUB_REPOSITORY" --name packages --dir ci
+        echo "RUN=$run" >> "$GITHUB_ENV"
         mkdir packages
         find ci -name '*.nupkg' -exec mv {} packages/ \;
 
@@ -96,5 +97,17 @@ jobs:
           cosign sign-blob --yes --bundle "$file.sigstore.json" "$file"
         done
 
+    - name: The native command
+      run: |
+        # The files of the job native of the same run, the command chromadotnet without .NET, with their SHA-256.
+        mkdir native
+        gh run download "$RUN" --repo "$GITHUB_REPOSITORY" --pattern 'native-*' --dir native-ci
+        find native-ci -type f -exec mv {} native/ \;
+        test "$(ls native | wc -l)" -eq 6
+        (cd native && sha256sum chromadotnet-* > SHA256SUMS && cat SHA256SUMS)
+        for file in native/chromadotnet-*; do
+          cosign sign-blob --yes --bundle "$file.sigstore.json" "$file"
+        done
+
     - name: Upload to the release
-      run: gh release upload "$TAG" packages/* --clobber --repo "$GITHUB_REPOSITORY"
+      run: gh release upload "$TAG" packages/* native/* --clobber --repo "$GITHUB_REPOSITORY"

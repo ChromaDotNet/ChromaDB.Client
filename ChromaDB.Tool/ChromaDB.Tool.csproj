@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net10.0</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>ChromaDB.Tool</RootNamespace>
+		<!-- The name of the command in its help, as System.CommandLine takes it from the assembly. -->
+		<AssemblyName>chromadotnet</AssemblyName>
+		<IsPackable>true</IsPackable>
+		<PackAsTool>true</PackAsTool>
+		<ToolCommandName>chromadotnet</ToolCommandName>
+		<!-- A tool of .NET 10 runs on later versions of .NET too. -->
+		<RollForward>Major</RollForward>
+		<!-- -p:NativeCommand=true publishes the command with NativeAOT, a file that runs without .NET. -->
+		<PublishAot Condition="'$(NativeCommand)' == 'true'">true</PublishAot>
+		<InvariantGlobalization Condition="'$(NativeCommand)' == 'true'">true</InvariantGlobalization>
+		<VersionPrefix>2.21.0</VersionPrefix>
+		<PackageId>ChromaDB.Tool</PackageId>
+		<!-- -p:PackageIdPrefix=Name publishes the package as Name.Tool. -->
+		<PackageId Condition="'$(PackageIdPrefix)' != ''">$(PackageIdPrefix).Tool</PackageId>
+		<Authors>ChromaDotNet contributors</Authors>
+		<PackageDescription>The command chromadotnet: backup, restore and verify of Chroma collections through the API, with ChromaDotNet.Client.Backup. Tested with Chroma 1.5.9, VecturaDB and Chroma Cloud. Independent project. Not affiliated with, endorsed by or sponsored by Chroma Inc. CHROMA is a registered trademark of Chroma Inc., used here only to describe compatibility.</PackageDescription>
+		<PackageTags>chroma chromadb vector-database chroma-cloud backup restore dotnet-tool</PackageTags>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<!-- The logo of ChromaDotNet goes only in the packages published with -p:PackageIdPrefix. -->
+		<PackageIcon Condition="'$(PackageIdPrefix)' != ''">icon.png</PackageIcon>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<RepositoryType>git</RepositoryType>
+		<RepositoryUrl>https://github.com/ssone95/ChromaDB.Client</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/ssone95/ChromaDB.Client</PackageProjectUrl>
+		<!-- In GitHub Actions the links point to the repository that builds the package. -->
+		<RepositoryUrl Condition="'$(GITHUB_REPOSITORY)' != ''">https://github.com/$(GITHUB_REPOSITORY)</RepositoryUrl>
+		<PackageProjectUrl Condition="'$(GITHUB_REPOSITORY)' != ''">https://github.com/$(GITHUB_REPOSITORY)</PackageProjectUrl>
+		<!-- The notes link the GitHub release of the version, so they follow every release. -->
+		<PackageReleaseNotes>With ChromaDotNet.Client $(VersionPrefix). Release notes: $(PackageProjectUrl)/releases/tag/v$(VersionPrefix).</PackageReleaseNotes>
+	</PropertyGroup>
+	<ItemGroup>
+		<None Include="..\README.md" Pack="true" PackagePath="\" />
+		<None Include="..\assets\chromadotnet-icon.png" Pack="true" PackagePath="\icon.png" Condition="'$(PackageIdPrefix)' != ''" />
+		<None Include="..\LICENSE" Pack="true" PackagePath="\" />
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="System.CommandLine" Version="3.0.0" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\ChromaDB.Client.Backup\ChromaDB.Client.Backup.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="ChromaDB.Client.Tests" />
+	</ItemGroup>
+</Project>

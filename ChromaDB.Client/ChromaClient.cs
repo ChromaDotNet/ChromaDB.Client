@@ -160,7 +160,7 @@ public class ChromaClient : IDisposable
 	// write with the key.
 	private void CheckKeysOnChromaCloud(ChromaCollectionDefinition definition)
 	{
-		if (_httpClient.IsChromaCloud && definition.Schema?.Keys.FirstOrDefault(key => System.Text.Encoding.UTF8.GetByteCount(key) > ChromaCloudQuotas.MaxMetadataKeyBytes) is { } key)
+		if (_httpClient.IsChromaCloud && definition.SchemaKeys.FirstOrDefault(key => System.Text.Encoding.UTF8.GetByteCount(key) > ChromaCloudQuotas.MaxMetadataKeyBytes) is { } key)
 		{
 			throw new ArgumentException($"The key \"{key}\" of the schema has more than {ChromaCloudQuotas.MaxMetadataKeyBytes} bytes: Chroma Cloud creates the collection, but then rejects every write with the key.", nameof(definition));
 		}

@@ -1,0 +1,77 @@
+#nullable enable
+ChromaDB.Client.Backup.ChromaBackup
+ChromaDB.Client.Backup.ChromaBackupCollection
+ChromaDB.Client.Backup.ChromaBackupCollection.ChangedDuringBackup.get -> bool
+ChromaDB.Client.Backup.ChromaBackupCollection.CountAtEnd.get -> long
+ChromaDB.Client.Backup.ChromaBackupCollection.CountAtStart.get -> long
+ChromaDB.Client.Backup.ChromaBackupCollection.DuplicateIds.get -> long
+ChromaDB.Client.Backup.ChromaBackupCollection.Name.get -> string!
+ChromaDB.Client.Backup.ChromaBackupCollection.NullEmbeddingIds.get -> System.Collections.Generic.IReadOnlyList<string!>!
+ChromaDB.Client.Backup.ChromaBackupCollection.NullEmbeddings.get -> long
+ChromaDB.Client.Backup.ChromaBackupCollection.Records.get -> long
+ChromaDB.Client.Backup.ChromaBackupFormatException
+ChromaDB.Client.Backup.ChromaBackupFormatException.ChromaBackupFormatException(string! message) -> void
+ChromaDB.Client.Backup.ChromaBackupOptions
+ChromaDB.Client.Backup.ChromaBackupOptions.BatchSize.get -> int
+ChromaDB.Client.Backup.ChromaBackupOptions.BatchSize.init -> void
+ChromaDB.Client.Backup.ChromaBackupOptions.ChromaBackupOptions() -> void
+ChromaDB.Client.Backup.ChromaBackupOptions.Collections.get -> System.Collections.Generic.IReadOnlyList<string!>?
+ChromaDB.Client.Backup.ChromaBackupOptions.Collections.init -> void
+ChromaDB.Client.Backup.ChromaBackupOptions.Concurrency.get -> int
+ChromaDB.Client.Backup.ChromaBackupOptions.Concurrency.init -> void
+ChromaDB.Client.Backup.ChromaBackupProgress
+ChromaDB.Client.Backup.ChromaBackupProgress.Collection.get -> string!
+ChromaDB.Client.Backup.ChromaBackupProgress.Message.get -> string?
+ChromaDB.Client.Backup.ChromaBackupProgress.Records.get -> long
+ChromaDB.Client.Backup.ChromaBackupProgress.Total.get -> long?
+ChromaDB.Client.Backup.ChromaBackupResult
+ChromaDB.Client.Backup.ChromaBackupResult.ChangedDuringBackup.get -> bool
+ChromaDB.Client.Backup.ChromaBackupResult.Collections.get -> System.Collections.Generic.IReadOnlyList<ChromaDB.Client.Backup.ChromaBackupCollection!>!
+ChromaDB.Client.Backup.ChromaBackupResult.Path.get -> string!
+ChromaDB.Client.Backup.ChromaRestoreCollection
+ChromaDB.Client.Backup.ChromaRestoreCollection.Added.get -> long
+ChromaDB.Client.Backup.ChromaRestoreCollection.AlreadySame.get -> bool
+ChromaDB.Client.Backup.ChromaRestoreCollection.Created.get -> bool
+ChromaDB.Client.Backup.ChromaRestoreCollection.Deleted.get -> long
+ChromaDB.Client.Backup.ChromaRestoreCollection.Name.get -> string!
+ChromaDB.Client.Backup.ChromaRestoreCollection.Rewritten.get -> long
+ChromaDB.Client.Backup.ChromaRestoreCollection.Skipped.get -> bool
+ChromaDB.Client.Backup.ChromaRestoreCollection.WithoutEmbedding.get -> long
+ChromaDB.Client.Backup.ChromaRestoreExisting
+ChromaDB.Client.Backup.ChromaRestoreExisting.Fail = 0 -> ChromaDB.Client.Backup.ChromaRestoreExisting
+ChromaDB.Client.Backup.ChromaRestoreExisting.Force = 2 -> ChromaDB.Client.Backup.ChromaRestoreExisting
+ChromaDB.Client.Backup.ChromaRestoreExisting.Resume = 1 -> ChromaDB.Client.Backup.ChromaRestoreExisting
+ChromaDB.Client.Backup.ChromaRestoreExisting.Skip = 3 -> ChromaDB.Client.Backup.ChromaRestoreExisting
+ChromaDB.Client.Backup.ChromaRestoreOptions
+ChromaDB.Client.Backup.ChromaRestoreOptions.BatchSize.get -> int
+ChromaDB.Client.Backup.ChromaRestoreOptions.BatchSize.init -> void
+ChromaDB.Client.Backup.ChromaRestoreOptions.ChooseExisting.get -> System.Func<ChromaDB.Client.Backup.ChromaVerifyCollection!, ChromaDB.Client.Backup.ChromaRestoreExisting>?
+ChromaDB.Client.Backup.ChromaRestoreOptions.ChooseExisting.init -> void
+ChromaDB.Client.Backup.ChromaRestoreOptions.ChromaRestoreOptions() -> void
+ChromaDB.Client.Backup.ChromaRestoreOptions.Collections.get -> System.Collections.Generic.IReadOnlyList<string!>?
+ChromaDB.Client.Backup.ChromaRestoreOptions.Collections.init -> void
+ChromaDB.Client.Backup.ChromaRestoreOptions.Existing.get -> ChromaDB.Client.Backup.ChromaRestoreExisting
+ChromaDB.Client.Backup.ChromaRestoreOptions.Existing.init -> void
+ChromaDB.Client.Backup.ChromaRestoreOptions.ExistingByCollection.get -> System.Collections.Generic.IReadOnlyDictionary<string!, ChromaDB.Client.Backup.ChromaRestoreExisting>?
+ChromaDB.Client.Backup.ChromaRestoreOptions.ExistingByCollection.init -> void
+ChromaDB.Client.Backup.ChromaRestoreResult
+ChromaDB.Client.Backup.ChromaRestoreResult.Collections.get -> System.Collections.Generic.IReadOnlyList<ChromaDB.Client.Backup.ChromaRestoreCollection!>!
+ChromaDB.Client.Backup.ChromaVerifyCollection
+ChromaDB.Client.Backup.ChromaVerifyCollection.Different.get -> long
+ChromaDB.Client.Backup.ChromaVerifyCollection.Exists.get -> bool
+ChromaDB.Client.Backup.ChromaVerifyCollection.FirstDifference.get -> string?
+ChromaDB.Client.Backup.ChromaVerifyCollection.InBackup.get -> long
+ChromaDB.Client.Backup.ChromaVerifyCollection.MetadataSame.get -> bool
+ChromaDB.Client.Backup.ChromaVerifyCollection.Missing.get -> long
+ChromaDB.Client.Backup.ChromaVerifyCollection.Name.get -> string!
+ChromaDB.Client.Backup.ChromaVerifyCollection.OnlyOnServer.get -> long
+ChromaDB.Client.Backup.ChromaVerifyCollection.OnServer.get -> long
+ChromaDB.Client.Backup.ChromaVerifyCollection.Same.get -> bool
+ChromaDB.Client.Backup.ChromaVerifyCollection.SameRecords.get -> long
+ChromaDB.Client.Backup.ChromaVerifyCollection.SchemaSame.get -> bool
+ChromaDB.Client.Backup.ChromaVerifyResult
+ChromaDB.Client.Backup.ChromaVerifyResult.Collections.get -> System.Collections.Generic.IReadOnlyList<ChromaDB.Client.Backup.ChromaVerifyCollection!>!
+ChromaDB.Client.Backup.ChromaVerifyResult.Same.get -> bool
+static ChromaDB.Client.Backup.ChromaBackup.BackupAsync(ChromaDB.Client.ChromaClient! client, string! path, ChromaDB.Client.Backup.ChromaBackupOptions? options = null, System.IProgress<ChromaDB.Client.Backup.ChromaBackupProgress!>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Backup.ChromaBackupResult!>!
+static ChromaDB.Client.Backup.ChromaBackup.RestoreAsync(ChromaDB.Client.ChromaClient! client, string! path, ChromaDB.Client.Backup.ChromaRestoreOptions? options = null, System.IProgress<ChromaDB.Client.Backup.ChromaBackupProgress!>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Backup.ChromaRestoreResult!>!
+static ChromaDB.Client.Backup.ChromaBackup.VerifyAsync(ChromaDB.Client.ChromaClient! client, string! path, System.Collections.Generic.IReadOnlyList<string!>? collections = null, System.IProgress<ChromaDB.Client.Backup.ChromaBackupProgress!>? progress = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ChromaDB.Client.Backup.ChromaVerifyResult!>!

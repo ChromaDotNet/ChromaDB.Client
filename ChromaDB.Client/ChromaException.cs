@@ -46,8 +46,11 @@ public class ChromaException : Exception
 	// An answer to a read whose lists do not have one item for every record (AnswerChecks): the read goes again.
 	internal bool UnevenAnswer { get; init; }
 
-	// The Retry-After of the answer, as a delay from when it came; null without one.
-	internal TimeSpan? RetryAfter { get; init; }
+	/// <summary>
+	/// How long the server asks to wait before the request goes again, from the <c>Retry-After</c> of its answer, as a delay from when
+	/// the answer came; null when the answer has none. VecturaDB sends one when it refuses a write to a SPANN collection with 429.
+	/// </summary>
+	public TimeSpan? RetryAfter { get; init; }
 
 	// Distributed Chroma refuses a write to a collection whose log holds too many records not yet compacted, before it takes any of them:
 	// 429 with the message of PushLogsError::BackoffCompaction of its log, "log needs compaction before accepting more writes; please
