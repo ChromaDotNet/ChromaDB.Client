@@ -23,7 +23,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChromaDB.Client.TrimmingTes
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChromaDB.Client.Backup", "ChromaDB.Client.Backup\ChromaDB.Client.Backup.csproj", "{A99099FF-4F11-4698-A221-FDA3C69516A2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChromaDB.Tool", "ChromaDB.Tool\ChromaDB.Tool.csproj", "{83BB15E0-DE0D-4C68-A819-2F5BC3FE7147}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChromaDB.Client.Cli", "ChromaDB.Client.Cli\ChromaDB.Client.Cli.csproj", "{83BB15E0-DE0D-4C68-A819-2F5BC3FE7147}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

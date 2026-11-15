@@ -239,13 +239,13 @@ jobs:
     - name: Publish
       if: ${{ !matrix.alpine }}
       shell: bash
-      run: dotnet publish ChromaDB.Tool -c ${{ env.CONFIGURATION }} -r ${{ matrix.rid }} -p:NativeCommand=true -p:TreatWarningsAsErrors=true -o native
+      run: dotnet publish ChromaDB.Client.Cli -c ${{ env.CONFIGURATION }} -r ${{ matrix.rid }} -p:NativeCommand=true -p:TreatWarningsAsErrors=true -o native
 
     - name: Publish on Alpine
       if: ${{ matrix.alpine }}
       run: >-
         docker run --rm -v "$PWD:/w" -w /w mcr.microsoft.com/dotnet/sdk:10.0-alpine-aot
-        dotnet publish ChromaDB.Tool -c ${{ env.CONFIGURATION }} -r ${{ matrix.rid }} -p:NativeCommand=true -p:TreatWarningsAsErrors=true -o native
+        dotnet publish ChromaDB.Client.Cli -c ${{ env.CONFIGURATION }} -r ${{ matrix.rid }} -p:NativeCommand=true -p:TreatWarningsAsErrors=true -o native
 
     - name: The file
       shell: bash

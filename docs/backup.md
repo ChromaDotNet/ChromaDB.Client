@@ -1,6 +1,6 @@
 # Backup and restore
 
-`ChromaDotNet.Client.Backup` saves collections of a database into a zip file through the API of Chroma, and writes them back into the same server or another one. `ChromaDotNet.Tool` is the same as a command, `chromadotnet`, with `backup`, `restore` and `verify`.
+`ChromaDotNet.Client.Backup` saves collections of a database into a zip file through the API of Chroma, and writes them back into the same server or another one. `ChromaDotNet.Client.Cli` is the same as a command, `chromadotnet`, with `backup`, `restore` and `verify`.
 
 It is tested with Chroma 1.5.9, VecturaDB and Chroma Cloud, which runs on distributed Chroma, also from each one into the others. Distributed Chroma installed by yourself: not tested. With another server the command warns and goes on.
 
@@ -13,7 +13,7 @@ A stopped server, or one that takes no writes, gives a consistent copy. The back
 ## The command
 
 ```
-dotnet tool install -g ChromaDotNet.Tool
+dotnet tool install -g ChromaDotNet.Client.Cli
 
 chromadotnet backup --url http://localhost:8000 --all --out backup.zip
 chromadotnet verify --url http://localhost:8000 --in backup.zip

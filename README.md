@@ -56,7 +56,7 @@ dotnet add package ChromaDotNet.Client
 
 `ChromaDotNet.Client.DependencyInjection` for `Microsoft.Extensions.DependencyInjection`: [Dependency injection](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/dependency-injection.md).
 
-Backup and restore of collections through the API, as a library, `ChromaDotNet.Client.Backup`, and as the command `chromadotnet`, from `ChromaDotNet.Tool` or as a file of each release that runs without .NET: [Backup and restore](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/backup.md).
+Backup and restore of collections through the API, as a library, `ChromaDotNet.Client.Backup`, and as the command `chromadotnet`, from `ChromaDotNet.Client.Cli` or as a file of each release that runs without .NET: [Backup and restore](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/backup.md).
 
 To run Chroma on your machine without Docker: [ChromaDotNet.Local.ChromaDB](https://www.nuget.org/packages/ChromaDotNet.Local.ChromaDB).
 
