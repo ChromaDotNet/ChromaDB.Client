@@ -22,6 +22,13 @@ public sealed class ChromaRestoreOptions
 	public IReadOnlyDictionary<string, ChromaRestoreExisting>? ExistingByCollection { get; init; }
 
 	/// <summary>
+	/// Chooses what happens to each collection that exists and is not the same, when <c>ExistingByCollection</c> does not name it, in
+	/// place of <c>Existing</c>: it gets what the comparison found. It is called for each of them after every collection is compared
+	/// and before any write, as the copy command of the CLI asks its questions.
+	/// </summary>
+	public Func<ChromaVerifyCollection, ChromaRestoreExisting>? ChooseExisting { get; init; }
+
+	/// <summary>
 	/// The records of one write, from 1 to 300; 100 by default.
 	/// </summary>
 	public int BatchSize { get; init; } = 100;
@@ -50,6 +57,11 @@ public enum ChromaRestoreExisting
 	/// record that exists, with its embedding, can lose a record from the index (KD-49 in docs/COMPATIBILITY.md).
 	/// </summary>
 	Force,
+
+	/// <summary>
+	/// The collection stays as it is, and the other collections are restored.
+	/// </summary>
+	Skip,
 }
 
 /// <summary>
@@ -73,7 +85,7 @@ public sealed class ChromaRestoreResult
 /// </summary>
 public sealed class ChromaRestoreCollection
 {
-	internal ChromaRestoreCollection(string name, bool created, bool alreadySame, long added, long rewritten, long deleted, long withoutEmbedding)
+	internal ChromaRestoreCollection(string name, bool created, bool alreadySame, long added, long rewritten, long deleted, long withoutEmbedding, bool skipped = false)
 	{
 		Name = name;
 		Created = created;
@@ -82,7 +94,13 @@ public sealed class ChromaRestoreCollection
 		Rewritten = rewritten;
 		Deleted = deleted;
 		WithoutEmbedding = withoutEmbedding;
+		Skipped = skipped;
 	}
+
+	/// <summary>
+	/// Whether the collection exists and is not the same, and stayed as it is, with <c>Skip</c>.
+	/// </summary>
+	public bool Skipped { get; }
 
 	/// <summary>
 	/// The name of the collection.

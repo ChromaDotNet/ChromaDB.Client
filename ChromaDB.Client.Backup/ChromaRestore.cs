@@ -29,15 +29,22 @@ public static partial class ChromaBackup
 		InRange(options.BatchSize, 1, 300, nameof(options.BatchSize));
 		using var file = File.OpenRead(path);
 		using var zip = new ZipArchive(file, ZipArchiveMode.Read);
-		var plans = new List<(ManifestCollection Entry, Comparison Comparison, ChromaRestoreExisting? Existing)>();
-		var refused = new List<string>();
+		var compared = new List<(ManifestCollection Entry, Comparison Comparison)>();
 		foreach (var entry in Selected(BackupFile.ReadManifest(zip), options.Collections))
 		{
-			var comparison = await VerifyCollection(client, zip, entry, options.BatchSize, progress, cancellationToken).ConfigureAwait(false);
+			compared.Add((entry, await VerifyCollection(client, zip, entry, options.BatchSize, progress, cancellationToken).ConfigureAwait(false)));
+		}
+		// Every collection compared, then the choices, then the writes.
+		var plans = new List<(ManifestCollection Entry, Comparison Comparison, ChromaRestoreExisting? Existing)>();
+		var refused = new List<string>();
+		foreach (var (entry, comparison) in compared)
+		{
 			ChromaRestoreExisting? existing = null;
 			if (comparison.Server is not null && !comparison.Result.Same)
 			{
-				existing = options.ExistingByCollection is { } byCollection && byCollection.TryGetValue(entry.Name, out var chosen) ? chosen : options.Existing;
+				existing = options.ExistingByCollection is { } byCollection && byCollection.TryGetValue(entry.Name, out var chosen) ? chosen
+					: options.ChooseExisting is { } choose ? choose(comparison.Result)
+					: options.Existing;
 				if (existing == ChromaRestoreExisting.Fail)
 				{
 					refused.Add(Describe(comparison.Result));
@@ -64,6 +71,10 @@ public static partial class ChromaBackup
 		if (comparison.Server is not null && comparison.Result.Same)
 		{
 			return new(entry.Name, false, true, 0, 0, 0, 0);
+		}
+		if (existing == ChromaRestoreExisting.Skip)
+		{
+			return new(entry.Name, false, false, 0, 0, 0, 0, skipped: true);
 		}
 		// A new collection, or one with another schema or another dimension under Force: created, with every record.
 		if (comparison.Server is null || existing == ChromaRestoreExisting.Force && !comparison.Result.SchemaSame)

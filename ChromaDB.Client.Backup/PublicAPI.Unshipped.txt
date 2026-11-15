@@ -35,14 +35,18 @@ ChromaDB.Client.Backup.ChromaRestoreCollection.Created.get -> bool
 ChromaDB.Client.Backup.ChromaRestoreCollection.Deleted.get -> long
 ChromaDB.Client.Backup.ChromaRestoreCollection.Name.get -> string!
 ChromaDB.Client.Backup.ChromaRestoreCollection.Rewritten.get -> long
+ChromaDB.Client.Backup.ChromaRestoreCollection.Skipped.get -> bool
 ChromaDB.Client.Backup.ChromaRestoreCollection.WithoutEmbedding.get -> long
 ChromaDB.Client.Backup.ChromaRestoreExisting
 ChromaDB.Client.Backup.ChromaRestoreExisting.Fail = 0 -> ChromaDB.Client.Backup.ChromaRestoreExisting
 ChromaDB.Client.Backup.ChromaRestoreExisting.Force = 2 -> ChromaDB.Client.Backup.ChromaRestoreExisting
 ChromaDB.Client.Backup.ChromaRestoreExisting.Resume = 1 -> ChromaDB.Client.Backup.ChromaRestoreExisting
+ChromaDB.Client.Backup.ChromaRestoreExisting.Skip = 3 -> ChromaDB.Client.Backup.ChromaRestoreExisting
 ChromaDB.Client.Backup.ChromaRestoreOptions
 ChromaDB.Client.Backup.ChromaRestoreOptions.BatchSize.get -> int
 ChromaDB.Client.Backup.ChromaRestoreOptions.BatchSize.init -> void
+ChromaDB.Client.Backup.ChromaRestoreOptions.ChooseExisting.get -> System.Func<ChromaDB.Client.Backup.ChromaVerifyCollection!, ChromaDB.Client.Backup.ChromaRestoreExisting>?
+ChromaDB.Client.Backup.ChromaRestoreOptions.ChooseExisting.init -> void
 ChromaDB.Client.Backup.ChromaRestoreOptions.ChromaRestoreOptions() -> void
 ChromaDB.Client.Backup.ChromaRestoreOptions.Collections.get -> System.Collections.Generic.IReadOnlyList<string!>?
 ChromaDB.Client.Backup.ChromaRestoreOptions.Collections.init -> void
