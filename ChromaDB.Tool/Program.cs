@@ -224,9 +224,10 @@ internal static class Program
 			return;
 		}
 		var version = await client.GetVersionAsync(cancellationToken);
-		if (version != TestedChroma)
+		// Every Chroma 1.x answers 1.0.0, so 1.5.9 cannot be told from another 1.x: only Chroma 0.x gets the warning.
+		if (version.StartsWith("0.", StringComparison.Ordinal))
 		{
-			error.WriteLine($"Chroma {version} has not been tested with chromadotnet, which goes on: the tests use Chroma {TestedChroma}, VecturaDB {TestedVecturaDb} and Chroma Cloud.");
+			error.WriteLine($"Chroma {version} has not been tested with chromadotnet, which goes on: the tests use Chroma {TestedChroma}, VecturaDB {TestedVecturaDb} and Chroma Cloud. Every Chroma 1.x answers 1.0.0 as its version, so no warning tells one 1.x from another.");
 		}
 	}
 

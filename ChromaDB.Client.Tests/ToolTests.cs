@@ -135,13 +135,32 @@ public class ToolWarningTests
 		var path = Path.Combine(Path.GetTempPath(), $"chromadotnet-tool-test-{Guid.NewGuid():N}.zip");
 		try
 		{
-			var server = new BackupFakeServerTests.FakeChroma(3) { Version = "1.5.8" };
+			var server = new BackupFakeServerTests.FakeChroma(3) { Version = "0.6.3" };
 			var output = new StringWriter();
 			var error = new StringWriter();
 			var code = await Program.RunAsync(["backup", "--url", "http://localhost:8000", "--all", "--out", path], output, error, null, settings => new ChromaClient(settings, new HttpClient(server)));
 			Assert.That(code, Is.EqualTo(0), error.ToString());
-			Assert.That(error.ToString(), Does.Contain("Chroma 1.5.8 has not been tested"));
+			Assert.That(error.ToString(), Does.Contain("Chroma 0.6.3 has not been tested"));
 			Assert.That(File.Exists(path), Is.True);
+		}
+		finally
+		{
+			File.Delete(path);
+		}
+	}
+
+	// Every Chroma 1.x, 1.5.9 included, answers 1.0.0 as its version: no warning.
+	[Test]
+	public async Task Chroma1GetsNoWarning()
+	{
+		var path = Path.Combine(Path.GetTempPath(), $"chromadotnet-tool-test-{Guid.NewGuid():N}.zip");
+		try
+		{
+			var server = new BackupFakeServerTests.FakeChroma(3) { Version = "1.0.0" };
+			var error = new StringWriter();
+			var code = await Program.RunAsync(["backup", "--url", "http://localhost:8000", "--all", "--out", path], new StringWriter(), error, null, settings => new ChromaClient(settings, new HttpClient(server)));
+			Assert.That(code, Is.EqualTo(0), error.ToString());
+			Assert.That(error.ToString(), Does.Not.Contain("has not been tested"));
 		}
 		finally
 		{
