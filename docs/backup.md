@@ -44,6 +44,8 @@ chmod +x chromadotnet-linux-x64
 ./chromadotnet-linux-x64 backup --url http://localhost:8000 --all --out backup.zip
 ```
 
+Where the files are tested: the CI of every pull request runs the ones for Linux (x64, arm64 and musl) against Chroma 1.5.9, with a backup, a restore and a verification, and the others only with `--version`. The one for Windows x64 was also run by hand against Chroma 1.5.9 and VecturaDB 1.0.0-preview.9 on 15 November 2026. The ones for macOS were run once, on 15 November 2026, on the macOS runners of GitHub, Apple silicon and Intel, against Chroma 1.5.9 and VecturaDB 1.0.0-preview.9, both ways: not in the CI of every pull request.
+
 Each file also has its Sigstore signature, `<file>.sigstore.json`. On macOS a file downloaded with a browser needs `xattr -d com.apple.quarantine chromadotnet-osx-arm64` before it runs.
 
 Chroma Cloud:
