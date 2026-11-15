@@ -204,6 +204,87 @@ jobs:
     - name: Run with NativeAOT
       run: ./aot/ChromaDB.Client.TrimmingTest http://localhost:8000 --lists
 
+  native:
+    # The command chromadotnet with NativeAOT, a file that runs without .NET, on each platform it is published for: every trimming
+    # or AOT warning an error. On Linux the file backs up a collection of Chroma 1.5.9, restores it after its deletion and verifies
+    # it; elsewhere it answers --version. The files are the artifacts native-<rid>, which release-assets.yml attaches to a release.
+    # musl: NativeAOT builds only for the system it runs on, and the actions of GitHub do not run in Alpine, so the build and the
+    # test run in the AOT image of the SDK on Alpine, started by docker.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rid: linux-x64, runner: ubuntu-24.04 }
+          - { rid: linux-arm64, runner: ubuntu-24.04-arm }
+          - { rid: linux-musl-x64, runner: ubuntu-24.04, alpine: true }
+          - { rid: osx-arm64, runner: macos-15 }
+          - { rid: osx-x64, runner: macos-15-intel }
+          - { rid: win-x64, runner: windows-latest }
+    runs-on: ${{ matrix.runner }}
+    name: Native command (${{ matrix.rid }})
+
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+    - name: Setup .NET
+      if: ${{ !matrix.alpine }}
+      uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: NativeAOT prerequisites
+      if: ${{ runner.os == 'Linux' && !matrix.alpine }}
+      run: sudo apt-get install -y clang zlib1g-dev
+
+    - name: Publish
+      if: ${{ !matrix.alpine }}
+      shell: bash
+      run: dotnet publish ChromaDB.Tool -c ${{ env.CONFIGURATION }} -r ${{ matrix.rid }} -p:NativeCommand=true -p:TreatWarningsAsErrors=true -o native
+
+    - name: Publish on Alpine
+      if: ${{ matrix.alpine }}
+      run: >-
+        docker run --rm -v "$PWD:/w" -w /w mcr.microsoft.com/dotnet/sdk:10.0-alpine-aot
+        dotnet publish ChromaDB.Tool -c ${{ env.CONFIGURATION }} -r ${{ matrix.rid }} -p:NativeCommand=true -p:TreatWarningsAsErrors=true -o native
+
+    - name: The file
+      shell: bash
+      run: |
+        file=native/chromadotnet${{ runner.os == 'Windows' && '.exe' || '' }}
+        ls -l "$file"
+        mkdir upload && cp "$file" "upload/chromadotnet-${{ matrix.rid }}${{ runner.os == 'Windows' && '.exe' || '' }}"
+
+    - name: Version
+      if: ${{ !matrix.alpine }}
+      shell: bash
+      run: ./native/chromadotnet --version
+
+    - name: Backup, restore and verify against Chroma 1.5.9
+      if: ${{ runner.os == 'Linux' }}
+      run: |
+        docker run -d --name chroma -p 127.0.0.1:8000:8000 chromadb/chroma:1.5.9
+        for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/api/v2/heartbeat && break; sleep 1; done
+        base=http://127.0.0.1:8000/api/v2/tenants/default_tenant/databases/default_database/collections
+        id=$(curl -sf -X POST "$base" -H 'Content-Type: application/json' -d '{"name": "native"}' | sed -E 's/.*"id":"([^"]+)".*/\1/')
+        curl -sf -X POST "$base/$id/add" -H 'Content-Type: application/json' \
+          -d '{"ids": ["a", "b"], "embeddings": [[1, 2], [3, 4]], "documents": ["x", null], "metadatas": [{"k": 1}, null]}'
+        if [ "${{ matrix.alpine }}" = true ]; then
+          run() { docker run --rm --network host -v "$PWD:/w" -w /w alpine:3 ./native/chromadotnet "$@"; }
+        else
+          run() { ./native/chromadotnet "$@"; }
+        fi
+        run backup --url http://127.0.0.1:8000 --collections native --out native.zip
+        curl -sf -X DELETE "$base/native"
+        run restore --url http://127.0.0.1:8000 --in native.zip
+        run verify --url http://127.0.0.1:8000 --in native.zip | tee verify.txt
+        grep -q 'native: the same, 2 records' verify.txt
+
+    - name: Upload
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: native-${{ matrix.rid }}
+        path: upload/*
+
   framework:
     # The tests whose outcome depends on the runtime, on .NET Framework 4.8, where the client runs its net462 build and
     # the runtime formats and parses numbers in its own way: ChromaDB.Client.FrameworkTests, with no server.
@@ -274,7 +355,7 @@ jobs:
       run: ./aot/ChromaDB.Client.TrimmingTest http://localhost:8000 --lists
 
   publish:
-    needs: [ci, trimming, framework, newest-dotnet]
+    needs: [ci, trimming, framework, newest-dotnet, native]
     # Publishes the version tags: with the NUGET_API_KEY secret in the original repository, and with NuGet trusted
     # publishing where the NUGET_USER variable is set. The original repository publishes the default branch too; elsewhere
     # its pushes leave the packages as artifacts of the run.

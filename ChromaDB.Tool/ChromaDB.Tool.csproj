@@ -13,6 +13,9 @@
 		<ToolCommandName>chromadotnet</ToolCommandName>
 		<!-- A tool of .NET 10 runs on later versions of .NET too. -->
 		<RollForward>Major</RollForward>
+		<!-- -p:NativeCommand=true publishes the command with NativeAOT, a file that runs without .NET. -->
+		<PublishAot Condition="'$(NativeCommand)' == 'true'">true</PublishAot>
+		<InvariantGlobalization Condition="'$(NativeCommand)' == 'true'">true</InvariantGlobalization>
 		<VersionPrefix>2.21.0</VersionPrefix>
 		<PackageId>ChromaDB.Tool</PackageId>
 		<!-- -p:PackageIdPrefix=Name publishes the package as Name.Tool. -->

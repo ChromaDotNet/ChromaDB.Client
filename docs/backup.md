@@ -25,6 +25,27 @@ chromadotnet restore --url http://localhost:8001 --in backup.zip
 - `--distributed` for distributed Chroma that is not Chroma Cloud.
 - `--batch`, the records of one request, 100 by default and at most 300, the most that Chroma Cloud answers; `--concurrent`, the gets of a backup at the same time, 5 by default.
 
+### Without .NET
+
+Each [release](https://github.com/ChromaDotNet/ChromaDB.Client/releases) has the command as a file that runs without .NET, built with NativeAOT, and their SHA-256 in `SHA256SUMS`:
+
+| File | System |
+|---|---|
+| `chromadotnet-linux-x64`, `chromadotnet-linux-arm64` | Linux with glibc 2.34 or later: Ubuntu 22.04, Debian 12, RHEL 9 and later. Not Ubuntu 20.04, Debian 11 or RHEL 8. |
+| `chromadotnet-linux-musl-x64` | Alpine and other Linux with musl, x64 |
+| `chromadotnet-osx-arm64`, `chromadotnet-osx-x64` | macOS on Apple silicon and on Intel |
+| `chromadotnet-win-x64.exe` | Windows x64 |
+
+```
+curl -fsSLO https://github.com/ChromaDotNet/ChromaDB.Client/releases/latest/download/chromadotnet-linux-x64
+curl -fsSLO https://github.com/ChromaDotNet/ChromaDB.Client/releases/latest/download/SHA256SUMS
+sha256sum --check --ignore-missing SHA256SUMS
+chmod +x chromadotnet-linux-x64
+./chromadotnet-linux-x64 backup --url http://localhost:8000 --all --out backup.zip
+```
+
+Each file also has its Sigstore signature, `<file>.sigstore.json`. On macOS a file downloaded with a browser needs `xattr -d com.apple.quarantine chromadotnet-osx-arm64` before it runs.
+
 Chroma Cloud:
 
 ```
