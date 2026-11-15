@@ -269,7 +269,9 @@ jobs:
         curl -sf -X POST "$base/$id/add" -H 'Content-Type: application/json' \
           -d '{"ids": ["a", "b"], "embeddings": [[1, 2], [3, 4]], "documents": ["x", null], "metadatas": [{"k": 1}, null]}'
         if [ "${{ matrix.alpine }}" = true ]; then
-          run() { docker run --rm --network host -v "$PWD:/w" -w /w alpine:3 ./native/chromadotnet "$@"; }
+          # The image that release-assets.yml publishes, built from the same Dockerfile.
+          docker build -f ChromaDB.Client.Cli/Dockerfile -t chromadotnet-ci native
+          run() { docker run --rm --network host -v "$PWD:/data" chromadotnet-ci "$@"; }
         else
           run() { ./native/chromadotnet "$@"; }
         fi
