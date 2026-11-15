@@ -15,12 +15,12 @@ public class RestoreServerTests : ChromaTestsBase
 	[SetUp]
 	public void SetUp()
 	{
-		Assume.That(BackupTested, Is.True, "The backup is tested with Chroma 1.5.9 and later, VecturaDB, distributed Chroma and Chroma Cloud.");
+		if (!BackupTested) { Assert.Ignore("The backup is tested with Chroma 1.5.9 and later, VecturaDB and Chroma Cloud."); }
 		_path = Path.Combine(Path.GetTempPath(), $"chromadotnet-restore-test-{Guid.NewGuid():N}.zip");
 	}
 
 	[TearDown]
-	public void TearDown() => File.Delete(_path);
+	public void TearDown() { if (_path is not null) { File.Delete(_path); } }
 
 	[Test]
 	public async Task IntoANewCollection()
@@ -156,7 +156,7 @@ public class RestoreAcrossServersTests : ChromaTestsBase
 	[OneTimeSetUp]
 	public async Task StartTheSecondServer()
 	{
-		Assume.That(BackupTested, Is.True, "The backup is tested with Chroma 1.5.9 and later, VecturaDB, distributed Chroma and Chroma Cloud.");
+		if (!BackupTested) { Assert.Ignore("The backup is tested with Chroma 1.5.9 and later, VecturaDB and Chroma Cloud."); }
 		Assume.That(SecondImage, Is.Not.Null, "CHROMA_TEST_SECOND_IMAGE names the image of a second server.");
 		_second = new ChromaBuilder(SecondImage!).Build();
 		await _second.StartAsync();
@@ -174,12 +174,12 @@ public class RestoreAcrossServersTests : ChromaTestsBase
 	[SetUp]
 	public void SetUp()
 	{
-		Assume.That(BackupTested, Is.True, "The backup is tested with Chroma 1.5.9 and later, VecturaDB, distributed Chroma and Chroma Cloud.");
+		if (!BackupTested) { Assert.Ignore("The backup is tested with Chroma 1.5.9 and later, VecturaDB and Chroma Cloud."); }
 		_path = Path.Combine(Path.GetTempPath(), $"chromadotnet-across-test-{Guid.NewGuid():N}.zip");
 	}
 
 	[TearDown]
-	public void TearDown() => File.Delete(_path);
+	public void TearDown() { if (_path is not null) { File.Delete(_path); } }
 
 	ChromaClient Second() => new(new ChromaConfigurationOptions($"{_second!.GetConnectionString()}api/v2/"), new HttpClient());
 
