@@ -17,9 +17,9 @@
 		<PublishAot Condition="'$(NativeCommand)' == 'true'">true</PublishAot>
 		<InvariantGlobalization Condition="'$(NativeCommand)' == 'true'">true</InvariantGlobalization>
 		<VersionPrefix>2.21.0</VersionPrefix>
-		<PackageId>ChromaDB.Tool</PackageId>
-		<!-- -p:PackageIdPrefix=Name publishes the package as Name.Tool. -->
-		<PackageId Condition="'$(PackageIdPrefix)' != ''">$(PackageIdPrefix).Tool</PackageId>
+		<PackageId>ChromaDB.Client.Tool</PackageId>
+		<!-- -p:PackageIdPrefix=Name publishes the package as Name.Client.Tool. -->
+		<PackageId Condition="'$(PackageIdPrefix)' != ''">$(PackageIdPrefix).Client.Tool</PackageId>
 		<Authors>ChromaDotNet contributors</Authors>
 		<PackageDescription>The command chromadotnet: backup, restore and verify of Chroma collections through the API, with ChromaDotNet.Client.Backup. Tested with Chroma 1.5.9, VecturaDB and Chroma Cloud. Independent project. Not affiliated with, endorsed by or sponsored by Chroma Inc. CHROMA is a registered trademark of Chroma Inc., used here only to describe compatibility.</PackageDescription>
 		<PackageTags>chroma chromadb vector-database chroma-cloud backup restore dotnet-tool</PackageTags>

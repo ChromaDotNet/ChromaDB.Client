@@ -36,7 +36,7 @@ jobs:
       run: |
         version="${TAG#v}"
         mkdir nuget
-        for id in ChromaDotNet.Client ChromaDotNet.Client.DependencyInjection ChromaDotNet.Client.Backup ChromaDotNet.Tool; do
+        for id in ChromaDotNet.Client ChromaDotNet.Client.DependencyInjection ChromaDotNet.Client.Backup ChromaDotNet.Client.Tool; do
           lower=$(echo "$id" | tr '[:upper:]' '[:lower:]')
           file="nuget/$id.$version.nupkg"
           # nuget.org can take a few minutes to serve a new package.
