@@ -56,6 +56,8 @@ dotnet add package ChromaDotNet.Client
 
 `ChromaDotNet.Client.DependencyInjection` for `Microsoft.Extensions.DependencyInjection`: [Dependency injection](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/dependency-injection.md).
 
+Backup and restore of collections through the API, as a library, `ChromaDotNet.Client.Backup`, and as the command `chromadotnet` of `ChromaDotNet.Tool`: [Backup and restore](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/backup.md).
+
 To run Chroma on your machine without Docker: [ChromaDotNet.Local.ChromaDB](https://www.nuget.org/packages/ChromaDotNet.Local.ChromaDB).
 
 To compute the embeddings as the Python client does: [ChromaDotNet.Embeddings](https://www.nuget.org/packages/ChromaDotNet.Embeddings), see [Embeddings](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/embeddings.md).
@@ -118,6 +120,7 @@ The [compatibility table](https://chromadotnet.org/compatibility/) shows every c
 - [Chroma Cloud](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/chroma-cloud.md): options, identity, batches, quotas and the operations of Chroma Cloud.
 - [Search](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/search.md): the Search API and hybrid search with BM25.
 - [Sparse vectors and schema](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/sparse-vectors-and-schema.md): sparse vectors, BM25 indexes and the indexes of a schema.
+- [Backup and restore](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/backup.md): `ChromaDotNet.Client.Backup` and the command `chromadotnet`, the file, and a server that takes writes during the backup.
 - [Platforms](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/platforms.md): the builds, trimming and NativeAOT.
 - [About this fork](https://github.com/ChromaDotNet/ChromaDB.Client/blob/main/docs/about-this-fork.md): the original project and what this fork does.
 
