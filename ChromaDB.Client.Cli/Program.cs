@@ -4,7 +4,7 @@ using ChromaDB.Client.Models;
 using System.Diagnostics;
 using ChromaDB.Client.Backup;
 
-namespace ChromaDB.Tool;
+namespace ChromaDB.Client.Cli;
 
 // The command chromadotnet: backup, restore and verify of the collections of a database, with ChromaDotNet.Client.Backup.
 // Exit codes: 0 done; 1 an error, or a collection that a restore left as it was without being told; 2 a backup of a server

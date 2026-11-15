@@ -1,5 +1,5 @@
 using ChromaDB.Client.Models;
-using ChromaDB.Tool;
+using ChromaDB.Client.Cli;
 using NUnit.Framework;
 
 namespace ChromaDB.Client.Tests;
@@ -7,7 +7,7 @@ namespace ChromaDB.Client.Tests;
 // The command chromadotnet against the server of the tests: backup, restore and verify, their exit codes, and a restore without a
 // terminal to ask in.
 [TestFixture]
-public class ToolTests : ChromaTestsBase
+public class CliTests : ChromaTestsBase
 {
 	string _path = null!;
 
