@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.0;net462;net10.0</TargetFrameworks>
+		<LangVersion>latest</LangVersion>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<IsPackable>true</IsPackable>
+		<!-- The analyzers of trimming and NativeAOT run on the target that has them. -->
+		<IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net10.0'))">true</IsAotCompatible>
+		<VersionPrefix>2.21.0</VersionPrefix>
+		<PackageId>ChromaDB.Client.Backup</PackageId>
+		<!-- -p:PackageIdPrefix=Name publishes the package as Name.Client.Backup. -->
+		<PackageId Condition="'$(PackageIdPrefix)' != ''">$(PackageIdPrefix).Client.Backup</PackageId>
+		<Authors>ChromaDotNet contributors</Authors>
+		<PackageDescription>Backup and restore of Chroma collections through the API, for ChromaDotNet.Client: a zip file with the collections, their configuration and schema, and their records. Tested with Chroma 1.5.9, VecturaDB and Chroma Cloud. Independent project. Not affiliated with, endorsed by or sponsored by Chroma Inc. CHROMA is a registered trademark of Chroma Inc., used here only to describe compatibility.</PackageDescription>
+		<PackageTags>chroma chromadb vector-database chroma-cloud backup restore</PackageTags>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<!-- The logo of ChromaDotNet goes only in the packages published with -p:PackageIdPrefix. -->
+		<PackageIcon Condition="'$(PackageIdPrefix)' != ''">icon.png</PackageIcon>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<RepositoryType>git</RepositoryType>
+		<RepositoryUrl>https://github.com/ssone95/ChromaDB.Client</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/ssone95/ChromaDB.Client</PackageProjectUrl>
+		<!-- In GitHub Actions the links point to the repository that builds the package. -->
+		<RepositoryUrl Condition="'$(GITHUB_REPOSITORY)' != ''">https://github.com/$(GITHUB_REPOSITORY)</RepositoryUrl>
+		<PackageProjectUrl Condition="'$(GITHUB_REPOSITORY)' != ''">https://github.com/$(GITHUB_REPOSITORY)</PackageProjectUrl>
+		<IncludeSymbols>true</IncludeSymbols>
+		<!-- The XML documentation of the public API goes in the package, for IntelliSense. -->
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<NoWarn>$(NoWarn);RS0026;RS0027</NoWarn>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<!-- The notes link the GitHub release of the version, so they follow every release. -->
+		<PackageReleaseNotes>With ChromaDotNet.Client $(VersionPrefix). Release notes: $(PackageProjectUrl)/releases/tag/v$(VersionPrefix).</PackageReleaseNotes>
+	</PropertyGroup>
+	<ItemGroup>
+		<!-- The public API, checked at build: PublicAPI.Shipped.txt is the API of the last release, PublicAPI.Unshipped.txt what was
+		     added since. RS0026 and RS0027 are about overloads with optional parameters, the design the API already has. -->
+		<PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" PrivateAssets="all" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="..\README.md" Pack="true" PackagePath="\" />
+		<None Include="..\assets\chromadotnet-icon.png" Pack="true" PackagePath="\icon.png" Condition="'$(PackageIdPrefix)' != ''" />
+		<None Include="..\LICENSE" Pack="true" PackagePath="\" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)'=='netstandard2.0' Or '$(TargetFramework)'=='net462'">
+		<PackageReference Include="PolySharp" Version="1.14.1">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)'=='net462'">
+		<Reference Include="System.IO.Compression" />
+		<Reference Include="System.Net.Http" />
+		<!-- The implicit usings of .NET Framework do not have it. -->
+		<Using Include="System.Net.Http" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\ChromaDB.Client\ChromaDB.Client.csproj" />
+	</ItemGroup>
+</Project>
