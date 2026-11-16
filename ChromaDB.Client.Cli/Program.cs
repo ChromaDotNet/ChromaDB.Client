@@ -13,7 +13,7 @@ internal static class Program
 {
 	// The servers the tests try, besides Chroma Cloud: with another one, distributed Chroma installed by yourself included, the command warns and goes on.
 	internal const string TestedChroma = "1.5.9";
-	internal const string TestedVecturaDb = "1.0.0-preview.9";
+	internal const string TestedVecturaDb = "1.0.0-preview.10.post1";
 
 	public static Task<int> Main(string[] args)
 		=> RunAsync(args, Console.Out, Console.Error, Console.IsInputRedirected ? null : Console.In, null);
