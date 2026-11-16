@@ -49,7 +49,7 @@ jobs:
           # second: the backup of one server restored into the other, both ways, with Chroma 1.5.9 started by the tests
           # (RestoreAcrossServersTests).
           - chroma: 'vecturadb'
-            vecturadb: '1.0.0-preview.9'
+            vecturadb: '1.0.0-preview.10.post1'
             expectations: '1.5.9'
             second: 'chromadb/chroma:1.5.9'
     continue-on-error: ${{ matrix.chroma == 'latest' }}
