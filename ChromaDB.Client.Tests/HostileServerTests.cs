@@ -271,6 +271,34 @@ public class HostileServerTests
 		Assert.That(DateTime.UtcNow - started, Is.LessThan(TimeSpan.FromSeconds(4)));
 	}
 
+	// A cancellation of the caller while the body comes stops the read, as when HttpClient reads the whole answer.
+	[Test]
+	public void CancellationDuringTheBodyIsACancellation()
+	{
+		using var chroma = Listen("127.0.0.1", out var port);
+		_ = Serve(chroma, async c =>
+		{
+			c.Response.StatusCode = 200;
+			c.Response.SendChunked = true;
+			try
+			{
+				await c.Response.OutputStream.WriteAsync(Encoding.ASCII.GetBytes("\"1."));
+				await c.Response.OutputStream.FlushAsync();
+				await Task.Delay(TimeSpan.FromSeconds(5));
+				await c.Response.OutputStream.WriteAsync(Encoding.ASCII.GetBytes("0\""));
+				c.Response.Close();
+			}
+			catch (Exception)
+			{
+			}
+		});
+		using var client = new ChromaClient(new ChromaConfigurationOptions($"http://127.0.0.1:{port}/"));
+		using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+		var started = DateTime.UtcNow;
+		Assert.That(() => client.GetVersionAsync(cancellation.Token), Throws.InstanceOf<OperationCanceledException>());
+		Assert.That(DateTime.UtcNow - started, Is.LessThan(TimeSpan.FromSeconds(4)));
+	}
+
 	static HttpListener Listen(string address, out int port)
 	{
 		var socket = new TcpListener(IPAddress.Parse(address), 0);

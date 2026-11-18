@@ -141,18 +141,19 @@ internal static partial class HttpClientHelpers
 		{
 			var started = Stopwatch.StartNew();
 			using var httpResponseMessage = await httpClient.SendAsync(httpRequestMessage, cancellationToken);
-			using var bodyTimeout = BodyTimeout(httpClient, started, cancellationToken);
-			var bodyCancellation = bodyTimeout?.Token ?? cancellationToken;
 			if ((int)httpResponseMessage.StatusCode is not (>= 200 and <= 299))
 			{
-				throw await HandleErrorStatusCode(httpRequestMessage, httpResponseMessage, bodyCancellation);
+				throw await HandleErrorStatusCode(httpClient, httpRequestMessage, httpResponseMessage, started, cancellationToken);
 			}
 			if (httpResponseMessage.Content.Headers.ContentLength is { } length && length > httpClient.MaxResponseSize)
 			{
 				throw ResponseTooLarge(httpClient.MaxResponseSize);
 			}
-			using var stream = new LimitedStream(await ReadAsStream(httpResponseMessage.Content, bodyCancellation), httpClient.MaxResponseSize);
-			return (await JsonSerializer.DeserializeAsync(stream, httpClient.DeserializerOptions.TypeInfo<TResponse>(), bodyCancellation))!;
+			return await ReadBody(httpClient, httpResponseMessage, started, cancellationToken, async stream =>
+			{
+				using var limited = new LimitedStream(stream, httpClient.MaxResponseSize);
+				return (await JsonSerializer.DeserializeAsync(limited, httpClient.DeserializerOptions.TypeInfo<TResponse>()))!;
+			});
 		}
 		catch (Exception ex) when (IsRequestFailure(ex, cancellationToken))
 		{
@@ -167,8 +168,7 @@ internal static partial class HttpClientHelpers
 			using var httpResponseMessage = await httpClient.SendAsync(httpRequestMessage, cancellationToken);
 			if ((int)httpResponseMessage.StatusCode is not (>= 200 and <= 299))
 			{
-				using var bodyTimeout = BodyTimeout(httpClient, started, cancellationToken);
-				throw await HandleErrorStatusCode(httpRequestMessage, httpResponseMessage, bodyTimeout?.Token ?? cancellationToken);
+				throw await HandleErrorStatusCode(httpClient, httpRequestMessage, httpResponseMessage, started, cancellationToken);
 			}
 		}
 		catch (Exception ex) when (IsRequestFailure(ex, cancellationToken))
@@ -184,26 +184,34 @@ internal static partial class HttpClientHelpers
 		=> exception is HttpRequestException or JsonException or IOException and not (FileLoadException or FileNotFoundException)
 			|| exception is OperationCanceledException && !cancellationToken.IsCancellationRequested;
 
-	// The answer of the server is read once its headers come, so the body is given what is left of the Timeout of the HttpClient: the
-	// whole answer comes within it, as when HttpClient reads it all. None for an infinite Timeout.
-	private static CancellationTokenSource? BodyTimeout(ChromaHttpClient httpClient, Stopwatch started, CancellationToken cancellationToken)
+	// The body of an answer, read once its headers came, as HttpClient reads it when it reads the whole answer: within what is left of
+	// the Timeout of the HttpClient, none for an infinite one, and canceled by the token of the caller, unless it was canceled before the
+	// body began, when HttpClient would have had the whole answer already. Either one aborts the answer, which ends the reads.
+	private static async Task<T> ReadBody<T>(ChromaHttpClient httpClient, HttpResponseMessage httpResponseMessage, Stopwatch started, CancellationToken cancellationToken, Func<Stream, Task<T>> read)
 	{
-		if (httpClient.Timeout == System.Threading.Timeout.InfiniteTimeSpan)
+		var timeout = httpClient.Timeout;
+		using var timeoutSource = timeout == System.Threading.Timeout.InfiniteTimeSpan ? null : new CancellationTokenSource(timeout - started.Elapsed is var left && left > TimeSpan.Zero ? left : TimeSpan.Zero);
+		var canceledBefore = cancellationToken.IsCancellationRequested;
+		using var onTimeout = timeoutSource?.Token.Register(httpResponseMessage.Dispose);
+		using var onCancel = canceledBefore ? default : cancellationToken.Register(httpResponseMessage.Dispose);
+		try
 		{
-			return null;
-		}
-		var bodyTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-		var left = httpClient.Timeout - started.Elapsed;
-		bodyTimeout.CancelAfter(left > TimeSpan.Zero ? left : TimeSpan.Zero);
-		return bodyTimeout;
-	}
-
-	private static Task<Stream> ReadAsStream(HttpContent content, CancellationToken cancellationToken)
 #if NET
-		=> content.ReadAsStreamAsync(cancellationToken);
+			using var stream = await httpResponseMessage.Content.ReadAsStreamAsync(CancellationToken.None);
 #else
-		=> content.ReadAsStreamAsync();
+			using var stream = await httpResponseMessage.Content.ReadAsStreamAsync();
 #endif
+			return await read(stream);
+		}
+		catch (Exception ex) when (ex is not ChromaException && !canceledBefore && cancellationToken.IsCancellationRequested)
+		{
+			throw new OperationCanceledException(null, ex, cancellationToken);
+		}
+		catch (Exception ex) when (ex is not ChromaException && timeoutSource?.IsCancellationRequested == true)
+		{
+			throw new TaskCanceledException($"The request was canceled due to the configured HttpClient.Timeout of {timeout.TotalSeconds} seconds elapsing.", new TimeoutException(ex.Message, ex));
+		}
+	}
 
 	private static ChromaException ResponseTooLarge(long maxResponseSize)
 		=> new($"The answer of the server is larger than MaxResponseSize ({maxResponseSize} bytes).");
@@ -212,13 +220,12 @@ internal static partial class HttpClientHelpers
 	internal const int MaxErrorBodySize = 64 * 1024;
 	internal const int MaxErrorMessageLength = 4 * 1024;
 
-	private static async Task<string> ReadErrorBody(HttpContent content, CancellationToken cancellationToken)
+	private static async Task<string> ReadErrorBody(Stream stream)
 	{
-		using var stream = await ReadAsStream(content, cancellationToken);
 		var buffer = new byte[MaxErrorBodySize];
 		var read = 0;
 		int count;
-		while (read < buffer.Length && (count = await stream.ReadAsync(buffer, read, buffer.Length - read, cancellationToken)) > 0)
+		while (read < buffer.Length && (count = await stream.ReadAsync(buffer, read, buffer.Length - read)) > 0)
 		{
 			read += count;
 		}
@@ -235,9 +242,9 @@ internal static partial class HttpClientHelpers
 		return $"{text.Substring(0, length)} (truncated)";
 	}
 
-	private static async Task<ChromaException> HandleErrorStatusCode(HttpRequestMessage httpRequestMessage, HttpResponseMessage httpResponseMessage, CancellationToken cancellationToken)
+	private static async Task<ChromaException> HandleErrorStatusCode(ChromaHttpClient httpClient, HttpRequestMessage httpRequestMessage, HttpResponseMessage httpResponseMessage, Stopwatch started, CancellationToken cancellationToken)
 	{
-		var errorMessageBody = await ReadErrorBody(httpResponseMessage.Content, cancellationToken);
+		var errorMessageBody = await ReadBody(httpClient, httpResponseMessage, started, cancellationToken, ReadErrorBody);
 		var (fullMessage, errorType) = ParseErrorMessageBody(errorMessageBody);
 		var message = fullMessage is null ? null : Bounded(fullMessage);
 		errorType = errorType is null ? null : Bounded(errorType);
