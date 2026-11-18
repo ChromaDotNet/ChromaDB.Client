@@ -3,3 +3,6 @@ ChromaDB.Client.ChromaException.RetryAfter.get -> System.TimeSpan?
 ChromaDB.Client.ChromaException.RetryAfter.init -> void
 ChromaDB.Client.Models.ChromaCollectionDefinition.SchemaJson.get -> System.Text.Json.JsonElement?
 ChromaDB.Client.Models.ChromaCollectionDefinition.SchemaJson.init -> void
+ChromaDB.Client.ChromaConfigurationOptions.MaxResponseSize.get -> long
+ChromaDB.Client.ChromaConfigurationOptions.MaxResponseSize.init -> void
+ChromaDB.Client.ChromaConfigurationOptions.WithMaxResponseSize(long maxResponseSize) -> ChromaDB.Client.ChromaConfigurationOptions!

@@ -121,6 +121,19 @@ public class ChromaConfigurationOptions
 		init => _maxBatchSize = value is null or > 0 ? value : throw new ArgumentOutOfRangeException(nameof(MaxBatchSize), value, "The batches need at least one record.");
 	}
 
+	private readonly long _maxResponseSize = DefaultMaxResponseSize;
+	private const long DefaultMaxResponseSize = 512L * 1024 * 1024;
+
+	/// <summary>
+	/// The largest answer of the server the client reads, in bytes: 512 MB by default. A larger one is a <c>ChromaException</c>, with
+	/// any <c>HttpClient</c>, also one given to the client. At least one byte, also when set directly.
+	/// </summary>
+	public long MaxResponseSize
+	{
+		get => _maxResponseSize;
+		init => _maxResponseSize = value > 0 ? value : throw new ArgumentOutOfRangeException(nameof(MaxResponseSize), value, "The answers need at least one byte.");
+	}
+
 	/// <summary>
 	/// Options for the server at the given URI, with the tenant, the database and the token, when given.
 	/// </summary>
@@ -224,6 +237,7 @@ public class ChromaConfigurationOptions
 		MetadataValues = options.MetadataValues;
 		BatchSplitting = options.BatchSplitting;
 		MaxBatchSize = options.MaxBatchSize;
+		MaxResponseSize = options.MaxResponseSize;
 		UpsertStrategy = options.UpsertStrategy;
 		ReadsBeyondKeyQuota = options.ReadsBeyondKeyQuota;
 		ReadRetries = options.ReadRetries;
@@ -384,4 +398,14 @@ public class ChromaConfigurationOptions
 		=> maxBatchSize > 0
 			? new(this) { BatchSplitting = true, MaxBatchSize = maxBatchSize }
 			: throw new ArgumentOutOfRangeException(nameof(maxBatchSize), maxBatchSize, "The batches need at least one record.");
+
+	/// <summary>
+	/// Answers of the server of at most <c>maxResponseSize</c> bytes, instead of 512 MB: a larger one is a <c>ChromaException</c>.
+	/// </summary>
+	/// <param name="maxResponseSize">The most bytes of an answer.</param>
+	/// <returns>The new options; these do not change.</returns>
+	public ChromaConfigurationOptions WithMaxResponseSize(long maxResponseSize)
+		=> maxResponseSize > 0
+			? new(this) { MaxResponseSize = maxResponseSize }
+			: throw new ArgumentOutOfRangeException(nameof(maxResponseSize), maxResponseSize, "The answers need at least one byte.");
 }

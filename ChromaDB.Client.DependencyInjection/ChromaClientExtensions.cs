@@ -37,7 +37,7 @@ public static class ChromaClientExtensions
 		options = configurationOptions(options);
 
 		services.AddSingleton(options);
-		configureHttpClient(services.AddHttpClient(nameof(ChromaClient)));
+		configureHttpClient(AddHttpClient(services, nameof(ChromaClient)));
 		services.AddSingleton(serviceProvider => serviceProvider.CreateChromaClient(options, nameof(ChromaClient)));
 		return services;
 	}
@@ -78,7 +78,7 @@ public static class ChromaClientExtensions
 		// The type with the text, so that keys like 1 and "1" get an HttpClient each.
 		var httpClientName = $"{nameof(ChromaClient)}:{serviceKey.GetType().FullName}:{serviceKey}";
 		services.AddKeyedSingleton(serviceKey, options);
-		configureHttpClient(services.AddHttpClient(httpClientName));
+		configureHttpClient(AddHttpClient(services, httpClientName));
 		services.AddKeyedSingleton(serviceKey, (serviceProvider, _) => serviceProvider.CreateChromaClient(options, httpClientName));
 		return services;
 	}
@@ -100,7 +100,7 @@ public static class ChromaClientExtensions
 			throw new ArgumentNullException(nameof(configurationOptions));
 		}
 		services.AddSingleton(serviceProvider => MadeOptions(configurationOptions, serviceProvider));
-		var httpClientBuilder = services.AddHttpClient(nameof(ChromaClient));
+		var httpClientBuilder = AddHttpClient(services, nameof(ChromaClient));
 		configureHttpClient?.Invoke(httpClientBuilder);
 		services.AddSingleton(serviceProvider => serviceProvider.CreateChromaClient(serviceProvider.GetRequiredService<ChromaConfigurationOptions>(), nameof(ChromaClient)));
 		return services;
@@ -129,11 +129,29 @@ public static class ChromaClientExtensions
 		// The type with the text, so that keys like 1 and "1" get an HttpClient each, as in AddKeyedChromaClient.
 		var httpClientName = $"{nameof(ChromaClient)}:{serviceKey.GetType().FullName}:{serviceKey}";
 		services.AddKeyedSingleton(serviceKey, (serviceProvider, _) => MadeOptions(configurationOptions, serviceProvider));
-		var httpClientBuilder = services.AddHttpClient(httpClientName);
+		var httpClientBuilder = AddHttpClient(services, httpClientName);
 		configureHttpClient?.Invoke(httpClientBuilder);
 		services.AddKeyedSingleton(serviceKey, (serviceProvider, key) => serviceProvider.CreateChromaClient(serviceProvider.GetRequiredKeyedService<ChromaConfigurationOptions>(key), httpClientName));
 		return services;
 	}
+
+	// The HttpClient of a client, whose handler does not follow redirects: the client follows them itself, only to the same server. A
+	// handler set by configureHttpClient after this one stays as it is, and the client tells an answer from another server.
+	private static IHttpClientBuilder AddHttpClient(IServiceCollection services, string name)
+		=> services.AddHttpClient(name).ConfigurePrimaryHttpMessageHandler((handler, _) =>
+		{
+			switch (handler)
+			{
+				case HttpClientHandler httpClientHandler:
+					httpClientHandler.AllowAutoRedirect = false;
+					break;
+#if NET
+				case SocketsHttpHandler socketsHttpHandler:
+					socketsHttpHandler.AllowAutoRedirect = false;
+					break;
+#endif
+			}
+		});
 
 	private static ChromaConfigurationOptions MadeOptions(Func<IServiceProvider, ChromaConfigurationOptions> configurationOptions, IServiceProvider serviceProvider)
 		=> configurationOptions(serviceProvider) ?? throw new InvalidOperationException("The function of the options of the ChromaClient returned null.");
