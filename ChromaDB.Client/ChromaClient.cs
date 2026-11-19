@@ -87,32 +87,34 @@ public class ChromaClient : IDisposable
 
 	private static HttpClient NewHttpClient() => new(NewHttpMessageHandler());
 
-	// Connections renewed every two minutes, as by the handlers of IHttpClientFactory, so that the client follows a change of the address
+	// No redirect followed by the handler: the client follows them itself, only to the same server. Connections renewed every two minutes, as by the handlers of IHttpClientFactory, so that the client follows a change of the address
 	// of the server. SocketsHttpHandler is not in .NET Standard 2.0: the netstandard2.0 build, which applications on .NET Core 3.1 to .NET 9
 	// take, creates the one of the runtime through reflection. .NET Framework has none, and keeps the HttpClientHandler.
 	internal static HttpMessageHandler NewHttpMessageHandler()
 #if NET
-		=> new SocketsHttpHandler { PooledConnectionLifetime = PooledConnectionLifetime };
+		=> new SocketsHttpHandler { PooledConnectionLifetime = PooledConnectionLifetime, AllowAutoRedirect = false };
 #else
 	{
 		if (RuntimeSocketsHttpHandler is not { } sockets)
 		{
-			return new HttpClientHandler();
+			return new HttpClientHandler { AllowAutoRedirect = false };
 		}
 		var handler = (HttpMessageHandler)sockets.Constructor.Invoke(null);
 		sockets.Lifetime.SetValue(handler, PooledConnectionLifetime);
+		sockets.AllowAutoRedirect.SetValue(handler, false);
 		return handler;
 	}
 
-	// The constructor and the property are read next to Type.GetType with constant names, so that trimming and NativeAOT keep them.
-	private static readonly (ConstructorInfo Constructor, PropertyInfo Lifetime)? RuntimeSocketsHttpHandler = FindSocketsHttpHandler();
+	// The constructor and the properties are read next to Type.GetType with constant names, so that trimming and NativeAOT keep them.
+	private static readonly (ConstructorInfo Constructor, PropertyInfo Lifetime, PropertyInfo AllowAutoRedirect)? RuntimeSocketsHttpHandler = FindSocketsHttpHandler();
 
-	private static (ConstructorInfo, PropertyInfo)? FindSocketsHttpHandler()
+	private static (ConstructorInfo, PropertyInfo, PropertyInfo)? FindSocketsHttpHandler()
 	{
 		var type = Type.GetType("System.Net.Http.SocketsHttpHandler, System.Net.Http", throwOnError: false);
 		var constructor = type?.GetConstructor(Type.EmptyTypes);
 		var lifetime = type?.GetProperty("PooledConnectionLifetime", typeof(TimeSpan));
-		return constructor is not null && lifetime is not null ? (constructor, lifetime) : null;
+		var allowAutoRedirect = type?.GetProperty("AllowAutoRedirect", typeof(bool));
+		return constructor is not null && lifetime is not null && allowAutoRedirect is not null ? (constructor, lifetime, allowAutoRedirect) : null;
 	}
 #endif
 

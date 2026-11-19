@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Diagnostics;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -138,12 +139,21 @@ internal static partial class HttpClientHelpers
 	{
 		try
 		{
+			var started = Stopwatch.StartNew();
 			using var httpResponseMessage = await httpClient.SendAsync(httpRequestMessage, cancellationToken);
-			return (int)httpResponseMessage.StatusCode switch
+			if ((int)httpResponseMessage.StatusCode is not (>= 200 and <= 299))
 			{
-				>= 200 and <= 299 => JsonSerializer.Deserialize(await httpResponseMessage.Content.ReadAsStringAsync(), httpClient.DeserializerOptions.TypeInfo<TResponse>())!,
-				_ => throw await HandleErrorStatusCode(httpRequestMessage, httpResponseMessage),
-			};
+				throw await HandleErrorStatusCode(httpClient, httpRequestMessage, httpResponseMessage, started, cancellationToken);
+			}
+			if (httpResponseMessage.Content.Headers.ContentLength is { } length && length > httpClient.MaxResponseSize)
+			{
+				throw ResponseTooLarge(httpClient.MaxResponseSize);
+			}
+			return await ReadBody(httpClient, httpResponseMessage, started, cancellationToken, async stream =>
+			{
+				using var limited = new LimitedStream(stream, httpClient.MaxResponseSize);
+				return (await JsonSerializer.DeserializeAsync(limited, httpClient.DeserializerOptions.TypeInfo<TResponse>()))!;
+			});
 		}
 		catch (Exception ex) when (IsRequestFailure(ex, cancellationToken))
 		{
@@ -154,14 +164,12 @@ internal static partial class HttpClientHelpers
 	{
 		try
 		{
+			var started = Stopwatch.StartNew();
 			using var httpResponseMessage = await httpClient.SendAsync(httpRequestMessage, cancellationToken);
-			switch ((int)httpResponseMessage.StatusCode)
+			if ((int)httpResponseMessage.StatusCode is not (>= 200 and <= 299))
 			{
-				case >= 200 and <= 299:
-					return;
-				default:
-					throw await HandleErrorStatusCode(httpRequestMessage, httpResponseMessage);
-			};
+				throw await HandleErrorStatusCode(httpClient, httpRequestMessage, httpResponseMessage, started, cancellationToken);
+			}
 		}
 		catch (Exception ex) when (IsRequestFailure(ex, cancellationToken))
 		{
@@ -176,10 +184,70 @@ internal static partial class HttpClientHelpers
 		=> exception is HttpRequestException or JsonException or IOException and not (FileLoadException or FileNotFoundException)
 			|| exception is OperationCanceledException && !cancellationToken.IsCancellationRequested;
 
-	private static async Task<ChromaException> HandleErrorStatusCode(HttpRequestMessage httpRequestMessage, HttpResponseMessage httpResponseMessage)
+	// The body of an answer, read once its headers came, as HttpClient reads it when it reads the whole answer: within what is left of
+	// the Timeout of the HttpClient, none for an infinite one, and canceled by the token of the caller, unless it was canceled before the
+	// body began, when HttpClient would have had the whole answer already. Either one aborts the answer, which ends the reads.
+	private static async Task<T> ReadBody<T>(ChromaHttpClient httpClient, HttpResponseMessage httpResponseMessage, Stopwatch started, CancellationToken cancellationToken, Func<Stream, Task<T>> read)
 	{
-		var errorMessageBody = await httpResponseMessage.Content.ReadAsStringAsync();
-		var (message, errorType) = ParseErrorMessageBody(errorMessageBody);
+		var timeout = httpClient.Timeout;
+		using var timeoutSource = timeout == System.Threading.Timeout.InfiniteTimeSpan ? null : new CancellationTokenSource(timeout - started.Elapsed is var left && left > TimeSpan.Zero ? left : TimeSpan.Zero);
+		var canceledBefore = cancellationToken.IsCancellationRequested;
+		using var onTimeout = timeoutSource?.Token.Register(httpResponseMessage.Dispose);
+		using var onCancel = canceledBefore ? default : cancellationToken.Register(httpResponseMessage.Dispose);
+		try
+		{
+#if NET
+			using var stream = await httpResponseMessage.Content.ReadAsStreamAsync(CancellationToken.None);
+#else
+			using var stream = await httpResponseMessage.Content.ReadAsStreamAsync();
+#endif
+			return await read(stream);
+		}
+		catch (Exception ex) when (ex is not ChromaException && !canceledBefore && cancellationToken.IsCancellationRequested)
+		{
+			throw new OperationCanceledException(null, ex, cancellationToken);
+		}
+		catch (Exception ex) when (ex is not ChromaException && timeoutSource?.IsCancellationRequested == true)
+		{
+			throw new TaskCanceledException($"The request was canceled due to the configured HttpClient.Timeout of {timeout.TotalSeconds} seconds elapsing.", new TimeoutException(ex.Message, ex));
+		}
+	}
+
+	private static ChromaException ResponseTooLarge(long maxResponseSize)
+		=> new($"The answer of the server is larger than MaxResponseSize ({maxResponseSize} bytes).");
+
+	// The most of the body of an error the client reads, and the most of it the message of the exception keeps.
+	internal const int MaxErrorBodySize = 64 * 1024;
+	internal const int MaxErrorMessageLength = 4 * 1024;
+
+	private static async Task<string> ReadErrorBody(Stream stream)
+	{
+		var buffer = new byte[MaxErrorBodySize];
+		var read = 0;
+		int count;
+		while (read < buffer.Length && (count = await stream.ReadAsync(buffer, read, buffer.Length - read)) > 0)
+		{
+			read += count;
+		}
+		return Encoding.UTF8.GetString(buffer, 0, read);
+	}
+
+	private static string Bounded(string text)
+	{
+		if (text.Length <= MaxErrorMessageLength)
+		{
+			return text;
+		}
+		var length = char.IsHighSurrogate(text[MaxErrorMessageLength - 1]) ? MaxErrorMessageLength - 1 : MaxErrorMessageLength;
+		return $"{text.Substring(0, length)} (truncated)";
+	}
+
+	private static async Task<ChromaException> HandleErrorStatusCode(ChromaHttpClient httpClient, HttpRequestMessage httpRequestMessage, HttpResponseMessage httpResponseMessage, Stopwatch started, CancellationToken cancellationToken)
+	{
+		var errorMessageBody = await ReadBody(httpClient, httpResponseMessage, started, cancellationToken, ReadErrorBody);
+		var (fullMessage, errorType) = ParseErrorMessageBody(errorMessageBody);
+		var message = fullMessage is null ? null : Bounded(fullMessage);
+		errorType = errorType is null ? null : Bounded(errorType);
 		// A bare 404 or 405 usually means that this version of Chroma does not have the endpoint: name the request.
 		if ((int)httpResponseMessage.StatusCode is 404 or 405 && message is null or "Not Found" or "Method Not Allowed")
 		{
@@ -311,5 +379,48 @@ internal static partial class HttpClientHelpers
 			formattedEndpoint = formattedEndpoint.Replace(key, urlEncodedQueryParam);
 		}
 		return formattedEndpoint;
+	}
+
+	// The body of an answer read up to the limit: one byte more is a ChromaException.
+	private sealed class LimitedStream(Stream inner, long limit) : Stream
+	{
+		private long _read;
+
+		public override bool CanRead => true;
+		public override bool CanSeek => false;
+		public override bool CanWrite => false;
+		public override long Length => throw new NotSupportedException();
+		public override long Position { get => _read; set => throw new NotSupportedException(); }
+
+		public override int Read(byte[] buffer, int offset, int count) => Counted(inner.Read(buffer, offset, Math.Min(count, Allowed)));
+		public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+			=> Counted(await inner.ReadAsync(buffer, offset, Math.Min(count, Allowed), cancellationToken));
+#if NET
+		public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+			=> Counted(await inner.ReadAsync(buffer[..Math.Min(buffer.Length, Allowed)], cancellationToken));
+#endif
+
+		// One byte beyond the limit at most, to tell an answer of exactly the limit from a larger one.
+		private int Allowed => (int)Math.Min(int.MaxValue, Math.Max(1, limit + 1 - _read));
+
+		private int Counted(int count)
+		{
+			_read += count;
+			return _read > limit ? throw ResponseTooLarge(limit) : count;
+		}
+
+		public override void Flush() { }
+		public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+		public override void SetLength(long value) => throw new NotSupportedException();
+		public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+		protected override void Dispose(bool disposing)
+		{
+			if (disposing)
+			{
+				inner.Dispose();
+			}
+			base.Dispose(disposing);
+		}
 	}
 }

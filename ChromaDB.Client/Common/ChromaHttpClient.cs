@@ -27,6 +27,9 @@ internal sealed class ChromaHttpClient
 	public ChromaReadRetries ReadRetries { get; }
 	public ChromaWriteRetries WriteRetries { get; }
 	public int? MaxBatchSize { get; }
+	public long MaxResponseSize { get; }
+	// The Timeout of the HttpClient: the headers and the body of an answer come within it, as when HttpClient reads the whole answer.
+	public TimeSpan Timeout => _httpClient.Timeout;
 	public bool IsChromaCloud { get; }
 	// Chroma Cloud, or a server that the options call distributed Chroma: for the operations that tell it, IsDistributedChroma.
 	public bool MayBeDistributedChroma { get; }
@@ -49,6 +52,7 @@ internal sealed class ChromaHttpClient
 		// Chroma Cloud declares a max_batch_size of 1000, but takes 300 records per write and answers at most 300 per read, without an
 		// error: its quotas by default.
 		MaxBatchSize = options.MaxBatchSize ?? (IsChromaCloud ? ChromaCloudQuotas.MaxRecordsPerRequest : null);
+		MaxResponseSize = options.MaxResponseSize;
 		if (options.ChromaToken is not null and not [])
 		{
 			if (options.ChromaTokenTransportHeader == ChromaTokenTransportHeader.Authorization)
@@ -85,6 +89,7 @@ internal sealed class ChromaHttpClient
 		ReadRetries = other.ReadRetries;
 		WriteRetries = other.WriteRetries;
 		MaxBatchSize = other.MaxBatchSize;
+		MaxResponseSize = other.MaxResponseSize;
 		IsChromaCloud = other.IsChromaCloud;
 		MayBeDistributedChroma = other.MayBeDistributedChroma;
 		DeserializerOptions = HttpClientHelpers.DeserializerOptions(metadataValues);
@@ -381,18 +386,105 @@ internal sealed class ChromaHttpClient
 		return checks.Value;
 	}
 
-	public Task<HttpResponseMessage> SendAsync(HttpRequestMessage httpRequestMessage, CancellationToken cancellationToken)
+	// The most redirects of a request, all to the same server.
+	internal const int MaxRedirects = 5;
+
+	// Sends the request with the credentials and returns the answer once its headers are read: the body is read by the caller, within
+	// MaxResponseSize. The client follows a redirect only to the same server, http to https included, so the credentials never go to
+	// another one; the HttpClients the client creates do not follow redirects themselves. An HttpClient given to the client can follow
+	// them: an answer that comes from another server is then a ChromaException, without its body.
+	public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage httpRequestMessage, CancellationToken cancellationToken)
+	{
+		var origin = httpRequestMessage.RequestUri!;
+		var body = httpRequestMessage.Content is { } content ? await content.ReadAsByteArrayAsync() : null;
+		var request = httpRequestMessage;
+		for (var redirects = 0; ; redirects++)
+		{
+			AddCredentials(request);
+			var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+			var answered = response.RequestMessage?.RequestUri ?? request.RequestUri!;
+			if (!IsSameServer(origin, answered))
+			{
+				response.Dispose();
+				throw new ChromaException($"The answer came from {ServerOf(answered)} instead of {ServerOf(origin)}: the HttpClient followed a redirect to another server, with the credentials of the client. The client follows redirects only to the same server.");
+			}
+			if ((int)response.StatusCode is not (301 or 302 or 303 or 307 or 308) || response.Headers.Location is not { } location)
+			{
+				return response;
+			}
+			response.Dispose();
+			var target = location.IsAbsoluteUri ? location : new Uri(answered, location);
+			if (!IsSameServer(origin, target))
+			{
+				throw new ChromaException($"The server at {ServerOf(origin)} redirected the request to {ServerOf(target)}: the client follows redirects only to the same server, and does not send the credentials to another one.");
+			}
+			if (redirects == MaxRedirects)
+			{
+				throw new ChromaException($"The server at {ServerOf(origin)} redirected the request more than {MaxRedirects} times.");
+			}
+			request = Redirected(httpRequestMessage, request.Method, (int)response.StatusCode, target, body);
+		}
+	}
+
+	private void AddCredentials(HttpRequestMessage httpRequestMessage)
 	{
 		if (_chromaToken is not null)
 		{
+			httpRequestMessage.Headers.Remove(ClientConstants.ChromaTokenHeader);
 			httpRequestMessage.Headers.Add(ClientConstants.ChromaTokenHeader, _chromaToken);
 		}
 		if (_authorization is not null)
 		{
 			httpRequestMessage.Headers.Authorization = _authorization;
 		}
-		return _httpClient.SendAsync(httpRequestMessage, cancellationToken);
 	}
+
+	// The request to the target of a redirect, as HttpClient makes it: a 301 or a 302 of a POST and a 303 of anything but a HEAD become
+	// a GET without a body; a 307 and a 308 keep the method and the body.
+	private static HttpRequestMessage Redirected(HttpRequestMessage original, HttpMethod method, int statusCode, Uri target, byte[]? body)
+	{
+		var toGet = statusCode switch
+		{
+			301 or 302 => method == HttpMethod.Post,
+			303 => method != HttpMethod.Head,
+			_ => false,
+		};
+		var request = new HttpRequestMessage(toGet ? HttpMethod.Get : method, target);
+		foreach (var header in original.Headers)
+		{
+			if (header.Key != ClientConstants.ChromaTokenHeader && header.Key != "Authorization")
+			{
+				request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+			}
+		}
+		if (!toGet && body is not null)
+		{
+			request.Content = new ByteArrayContent(body);
+			foreach (var header in original.Content!.Headers)
+			{
+				request.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+			}
+		}
+		return request;
+	}
+
+	// The same host, and the same scheme and port, or from http to https on the same port or from the default one to the default one.
+	internal static bool IsSameServer(Uri origin, Uri target)
+	{
+		if (!string.Equals(origin.Host, target.Host, StringComparison.OrdinalIgnoreCase))
+		{
+			return false;
+		}
+		if (string.Equals(origin.Scheme, target.Scheme, StringComparison.OrdinalIgnoreCase))
+		{
+			return origin.Port == target.Port;
+		}
+		return origin.Scheme == Uri.UriSchemeHttp && target.Scheme == Uri.UriSchemeHttps
+			&& (origin.Port == target.Port || origin.IsDefaultPort && target.IsDefaultPort);
+	}
+
+	// The scheme, the host and the port: never the user information, the path or the query of the URI.
+	private static string ServerOf(Uri uri) => $"{uri.Scheme}://{uri.Host}:{uri.Port}";
 
 	// Each fact is one object, published with a volatile write, so a reader outside the lock sees it whole.
 	internal sealed class ServerFacts
