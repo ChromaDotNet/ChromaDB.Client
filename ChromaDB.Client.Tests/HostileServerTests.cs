@@ -194,12 +194,20 @@ public class HostileServerTests
 		Assert.That(ex!.Message, Does.Contain("larger than MaxResponseSize"));
 	}
 
-	// The default limit, 512 MB, against an answer of 1 GB in small values: a ChromaException, not an OutOfMemoryException.
+	// The default limit, 512 MB, with the options of every client: a Content-Length of one byte more is a ChromaException before the body.
 	[Test]
 	public void AnswerLargerThanTheDefaultLimitIsAChromaException()
 	{
 		using var chroma = Listen("127.0.0.1", out var port);
-		_ = Serve(chroma, c => Stream(c, "[", Encoding.ASCII.GetBytes("[" + string.Join(",", Enumerable.Repeat("\"a\"", (1 << 18) - 1)) + "],"), 1024));
+		_ = Serve(chroma, async c =>
+		{
+			c.Response.StatusCode = 200;
+			c.Response.ContentLength64 = (512L << 20) + 1;
+			await c.Response.OutputStream.WriteAsync(new byte[] { (byte)'[' });
+			await c.Response.OutputStream.FlushAsync();
+			await Task.Delay(TimeSpan.FromSeconds(5));
+			c.Response.Abort();
+		});
 		using var httpClient = new HttpClient(ChromaClient.NewHttpMessageHandler());
 		var client = new ChromaHttpClient(httpClient, new ChromaConfigurationOptions($"http://127.0.0.1:{port}/"));
 		var ex = Assert.ThrowsAsync<ChromaException>(() => client.Get<string[][]>("anything", new RequestQueryParams(), default));
