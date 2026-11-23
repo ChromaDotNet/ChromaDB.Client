@@ -16,7 +16,7 @@
 		<!-- -p:NativeCommand=true publishes the command with NativeAOT, a file that runs without .NET. -->
 		<PublishAot Condition="'$(NativeCommand)' == 'true'">true</PublishAot>
 		<InvariantGlobalization Condition="'$(NativeCommand)' == 'true'">true</InvariantGlobalization>
-		<VersionPrefix>2.23.0</VersionPrefix>
+		<VersionPrefix>2.23.1</VersionPrefix>
 		<PackageId>ChromaDB.Client.Cli</PackageId>
 		<!-- -p:PackageIdPrefix=Name publishes the package as Name.Client.Cli. -->
 		<PackageId Condition="'$(PackageIdPrefix)' != ''">$(PackageIdPrefix).Client.Cli</PackageId>
