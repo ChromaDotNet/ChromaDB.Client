@@ -37,13 +37,13 @@ nuget.org serves the same packages with its repository signature (`.signature.p7
 To verify a package downloaded from the release, with Cosign 3 or later:
 
 ```
-cosign verify-blob ChromaDotNet.Client.2.23.0.nupkg --bundle ChromaDotNet.Client.2.23.0.nupkg.sigstore.json --certificate-identity-regexp '^https://github[.]com/ChromaDotNet/ChromaDB[.]Client/[.]github/workflows/release-assets[.]yml@' --certificate-oidc-issuer https://token.actions.githubusercontent.com
+cosign verify-blob ChromaDotNet.Client.2.23.1.nupkg --bundle ChromaDotNet.Client.2.23.1.nupkg.sigstore.json --certificate-identity-regexp '^https://github[.]com/ChromaDotNet/ChromaDB[.]Client/[.]github/workflows/release-assets[.]yml@' --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
 With the GitHub CLI:
 
 ```
-gh attestation verify ChromaDotNet.Client.2.23.0.nupkg --bundle provenance-v2.23.0.intoto.jsonl --repo ChromaDotNet/ChromaDB.Client --signer-workflow ChromaDotNet/ChromaDB.Client/.github/workflows/ci.yml --source-ref refs/tags/v2.23.0
+gh attestation verify ChromaDotNet.Client.2.23.1.nupkg --bundle provenance-v2.23.1.intoto.jsonl --repo ChromaDotNet/ChromaDB.Client --signer-workflow ChromaDotNet/ChromaDB.Client/.github/workflows/ci.yml --source-ref refs/tags/v2.23.1
 ```
 
 ## Verifying the native files
@@ -60,6 +60,6 @@ cosign verify-blob chromadotnet-linux-x64 --bundle chromadotnet-linux-x64.sigsto
 From 2.22.0 on, the image `ghcr.io/chromadotnet/chromadotnet` of each release is signed by its digest with Cosign, and its build provenance is attested by the release workflow and kept in the registry:
 
 ```
-cosign verify ghcr.io/chromadotnet/chromadotnet:2.23.0 --certificate-identity-regexp '^https://github[.]com/ChromaDotNet/ChromaDB[.]Client/[.]github/workflows/release-assets[.]yml@' --certificate-oidc-issuer https://token.actions.githubusercontent.com
-gh attestation verify oci://ghcr.io/chromadotnet/chromadotnet:2.23.0 --repo ChromaDotNet/ChromaDB.Client --signer-workflow ChromaDotNet/ChromaDB.Client/.github/workflows/release-assets.yml --source-ref refs/tags/v2.23.0
+cosign verify ghcr.io/chromadotnet/chromadotnet:2.23.1 --certificate-identity-regexp '^https://github[.]com/ChromaDotNet/ChromaDB[.]Client/[.]github/workflows/release-assets[.]yml@' --certificate-oidc-issuer https://token.actions.githubusercontent.com
+gh attestation verify oci://ghcr.io/chromadotnet/chromadotnet:2.23.1 --repo ChromaDotNet/ChromaDB.Client --signer-workflow ChromaDotNet/ChromaDB.Client/.github/workflows/release-assets.yml --source-ref refs/tags/v2.23.1
 ```
